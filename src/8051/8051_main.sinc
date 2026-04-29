@@ -678,7 +678,7 @@ BitByteAddr: byteaddr 	is bitbank=0 & lowbyte & sfrbit [ byteaddr = lowbyte + 0x
 BitByteAddr: byteaddr 	is bitbank=0 & lowbyte & sfrbit [ byteaddr = lowbyte + 0x20; ] { export *[INTMEM]:1 byteaddr; }
 @endif
 
-@if defined(MCS251) || defined(MX51)
+@if defined(MCS251) || defined(MX51) || defined(CIP51)
 Addr11: relAddr is aopaddr & adata [ relAddr = (inst_next $and 0xfff800)+(aopaddr*256)+adata; ]  { export *:1 relAddr; }
 Addr16: addr is addr16 [ addr = (inst_next $and 0xff0000) + addr16; ] { export *:1 addr; }
 @elif defined(MCS51)
