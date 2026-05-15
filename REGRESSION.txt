@@ -151,3 +151,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6559: x86: Allow RIP relative address for LEA instructions with a 67 prefix
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6559
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6560: x86: XSAVEOPT is under-constrained preventing CLRSSBSY from being decoded
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6560
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.

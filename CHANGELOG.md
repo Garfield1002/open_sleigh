@@ -38,3 +38,4 @@
 - [#6557](https://github.com/NationalSecurityAgency/ghidra/pull/6557) x86: XADD stores to the wrong address if destination is used as part of the address calculation
 - [#6558](https://github.com/NationalSecurityAgency/ghidra/pull/6558) x86: Fix interaction between REX.X and 67 prefix
 - [#6559](https://github.com/NationalSecurityAgency/ghidra/pull/6559) x86: Allow RIP relative address for LEA instructions with a 67 prefix
+- [#6560](https://github.com/NationalSecurityAgency/ghidra/pull/6560) x86: XSAVEOPT is under-constrained preventing CLRSSBSY from being decoded
