@@ -7606,19 +7606,97 @@ define pcodeop movmskps;
 :ORPS          XmmReg, m128     is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x56; XmmReg ... & m128 { XmmReg = XmmReg | m128; }
 :ORPS          XmmReg1, XmmReg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x56; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = XmmReg1 | XmmReg2; }
 
-# what about these ?????
-define pcodeop packsswb;
-:PACKSSWB      mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxreg ... & m64 { mmxreg = packsswb(mmxreg, m64); }
-:PACKSSWB      mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxmod = 3 & mmxreg1 & mmxreg2 { mmxreg1 = packsswb(mmxreg1, mmxreg2); }
+#sword < 0xff80: sbyte = 0x80
+#sword > 0x007f: sbyte = 0x7f
+#otherwise sbyte = sword
+macro sswsb(sword, sbyte) {
+	local less = (sword s< 0xff80:2);
+    local greater = (sword s> 0x007f:2);
+	local inbounds = !(less || greater);
+    sbyte = (sword:1 * inbounds) + (0x80:1 * less) + (0x7f:1 * greater);
+}
 
-define pcodeop packssdw;
-:PACKSSDW      mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxreg ... & m64 { mmxreg = packssdw(mmxreg, m64); }
-:PACKSSDW      mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxmod = 3 & mmxreg1 & mmxreg2 { mmxreg1 = packssdw(mmxreg1, mmxreg2); }
+macro packsswb_mmx(dst, src) {
+	local a:8 = dst;
+	local b:8 = src;
 
-:PACKSSWB      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; XmmReg ... & m128 { XmmReg = packsswb(XmmReg, m128); }
-:PACKSSWB      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = packsswb(XmmReg1, XmmReg2); }
-:PACKSSDW      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; XmmReg ... & m128 { XmmReg = packssdw(XmmReg, m128); }
-:PACKSSDW      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = packssdw(XmmReg1, XmmReg2); }
+	sswsb(a[ 0,16], dst[ 0,8]);
+	sswsb(a[16,16], dst[ 8,8]);
+	sswsb(a[32,16], dst[16,8]);
+	sswsb(a[48,16], dst[24,8]);
+
+	sswsb(b[ 0,16], dst[32,8]);
+	sswsb(b[16,16], dst[40,8]);
+	sswsb(b[32,16], dst[48,8]);
+	sswsb(b[48,16], dst[56,8]);
+}
+:PACKSSWB      mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxreg ... & m64 			  { packsswb_mmx(mmxreg, m64); }
+:PACKSSWB      mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxmod = 3 & mmxreg1 & mmxreg2 { packsswb_mmx(mmxreg1, mmxreg2); }
+
+#sdword < 0xffff_8000: sword = 0x8000
+#sdword > 0x0000_7fff: sword = 0x7fff
+#otherwise sbyte = sword
+macro ssdsw(sword, sbyte) {
+	local less = (sword s< 0xffff8000:4);
+    local greater = (sword s> 0x00007fff:4);
+	local inbounds = !(less || greater);
+    sbyte = (sword:2 * zext(inbounds)) + (0x8000:2 * zext(less)) + (0x7fff:2 * zext(greater));
+}
+
+macro packssdw_mmx(dst, src) {
+	local a:8 = dst;
+	local b:8 = src;
+
+	ssdsw(a[ 0,32], dst[ 0,16]);
+	ssdsw(a[32,32], dst[16,16]);
+
+	ssdsw(b[ 0,32], dst[32,16]);
+	ssdsw(b[32,32], dst[48,16]);
+}
+:PACKSSDW      mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxreg ... & m64 			  { packssdw_mmx(mmxreg, m64); }
+:PACKSSDW      mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxmod = 3 & mmxreg1 & mmxreg2 { packssdw_mmx(mmxreg1, mmxreg2); }
+
+macro packsswb_xmm(dst, src) {
+	local a:16 = dst;
+	local b:16 = src;
+
+	sswsb(a[  0,16], dst[  0,8]);
+	sswsb(a[ 16,16], dst[  8,8]);
+	sswsb(a[ 32,16], dst[ 16,8]);
+	sswsb(a[ 48,16], dst[ 24,8]);
+	sswsb(a[ 64,16], dst[ 32,8]);
+	sswsb(a[ 80,16], dst[ 40,8]);
+	sswsb(a[ 96,16], dst[ 48,8]);
+	sswsb(a[112,16], dst[ 56,8]);
+
+	sswsb(b[  0,16], dst[ 64,8]);
+	sswsb(b[ 16,16], dst[ 72,8]);
+	sswsb(b[ 32,16], dst[ 80,8]);
+	sswsb(b[ 48,16], dst[ 88,8]);
+	sswsb(b[ 64,16], dst[ 96,8]);
+	sswsb(b[ 80,16], dst[104,8]);
+	sswsb(b[ 96,16], dst[112,8]);
+	sswsb(b[112,16], dst[120,8]);
+}
+:PACKSSWB      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; XmmReg ... & m128 			 { packsswb_xmm(XmmReg, m128); }
+:PACKSSWB      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; xmmmod = 3 & XmmReg1 & XmmReg2 { packsswb_xmm(XmmReg1, XmmReg2); }
+
+macro packssdw_xmm(dst, src) {
+	local a:16 = dst;
+	local b:16 = src;
+
+	ssdsw(a[ 0,32], dst[  0,16]);
+	ssdsw(a[32,32], dst[ 16,16]);
+	ssdsw(a[64,32], dst[ 32,16]);
+	ssdsw(a[96,32], dst[ 48,16]);
+
+	ssdsw(b[ 0,32], dst[ 64,16]);
+	ssdsw(b[32,32], dst[ 80,16]);
+	ssdsw(b[64,32], dst[ 96,16]);
+	ssdsw(b[96,32], dst[112,16]);
+}
+:PACKSSDW      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; XmmReg ... & m128 			 { packssdw_xmm(XmmReg, m128); }
+:PACKSSDW      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; xmmmod = 3 & XmmReg1 & XmmReg2 { packssdw_xmm(XmmReg1, XmmReg2); }
 
 #sword < 0 : ubyte = 0
 #sword > 0xff: ubyte = 0xff

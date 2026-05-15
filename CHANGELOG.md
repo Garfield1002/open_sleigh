@@ -62,3 +62,4 @@
 - [icicle-emu/ghidra@b4fb44dd2ce9](https://github.com/icicle-emu/ghidra/commit/b4fb44dd2ce946933459b7e4987bab60daaa2043) [x86] Fix zxt issue with PEXTRW
 - [icicle-emu/ghidra@6808fea8fdd6](https://github.com/icicle-emu/ghidra/commit/6808fea8fdd657fc24180dc184fc1fdf58e06427) [x86] Implement PSRAW and PSLLW
 - [icicle-emu/ghidra@63c40e7ec0fd](https://github.com/icicle-emu/ghidra/commit/63c40e7ec0fd11bcab9ee4dc84beb832a63fa9cb) [x86] Implement PMULHW
+- [icicle-emu/ghidra@f04834b4ce1c](https://github.com/icicle-emu/ghidra/commit/f04834b4ce1c9c6914e89b3746f98349354a0b92) [x86] Implement PACKSSDW and PACKSSWB
