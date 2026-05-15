@@ -21,3 +21,4 @@
 - [#6509](https://github.com/NationalSecurityAgency/ghidra/pull/6509) RISCV: add rm to fcvt.d.
 - [#6516](https://github.com/NationalSecurityAgency/ghidra/pull/6516) AArch64: Fix output datatype in frint instructions
 - [#6517](https://github.com/NationalSecurityAgency/ghidra/pull/6517) RISCV: Implemented fclass
+- [#6518](https://github.com/NationalSecurityAgency/ghidra/pull/6518) RISCV: cleaned up fmin/fmax
