@@ -25,3 +25,4 @@
 - [#6519](https://github.com/NationalSecurityAgency/ghidra/pull/6519) AArch64: Separate fmls vector subtraction into vector elements
 - [#6522](https://github.com/NationalSecurityAgency/ghidra/pull/6522) x86: Use longMode context bit instead of bit64 in more places
 - [#6538](https://github.com/NationalSecurityAgency/ghidra/pull/6538) AArch64: Prevent resize in general FMOV for 16 bit floats
+- [#6539](https://github.com/NationalSecurityAgency/ghidra/pull/6539) AArch64: Switch register order in faddp 4H constructor

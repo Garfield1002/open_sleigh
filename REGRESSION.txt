@@ -99,3 +99,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6538: AArch64: Prevent resize in general FMOV for 16 bit floats
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6538
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6539: AArch64: Switch register order in faddp 4H constructor
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6539
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
