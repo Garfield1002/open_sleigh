@@ -46,3 +46,4 @@
 - [#6568](https://github.com/NationalSecurityAgency/ghidra/pull/6568) AArch32: (Thumb32) missing carry(CY) flag update with shift_carry
 - [#6584](https://github.com/NationalSecurityAgency/ghidra/pull/6584) AArch32: vst2 had out-of-range invalid varnode access
 - [#6585](https://github.com/NationalSecurityAgency/ghidra/pull/6585) AArch32: FLDM*X/FSTM*X had missing offset when rn is PC
+- [#6588](https://github.com/NationalSecurityAgency/ghidra/pull/6588) AArch32: STR/STRT had missing offset when rt/rd is PC
