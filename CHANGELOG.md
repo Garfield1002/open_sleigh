@@ -14,3 +14,4 @@
 - [#6468](https://github.com/NationalSecurityAgency/ghidra/pull/6468) AArch64: fix stlrb and stlrh store sizes
 - [#6471](https://github.com/NationalSecurityAgency/ghidra/pull/6471) AArch64: fix ldrsh ldrsb sign extension to correct size
 - [#6483](https://github.com/NationalSecurityAgency/ghidra/pull/6483) RISCV: clear lsb in compressed jump instructions
+- [#6492](https://github.com/NationalSecurityAgency/ghidra/pull/6492) RISCV: remove used of rdW and sign extend in fcvt/fmv
