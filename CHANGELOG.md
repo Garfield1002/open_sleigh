@@ -27,3 +27,4 @@
 - [#6538](https://github.com/NationalSecurityAgency/ghidra/pull/6538) AArch64: Prevent resize in general FMOV for 16 bit floats
 - [#6539](https://github.com/NationalSecurityAgency/ghidra/pull/6539) AArch64: Switch register order in faddp 4H constructor
 - [#6541](https://github.com/NationalSecurityAgency/ghidra/pull/6541) RISCV: nanboxing
+- [#6543](https://github.com/NationalSecurityAgency/ghidra/pull/6543) AArch64: Fix fmla and fmls element count and size for halfword cases
