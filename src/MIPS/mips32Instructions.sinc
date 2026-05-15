@@ -478,8 +478,8 @@ define pcodeop special2;
 }
 
 :nal             				is $(AMODE) & REL6=0 & prime=1 & cond=0x10 & zero21=0 {
-	delayslot(1);
 	ra = inst_next;
+	delayslot(1);
 } 
 
 # 0000 0000 0000 0000 0000 0000 0000 0000 
