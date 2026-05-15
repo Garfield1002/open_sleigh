@@ -12,3 +12,4 @@
 - [#6446](https://github.com/NationalSecurityAgency/ghidra/pull/6446) AArch64: fix sbcs/ngcs flags when destination is xzr
 - [#6447](https://github.com/NationalSecurityAgency/ghidra/pull/6447) AArch64: fix ldtrsb/ldursb sign extension
 - [#6468](https://github.com/NationalSecurityAgency/ghidra/pull/6468) AArch64: fix stlrb and stlrh store sizes
+- [#6471](https://github.com/NationalSecurityAgency/ghidra/pull/6471) AArch64: fix ldrsh ldrsb sign extension to correct size
