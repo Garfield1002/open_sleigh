@@ -231,3 +231,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@b886866d292e: [x86] Replace several bitwise operations with logical operations in flag calculation.
 Source: https://github.com/icicle-emu/ghidra/commit/b886866d292ee8ae639e92b2cdac4e5e52a21e61
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@36eb7918ea7f: [x86] Add longMode checks to additional instructions.
+Source: https://github.com/icicle-emu/ghidra/commit/36eb7918ea7f072312924c5441534d0bb3643dbf
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.

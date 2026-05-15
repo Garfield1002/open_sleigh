@@ -810,7 +810,7 @@ define pcodeop vmxon;    # Enter VMX operation; opcode f3 0f C7 /6
 @define LONGMODE_ON "longMode=1"
 @define LONGMODE_OFF "longMode=0"
 @else
-@define LONGMODE_OFF "opsize=opsize" # NOP
+@define LONGMODE_OFF "epsilon" # NOP
 @endif
 
 #when not in 64-bit mode, opcode 0x82 results in the same instruction as opcode 0x80
@@ -1511,21 +1511,18 @@ n1: one	is epsilon			[ one = 1; ] { export *[const]:1 one; }
 
 @ifdef IA64
 # Handle zero extension in 64-bit mode for 32-bit destination registers
-check_Reg32_dest:	is rexRprefix=0 & reg32 & reg64	{ reg64 = zext(reg32); }	
-check_Reg32_dest:	is rexRprefix=1 & reg32_x & reg64_x	{ reg64_x = zext(reg32_x); }
-check_Rmr32_dest:	is rexBprefix=0 & r32 & r64		{ r64 = zext(r32); }
-check_Rmr32_dest:	is rexBprefix=1 & r32_x & r64_x 	{ r64_x = zext(r32_x); }
-check_rm32_dest:	is mod=3 & check_Rmr32_dest		{ build check_Rmr32_dest; }
-check_EAX_dest:		is epsilon									{ RAX = zext(EAX); }
-check_EDX_dest:     is epsilon                                  { RDX = zext(EDX); }   
-check_vexVVVV_r32_dest: is bit64=1 & vexVVVV_r64 & vexVVVV_r32  { vexVVVV_r64 = zext(vexVVVV_r32);}
-@else 
+check_Reg32_dest:	is $(LONGMODE_ON) & Reg32 & Reg64 				{ Reg64 = zext(Reg32); }
+check_Rmr32_dest:	is $(LONGMODE_ON) & Rmr32 & Rmr64				{ Rmr64 = zext(Rmr32); }
+check_rm32_dest:	is $(LONGMODE_ON) & mod=3 & check_Rmr32_dest	{ build check_Rmr32_dest; }
+check_EAX_dest:		is $(LONGMODE_ON)								{ RAX = zext(EAX); }
+check_EDX_dest:		is $(LONGMODE_ON)								{ RDX = zext(EDX); }
+check_vexVVVV_r32_dest: is $(LONGMODE_ON) & vexVVVV_r64 & vexVVVV_r32  { vexVVVV_r64 = zext(vexVVVV_r32);}
+@endif
 check_Reg32_dest:	is epsilon	{ }
 check_Rmr32_dest:	is epsilon	{ }
 check_EAX_dest:		is epsilon  { }
 check_EDX_dest:		is epsilon  { }
 check_vexVVVV_r32_dest: is epsilon {  }
-@endif
 check_rm32_dest:	is epsilon	{ }
 
 
