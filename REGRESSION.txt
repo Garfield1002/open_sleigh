@@ -191,3 +191,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6589: AArch64: Change rmif bit shift to rotate
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6589
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6600: x86: Zero upper bits of 64-bit registers on repeat/loop/string instructions
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6600
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.

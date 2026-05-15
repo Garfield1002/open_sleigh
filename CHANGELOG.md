@@ -48,3 +48,4 @@
 - [#6585](https://github.com/NationalSecurityAgency/ghidra/pull/6585) AArch32: FLDM*X/FSTM*X had missing offset when rn is PC
 - [#6588](https://github.com/NationalSecurityAgency/ghidra/pull/6588) AArch32: STR/STRT had missing offset when rt/rd is PC
 - [#6589](https://github.com/NationalSecurityAgency/ghidra/pull/6589) AArch64: Change rmif bit shift to rotate
+- [#6600](https://github.com/NationalSecurityAgency/ghidra/pull/6600) x86: Zero upper bits of 64-bit registers on repeat/loop/string instructions
