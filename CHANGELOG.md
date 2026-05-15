@@ -9,3 +9,4 @@
 - [#6443](https://github.com/NationalSecurityAgency/ghidra/pull/6443) AArch64: fix using destination in place of operand in fmls
 - [#6444](https://github.com/NationalSecurityAgency/ghidra/pull/6444) AArch64: fix fmlal2 and fmlsl2 register offsets
 - [#6445](https://github.com/NationalSecurityAgency/ghidra/pull/6445) AArch64: Change rax1 shift to rotate, or to xor
+- [#6446](https://github.com/NationalSecurityAgency/ghidra/pull/6446) AArch64: fix sbcs/ngcs flags when destination is xzr
