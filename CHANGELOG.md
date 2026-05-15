@@ -7,3 +7,4 @@
 - [#6441](https://github.com/NationalSecurityAgency/ghidra/pull/6441) AArch64: fix fmlsl and fmlal float arithmetic
 - [#6442](https://github.com/NationalSecurityAgency/ghidra/pull/6442) AArch64: Change eor3 OR to XOR
 - [#6443](https://github.com/NationalSecurityAgency/ghidra/pull/6443) AArch64: fix using destination in place of operand in fmls
+- [#6444](https://github.com/NationalSecurityAgency/ghidra/pull/6444) AArch64: fix fmlal2 and fmlsl2 register offsets
