@@ -595,6 +595,11 @@ attach variables [ v0711 v1519 v2024 ]
 @define DXLEN 8
 @define QXLEN 16
 
+@define FFLAGNX 0x1
+@define FFLAGUF 0x2
+@define FFLAGOF 0x4
+@define FFLAGDZ 0x8
+@define FFLAGNV 0x10
 
 define pcodeop unimp;
 define pcodeop trap;
@@ -653,6 +658,10 @@ rdL: zero is r0711 & zero & op0711=0 { export 0:8; }
 # # 128-bit quad-precision  $(QFLEN)
 # fmt: ".q" is op2526=3 { export $(QFLEN):1; }
 
+macro setFflags(val) {
+	fflags = fflags | val;
+	fcsr = fcsr | val;
+}
 
 frd:  fr0711 is fr0711 { export fr0711; }
 frs1: fr1519 is fr1519 { export fr1519; }
@@ -660,15 +669,32 @@ frs2: fr2024 is fr2024 { export fr2024; }
 frs3: fr2731 is fr2731 { export fr2731; }
 
 @if (FPSIZE == "32")
-frs1S: fr1519 is fr1519 { local tmp = fr1519:$(SFLEN); export tmp; }
-frs2S: fr2024 is fr2024 { local tmp = fr2024:$(SFLEN); export tmp; }
-frs3S: fr2731 is fr2731 { local tmp = fr2731:$(SFLEN); export tmp; }
+frs1S: fr1519 is fr1519 {
+	local tmp = fr1519:$(SFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
+frs2S: fr2024 is fr2024 {
+	local tmp = fr2024:$(SFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
+frs3S: fr2731 is fr2731 {
+	local tmp = fr2731:$(SFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
 @else
 frs1S: fr1519 is fr1519 { 
 	local tmp:$(SFLEN) = fr1519:$(SFLEN);
 	if (fr1519 s>> 32 == ~0) goto <FR1519NOTNAN>;
 	tmp = 0x7FC00000;
 	<FR1519NOTNAN>
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
 	export tmp;
 }
 frs2S: fr2024 is fr2024 {
@@ -676,6 +702,8 @@ frs2S: fr2024 is fr2024 {
 	if (fr2024 s>> 32 == ~0) goto <fr2024NOTNAN>;
 	tmp = 0x7FC00000;
 	<fr2024NOTNAN>
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
 	export tmp;
 }
 frs3S: fr2731 is fr2731 {
@@ -683,6 +711,8 @@ frs3S: fr2731 is fr2731 {
 	if (fr2731 s>> 32 == ~0) goto <fr2731NOTNAN>;
 	tmp = 0x7FC00000;
 	<fr2731NOTNAN>
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[22,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
 	export tmp;
 }
 @endif
@@ -690,9 +720,24 @@ frs3S: fr2731 is fr2731 {
 @if ((FPSIZE == "64") || (FPSIZE == "128"))
 #TODO  dest may be bad, might need an assign macro
 #frdD:  fr0711 is fr0711 { local tmp = fr0711:$(DFLEN); export tmp; }
-frs1D: fr1519 is fr1519 { local tmp = fr1519:$(DFLEN); export tmp; }
-frs2D: fr2024 is fr2024 { local tmp = fr2024:$(DFLEN); export tmp; }
-frs3D: fr2731 is fr2731 { local tmp = fr2731:$(DFLEN); export tmp; }
+frs1D: fr1519 is fr1519 {
+	local tmp = fr1519:$(DFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[51,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
+frs2D: fr2024 is fr2024 {
+	local tmp = fr2024:$(DFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[51,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
+frs3D: fr2731 is fr2731 {
+	local tmp = fr2731:$(DFLEN);
+	local invalid:$(XLEN) = zext(nan(tmp) && tmp[51,1] == 0);
+	setFflags($(FFLAGNV) * invalid);
+	export tmp;
+}
 @endif
 
 macro fassignS(dest, src) {
@@ -702,7 +747,6 @@ macro fassignS(dest, src) {
 	dest = zext(src);
 @endif
 }
-
 
 macro assignW(dest, src) {
 @if ADDRSIZE == "32"
@@ -735,7 +779,6 @@ macro assignD(dest, src) {
 	dest = src;
 @endif
 }
-
 
 immI: sop2031 is sop2031 { local tmp:$(XLEN) = sop2031; export tmp; }
 

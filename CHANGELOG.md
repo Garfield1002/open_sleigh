@@ -29,3 +29,4 @@
 - [#6541](https://github.com/NationalSecurityAgency/ghidra/pull/6541) RISCV: nanboxing
 - [#6543](https://github.com/NationalSecurityAgency/ghidra/pull/6543) AArch64: Fix fmla and fmls element count and size for halfword cases
 - [#6545](https://github.com/NationalSecurityAgency/ghidra/pull/6545) AArch32: (Thumb32) BranchWritePC does not clear bit-0
+- [#6551](https://github.com/NationalSecurityAgency/ghidra/pull/6551) RISCV: NV and DZ float flags

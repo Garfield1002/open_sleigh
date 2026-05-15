@@ -115,3 +115,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6545: AArch32: (Thumb32) BranchWritePC does not clear bit-0
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6545
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6551: RISCV: NV and DZ float flags
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6551
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
