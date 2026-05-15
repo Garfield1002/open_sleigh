@@ -44,3 +44,4 @@
 - [#6566](https://github.com/NationalSecurityAgency/ghidra/pull/6566) x86: Add missing reg_opcode constraint to lockable INC
 - [#6567](https://github.com/NationalSecurityAgency/ghidra/pull/6567) x86: Zero upper bits of 64-bit registers for XCHG and CMPXCHG8B without REX prefix
 - [#6568](https://github.com/NationalSecurityAgency/ghidra/pull/6568) AArch32: (Thumb32) missing carry(CY) flag update with shift_carry
+- [#6584](https://github.com/NationalSecurityAgency/ghidra/pull/6584) AArch32: vst2 had out-of-range invalid varnode access
