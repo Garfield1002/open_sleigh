@@ -203,3 +203,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6605: AArch32: vpop (sreg variant) had faulty mult_addr ordering
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6605
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6606: AArch32: vmov had incorrect vmask & missing position shift of vector element being copied
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6606
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
