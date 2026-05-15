@@ -2168,13 +2168,13 @@ macro shiftresultflags(result,count) {
  local notzero = (count != 0);
 
  local newSF = (result s< 0);
- SF = (!notzero & SF) | (notzero & newSF);
+ SF = (!notzero && SF) || (notzero && newSF);
 
  local newZF = (result == 0);
- ZF = (!notzero & ZF) | (notzero & newZF);
+ ZF = (!notzero && ZF) || (notzero && newZF);
  
  local newPF = ((popcount(result & 0xff) & 1:1) == 0);
- PF = (!notzero & PF) | (notzero & newPF);
+ PF = (!notzero && PF) || (notzero && newPF);
  # AF not implemented
 }
 
@@ -2207,65 +2207,65 @@ macro rolflags(result,count) {
 
  local notzero = (count != 0);
  local newCF = ((result & 1) != 0);
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
- local newOF = CF ^ (result s< 0);
- OF = (!one & OF) | (one & newOF);
+ local newOF = CF ^^ (result s< 0);
+ OF = (!one && OF) || (one && newOF);
 }
 
 macro rorflags(result,count) {
 
  local notzero = (count != 0);
  local newCF = (result s< 0);
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
- local newOF = (result s< 0) ^ ((result << 1) s< 0);
- OF = (!one & OF) | (one & newOF);
+ local newOF = (result s< 0) ^^ ((result << 1) s< 0);
+ OF = (!one && OF) || (one && newOF);
 }
 
 macro shlflags(op1,result,count) { # works for shld also
 
  local notzero = (count != 0);
  local newCF = ( (op1 << (count - 1)) s< 0 );
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
- local newOF = CF ^ (result s< 0);
- OF = (!one & OF) | (one & newOF);
+ local newOF = CF ^^ (result s< 0);
+ OF = (!one && OF) || (one && newOF);
 }
 
 macro sarflags(op1,result,count) {
 
  local notzero = (count != 0);
  local newCF = ( ( (op1 s>> (count - 1)) & 1 ) != 0 );
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
- OF = (!one & OF);
+ OF = (!one && OF);
 }
 
 macro shrflags(op1,result,count) {
 
  local notzero = (count != 0);
  local newCF = ( ( (op1 >> (count - 1)) & 1 ) != 0 );
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
  local newOF = (op1 s< 0);
- OF = (!one & OF) | (one & newOF);
+ OF = (!one && OF) || (one && newOF);
 }
 
 macro shrdflags(op1,result,count) {
 
  local notzero = (count != 0);
  local newCF = ( ( (op1 >> (count - 1)) & 1 ) != 0 );
- CF = (!notzero & CF) | (notzero & newCF);
+ CF = (!notzero && CF) || (notzero && newCF);
 
  local one = (count == 1);
- local newOF = ((op1 s< 0) ^ (result s< 0));
- OF = (!one & OF) | (one & newOF);
+ local newOF = ((op1 s< 0) ^^ (result s< 0));
+ OF = (!one && OF) || (one && newOF);
 }
 
 macro fdec() {
@@ -4608,23 +4608,23 @@ define pcodeop smm_restore_state;
 @endif
 
 
-:SHL  rm8,n1    is vexMode=0 & byte=0xD0;  rm8 & n1 &(reg_opcode=4|reg_opcode=6) ...               { CF = rm8 s< 0; rm8 = rm8 << 1; OF = CF ^ (rm8 s< 0); resultflags(rm8); }
+:SHL  rm8,n1    is vexMode=0 & byte=0xD0;  rm8 & n1 &(reg_opcode=4|reg_opcode=6) ...               { CF = rm8 s< 0; rm8 = rm8 << 1; OF = CF ^^ (rm8 s< 0); resultflags(rm8); }
 :SHL  rm8,CL    is vexMode=0 & byte=0xD2;  CL & rm8 & (reg_opcode=4|reg_opcode=6) ...          { local count =   CL & 0x1f; local tmp = rm8; rm8 = rm8 << count;
                                           shlflags(tmp, rm8,count); shiftresultflags(rm8,count); }
 :SHL  rm8,imm8  is vexMode=0 & byte=0xC0;  rm8 & (reg_opcode=4|reg_opcode=6) ... ; imm8            { local count = imm8 & 0x1f; local tmp = rm8; rm8 = rm8 << count;
                                           shlflags(tmp, rm8,count); shiftresultflags(rm8,count); }
-:SHL rm16,n1    is vexMode=0 & opsize=0 & byte=0xD1; rm16 & n1 & (reg_opcode=4|reg_opcode=6) ...       { CF = rm16 s< 0; rm16 = rm16 << 1; OF = CF ^ (rm16 s< 0); resultflags(rm16); }
+:SHL rm16,n1    is vexMode=0 & opsize=0 & byte=0xD1; rm16 & n1 & (reg_opcode=4|reg_opcode=6) ...       { CF = rm16 s< 0; rm16 = rm16 << 1; OF = CF ^^ (rm16 s< 0); resultflags(rm16); }
 :SHL rm16,CL    is vexMode=0 & opsize=0 & byte=0xD3; CL & rm16 & (reg_opcode=4|reg_opcode=6) ...       { local count =   CL & 0x1f; local tmp = rm16; rm16 = rm16 << count;
                                           shlflags(tmp, rm16,count); shiftresultflags(rm16,count); }
 :SHL rm16,imm8  is vexMode=0 & opsize=0 & byte=0xC1; rm16 & (reg_opcode=4|reg_opcode=6) ... ; imm8     { local count = imm8 & 0x1f; local tmp = rm16; rm16 = rm16 << count;
                                           shlflags(tmp, rm16,count); shiftresultflags(rm16,count); }
-:SHL rm32,n1    is vexMode=0 & opsize=1 & byte=0xD1; rm32 & n1 & check_rm32_dest ... & (reg_opcode=4|reg_opcode=6) ...       { CF = rm32 s< 0; rm32 = rm32 << 1; OF = CF ^ (rm32 s< 0); build check_rm32_dest; resultflags(rm32); }
+:SHL rm32,n1    is vexMode=0 & opsize=1 & byte=0xD1; rm32 & n1 & check_rm32_dest ... & (reg_opcode=4|reg_opcode=6) ...       { CF = rm32 s< 0; rm32 = rm32 << 1; OF = CF ^^ (rm32 s< 0); build check_rm32_dest; resultflags(rm32); }
 :SHL rm32,CL    is vexMode=0 & opsize=1 & byte=0xD3; CL & rm32 & check_rm32_dest ... & (reg_opcode=4|reg_opcode=6) ...       { local count =   CL & 0x1f; local tmp = rm32; rm32 = rm32 << count; build check_rm32_dest;
                                           shlflags(tmp, rm32,count); shiftresultflags(rm32,count); }
 :SHL rm32,imm8  is vexMode=0 & opsize=1 & byte=0xC1; rm32 & check_rm32_dest ... & (reg_opcode=4|reg_opcode=6) ... ; imm8     { local count = imm8 & 0x1f; local tmp = rm32; rm32 = rm32 << count; build check_rm32_dest;
                                           shlflags(tmp, rm32,count); shiftresultflags(rm32,count); }
 @ifdef IA64
-:SHL rm64,n1    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xD1; rm64 & n1 & (reg_opcode=4|reg_opcode=6) ...       { CF = rm64 s< 0; rm64 = rm64 << 1; OF = CF ^ (rm64 s< 0); resultflags(rm64); }
+:SHL rm64,n1    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xD1; rm64 & n1 & (reg_opcode=4|reg_opcode=6) ...       { CF = rm64 s< 0; rm64 = rm64 << 1; OF = CF ^^ (rm64 s< 0); resultflags(rm64); }
 :SHL rm64,CL    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xD3; CL & rm64 & (reg_opcode=4|reg_opcode=6) ...       { local count =   CL & 0x3f; local tmp = rm64; rm64 = rm64 << count;
                                           shlflags(tmp, rm64,count); shiftresultflags(rm64,count); }
 :SHL rm64,imm8  is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xC1; rm64 & (reg_opcode=4|reg_opcode=6) ... ; imm8     { local count = imm8 & 0x3f; local tmp = rm64; rm64 = rm64 << count;
