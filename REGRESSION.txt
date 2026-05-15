@@ -139,3 +139,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6556: x86: Carry flag calculated incorrectly for LZCNT if source=dest
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6556
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6557: x86: XADD stores to the wrong address if destination is used as part of the address calculation
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6557
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.

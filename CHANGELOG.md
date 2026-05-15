@@ -35,3 +35,4 @@
 - [#6554](https://github.com/NationalSecurityAgency/ghidra/pull/6554) x86: Relax constraints for NOPs with REX prefix
 - [#6555](https://github.com/NationalSecurityAgency/ghidra/pull/6555) x86: Address size prefix should not change CRmr8 register encoding
 - [#6556](https://github.com/NationalSecurityAgency/ghidra/pull/6556) x86: Carry flag calculated incorrectly for LZCNT if source=dest
+- [#6557](https://github.com/NationalSecurityAgency/ghidra/pull/6557) x86: XADD stores to the wrong address if destination is used as part of the address calculation
