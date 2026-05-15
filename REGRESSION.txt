@@ -223,3 +223,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@3d57f753da07: [mips] Reorder delayslot for `nal`
 Source: https://github.com/icicle-emu/ghidra/commit/3d57f753da07439e4ba72d69f20e12b04f6a5166
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@06c3adaad79c: [x86] Relax constraints on REP prefixes.
+Source: https://github.com/icicle-emu/ghidra/commit/06c3adaad79c945554a51892c5675b8b644ef684
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.

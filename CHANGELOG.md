@@ -56,3 +56,4 @@
 - [#6785](https://github.com/NationalSecurityAgency/ghidra/pull/6785) MSP430 and MSP430X fixes
 - [icicle-emu/ghidra@f54b548592ae](https://github.com/icicle-emu/ghidra/commit/f54b548592aef45ffb32a3d622c9d478b993d4b6) [aarch64] Add missing constraint to `subs` extended register variant
 - [icicle-emu/ghidra@3d57f753da07](https://github.com/icicle-emu/ghidra/commit/3d57f753da07439e4ba72d69f20e12b04f6a5166) [mips] Reorder delayslot for `nal`
+- [icicle-emu/ghidra@06c3adaad79c](https://github.com/icicle-emu/ghidra/commit/06c3adaad79c945554a51892c5675b8b644ef684) [x86] Relax constraints on REP prefixes.
