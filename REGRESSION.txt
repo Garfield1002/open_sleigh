@@ -171,3 +171,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6567: x86: Zero upper bits of 64-bit registers for XCHG and CMPXCHG8B without REX prefix
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6567
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6568: AArch32: (Thumb32) missing carry(CY) flag update with shift_carry
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6568
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.

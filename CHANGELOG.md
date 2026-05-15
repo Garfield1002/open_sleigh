@@ -43,3 +43,4 @@
 - [#6565](https://github.com/NationalSecurityAgency/ghidra/pull/6565) x86: Add constraint to mod field of instructions that can only encode registers
 - [#6566](https://github.com/NationalSecurityAgency/ghidra/pull/6566) x86: Add missing reg_opcode constraint to lockable INC
 - [#6567](https://github.com/NationalSecurityAgency/ghidra/pull/6567) x86: Zero upper bits of 64-bit registers for XCHG and CMPXCHG8B without REX prefix
+- [#6568](https://github.com/NationalSecurityAgency/ghidra/pull/6568) AArch32: (Thumb32) missing carry(CY) flag update with shift_carry
