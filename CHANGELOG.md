@@ -54,3 +54,4 @@
 - [#6606](https://github.com/NationalSecurityAgency/ghidra/pull/6606) AArch32: vmov had incorrect vmask & missing position shift of vector element being copied
 - [#6607](https://github.com/NationalSecurityAgency/ghidra/pull/6607) AArch32: addrmode3 incorrectly had load in address pointer export
 - [#6785](https://github.com/NationalSecurityAgency/ghidra/pull/6785) MSP430 and MSP430X fixes
+- [icicle-emu/ghidra@f54b548592ae](https://github.com/icicle-emu/ghidra/commit/f54b548592aef45ffb32a3d622c9d478b993d4b6) [aarch64] Add missing constraint to `subs` extended register variant
