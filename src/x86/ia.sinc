@@ -3219,7 +3219,7 @@ define pcodeop cpuid_brand_part3_info;
 #   The side-effects of the call will show up, but not the correct values
 
 :CPUID          is vexMode=0 & byte=0xf; byte=0xa2                  {
-    tmpptr:$(SIZE) = 0;
+    local tmp:16;
     if (EAX == 0) goto <basic_info>;
     if (EAX == 1) goto <Version_info>;
     if (EAX == 2) goto <cache_tlb_info>;
@@ -3236,67 +3236,67 @@ define pcodeop cpuid_brand_part3_info;
     if (EAX == 0x80000002) goto <brand_part1_info>;
     if (EAX == 0x80000003) goto <brand_part2_info>;
     if (EAX == 0x80000004) goto <brand_part3_info>;
-    tmpptr = cpuid(EAX);
+    tmp = cpuid(EAX, ECX);
     goto <finish>;
  <basic_info>
-    tmpptr = cpuid_basic_info(EAX);
+    tmp = cpuid_basic_info(EAX, ECX);
     goto <finish>;
  <Version_info>
-    tmpptr = cpuid_Version_info(EAX);
+    tmp = cpuid_Version_info(EAX, ECX);
     goto <finish>;
  <cache_tlb_info>
-    tmpptr = cpuid_cache_tlb_info(EAX);
+    tmp = cpuid_cache_tlb_info(EAX, ECX);
     goto <finish>;
  <serial_info>
-    tmpptr = cpuid_serial_info(EAX);
+    tmp = cpuid_serial_info(EAX, ECX);
     goto <finish>;
  <Deterministic_Cache_Parameters_info>
-    tmpptr = cpuid_Deterministic_Cache_Parameters_info(EAX);
+    tmp = cpuid_Deterministic_Cache_Parameters_info(EAX, ECX);
     goto <finish>;    
  <MONITOR_MWAIT_Features_info>
-    tmpptr = cpuid_MONITOR_MWAIT_Features_info(EAX);
+    tmp = cpuid_MONITOR_MWAIT_Features_info(EAX, ECX);
     goto <finish>;    
  <Thermal_Power_Management_info>
-    tmpptr = cpuid_Thermal_Power_Management_info(EAX);
+    tmp = cpuid_Thermal_Power_Management_info(EAX, ECX);
     goto <finish>;
  <Extended_Feature_Enumeration_info>
-    tmpptr = cpuid_Extended_Feature_Enumeration_info(EAX);
+    tmp = cpuid_Extended_Feature_Enumeration_info(EAX, ECX);
     goto <finish>;
  <Direct_Cache_Access_info>
-    tmpptr = cpuid_Direct_Cache_Access_info(EAX);
+    tmp = cpuid_Direct_Cache_Access_info(EAX, ECX);
     goto <finish>;
  <Architectural_Performance_Monitoring_info>
-    tmpptr = cpuid_Architectural_Performance_Monitoring_info(EAX);
+    tmp = cpuid_Architectural_Performance_Monitoring_info(EAX, ECX);
     goto <finish>;
  <Extended_Topology_info>
-    tmpptr = cpuid_Extended_Topology_info(EAX);
+    tmp = cpuid_Extended_Topology_info(EAX, ECX);
     goto <finish>;
  <Processor_Extended_States_info>
-    tmpptr = cpuid_Processor_Extended_States_info(EAX);
+    tmp = cpuid_Processor_Extended_States_info(EAX, ECX);
     goto <finish>;
  <Quality_of_Service_info>
-    tmpptr = cpuid_Quality_of_Service_info(EAX);
+    tmp = cpuid_Quality_of_Service_info(EAX, ECX);
     goto <finish>;
  <brand_part1_info>
-    tmpptr = cpuid_brand_part1_info(EAX);
+    tmp = cpuid_brand_part1_info(EAX, ECX);
     goto <finish>;
  <brand_part2_info>
-    tmpptr = cpuid_brand_part2_info(EAX);
+    tmp = cpuid_brand_part2_info(EAX, ECX);
     goto <finish>;
  <brand_part3_info>
-    tmpptr = cpuid_brand_part3_info(EAX);
+    tmp = cpuid_brand_part3_info(EAX, ECX);
     goto <finish>;  
  <finish>
 @ifdef IA64
-	RAX = zext(*:4 (tmpptr));
-	RBX = zext(*:4 (tmpptr + 4));
-	RDX = zext(*:4 (tmpptr + 8));
-	RCX = zext(*:4 (tmpptr + 12));
+	RAX = zext(tmp[0,32]);
+	RBX = zext(tmp[32,32]);
+	RDX = zext(tmp[64,32]);
+	RCX = zext(tmp[96,32]);
 @else
-	EAX = *tmpptr;
-	EBX = *(tmpptr + 4);
-	EDX = *(tmpptr + 8);
-	ECX = *(tmpptr + 12);
+	EAX = tmp[0,32];
+	EBX = tmp[32,32];
+	EDX = tmp[64,32];
+	ECX = tmp[96,32];
 @endif
 }
 
