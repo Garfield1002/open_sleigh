@@ -2019,6 +2019,12 @@ macro push88(x) {
   *:8 $(STACKPTR) = mysave;
 }
 
+macro pushseg82(x) {
+  mysave:2 = x;
+  $(STACKPTR) = $(STACKPTR) - 2;
+  *:2 $(STACKPTR) = mysave;
+}
+
 macro pushseg88(x) {
   mysave:8 = zext(x);
   $(STACKPTR) = $(STACKPTR) - 8;
@@ -2026,63 +2032,81 @@ macro pushseg88(x) {
 }
 @endif
 
+# Order pop operations so they are correct for both POP [RSP + offset] and POP RSP.
 macro pop22(x) {
   tmp:$(SIZE) = segment(SS,SP);
-  x = *:2 tmp;
+  value:2 = *:2 tmp;
   SP = SP+2;
+  x = value;
 }
 
 macro pop24(x) {
   tmp:$(SIZE) = segment(SS,SP);
-  x = *:4 tmp;
+  value:4 = *:4 tmp;
   SP = SP+4;
+  x = value;
 }
 
 macro pop28(x) {
   tmp:$(SIZE) = segment(SS,SP);
-  x = *:8 tmp;
+  value:8 = *:8 tmp;
   SP = SP+8;
+  x = value;
 }
 
 macro pop42(x) {
-  x = *:2 $(STACKPTR);
+  value:2 = *:2 $(STACKPTR);
   ESP = ESP + 2;
+  x = value;
 }
 
 macro pop44(x) {
-  x = *:4 $(STACKPTR);
+  value:4 = *:4 $(STACKPTR);
   ESP = ESP + 4;
+  x = value;
 }
 
 macro popseg44(x) {
-  x = *:2 $(STACKPTR);
+  value:2 = *:2 $(STACKPTR);
   ESP = ESP + 4;
+  x = value;
 }
 
 macro pop48(x) {
-  x = *:8 $(STACKPTR);
+  value:8 = *:8 $(STACKPTR);
   ESP = ESP + 8;
+  x = value;
 }
 
 @ifdef IA64
 macro pop82(x) {
-  x = *:2 $(STACKPTR);
+  value:2 = *:2 $(STACKPTR);
   RSP = RSP + 2;
+  x = value;
 }
 
 macro pop84(x) {
-  x = *:4 $(STACKPTR);
+  value:4 = *:4 $(STACKPTR);
   RSP = RSP + 4;
+  x = value;
 }
 
 macro pop88(x) {
-  x = *:8 $(STACKPTR);
+  value:8 = *:8 $(STACKPTR);
   RSP = RSP + 8;
+  x = value;
+}
+
+macro popseg82(x) {
+  value:2 = *:2 $(STACKPTR);
+  RSP = RSP + 2;
+  x = value;
 }
 
 macro popseg88(x) {
-  x = *:2 $(STACKPTR);
+  value:2 = *:2 $(STACKPTR);
   RSP = RSP + 8;
+  x = value;
 }
 @endif
 
@@ -3701,7 +3725,7 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :IRETD          is vexMode=0 & addrsize=0 & opsize=1 & byte=0xcf            { pop24(EIP); tmp:4=0; pop24(tmp); CS=tmp(0); pop24(tmp); flags=tmp(0); return [EIP]; }
 :IRETD          is vexMode=0 & addrsize=1 & opsize=1 & byte=0xcf            { pop44(EIP); tmp:4=0; pop44(tmp); CS=tmp(0); pop44(eflags); return [EIP]; }
 @ifdef IA64
-:IRETD          is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=1 & byte=0xcf            { pop84(RIP); tmp:8=0; pop84(tmp); CS=tmp(0); pop84(eflags); return [RIP]; }
+:IRETD          is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=1 & byte=0xcf            { pop84(EIP); RIP=zext(EIP); tmp:4=0; pop84(tmp); CS=tmp(0); pop84(eflags); return [RIP]; }
 :IRETQ          is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=2 & byte=0xcf            { pop88(RIP); tmp:8=0; pop88(tmp); CS=tmp(0); pop88(rflags); return [RIP]; }
 @endif
 
@@ -4216,12 +4240,14 @@ define pcodeop swap_bytes;
 :POP FS         is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & byte=0xf; byte=0xa1 & FS    { pop22(FS); }
 :POP FS         is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa1 & FS    { popseg44(FS); }
 @ifdef IA64
-:POP FS         is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & byte=0xf; byte=0xa1 & FS    { popseg88(FS); }
+:POP FS         is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa1 & FS    { popseg82(FS); }
+:POP FS         is $(LONGMODE_ON) & vexMode=0 &            byte=0xf; byte=0xa1 & FS    { popseg88(FS); }
 @endif
-:POP GS         is vexMode=0 & addrsize=0 & byte=0xf; byte=0xa9 & GS    { pop22(GS); }
-:POP GS         is vexMode=0 & addrsize=1 & byte=0xf; byte=0xa9 & GS    { popseg44(GS); }
+:POP GS         is $(LONGMODE_OFF) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa9 & GS    { pop22(GS); }
+:POP GS         is $(LONGMODE_OFF) & vexMode=0 & opsize=1 & byte=0xf; byte=0xa9 & GS    { popseg44(GS); }
 @ifdef IA64
-:POP GS         is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & byte=0xf; byte=0xa9 & GS    { popseg88(GS); }
+:POP GS         is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa9 & GS    { popseg82(GS); }
+:POP GS         is $(LONGMODE_ON) & vexMode=0 &            byte=0xf; byte=0xa9 & GS    { popseg88(GS); }
 @endif
 
 :POPA           is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0x61            { pop22(DI); pop22(SI); pop22(BP); tmp:2=0; pop22(tmp); pop22(BX); pop22(DX); pop22(CX); pop22(AX); }
@@ -4302,13 +4328,13 @@ define pcodeop ptwrite;
 :PUSH FS        is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & byte=0xf; byte=0xa0 & FS        { push22(FS); }
 :PUSH FS        is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa0 & FS        { pushseg44(FS); }
 @ifdef IA64
-:PUSH FS        is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa0 & FS        { push82(FS); }
+:PUSH FS        is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa0 & FS        { pushseg82(FS); }
 :PUSH FS        is $(LONGMODE_ON) & vexMode=0 &            byte=0xf; byte=0xa0 & FS        { pushseg88(FS); }
 @endif
 :PUSH GS        is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & byte=0xf; byte=0xa8 & GS        { push22(GS); }
 :PUSH GS        is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa8 & GS        { pushseg44(GS); }
 @ifdef IA64
-:PUSH GS        is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa8 & GS        { push82(GS); }
+:PUSH GS        is $(LONGMODE_ON) & vexMode=0 & opsize=0 & byte=0xf; byte=0xa8 & GS        { pushseg82(GS); }
 :PUSH GS        is $(LONGMODE_ON) & vexMode=0 &            byte=0xf; byte=0xa8 & GS        { pushseg88(GS); }
 @endif
 
@@ -4453,7 +4479,7 @@ define pcodeop rdtsc;
 :RETF           is vexMode=0 & addrsize=0 & opsize=1 & byte=0xcb            { pop24(EIP); tmp:4=0; pop24(tmp); CS=tmp(0); return [EIP]; }
 :RETF           is vexMode=0 & addrsize=1 & opsize=1 & byte=0xcb            { pop44(EIP); tmp:4=0; pop44(tmp); CS=tmp(0); return [EIP]; }
 @ifdef IA64
-:RETF           is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=1 & byte=0xcb            { pop48(EIP); RIP=zext(EIP); tmp:4=0; pop44(tmp); CS=tmp(0); return [RIP]; }
+:RETF           is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=1 & byte=0xcb            { pop84(EIP); RIP=zext(EIP); tmp:4=0; pop84(tmp); CS=tmp(0); return [RIP]; }
 :RETF           is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=2 & byte=0xcb            { pop88(RIP); tmp:8=0; pop88(tmp); CS=tmp(0); return [RIP]; }
 @endif
 
