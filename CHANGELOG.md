@@ -16,3 +16,4 @@
 - [#6483](https://github.com/NationalSecurityAgency/ghidra/pull/6483) RISCV: clear lsb in compressed jump instructions
 - [#6492](https://github.com/NationalSecurityAgency/ghidra/pull/6492) RISCV: remove used of rdW and sign extend in fcvt/fmv
 - [#6500](https://github.com/NationalSecurityAgency/ghidra/pull/6500) RISCV: Compressed Disasembly
+- [#6507](https://github.com/NationalSecurityAgency/ghidra/pull/6507) RISCV: CSR fixes
