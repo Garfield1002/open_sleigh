@@ -33,3 +33,4 @@
 - [#6552](https://github.com/NationalSecurityAgency/ghidra/pull/6552) RISCV: fixed fmv.x.d
 - [#6553](https://github.com/NationalSecurityAgency/ghidra/pull/6553) x86: PC-relative addressing with a 32-bit address size should mask upper bits.
 - [#6554](https://github.com/NationalSecurityAgency/ghidra/pull/6554) x86: Relax constraints for NOPs with REX prefix
+- [#6555](https://github.com/NationalSecurityAgency/ghidra/pull/6555) x86: Address size prefix should not change CRmr8 register encoding
