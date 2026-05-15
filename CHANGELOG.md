@@ -19,3 +19,4 @@
 - [#6507](https://github.com/NationalSecurityAgency/ghidra/pull/6507) RISCV: CSR fixes
 - [#6508](https://github.com/NationalSecurityAgency/ghidra/pull/6508) RISCV: handle divide by 0
 - [#6509](https://github.com/NationalSecurityAgency/ghidra/pull/6509) RISCV: add rm to fcvt.d.
+- [#6516](https://github.com/NationalSecurityAgency/ghidra/pull/6516) AArch64: Fix output datatype in frint instructions
