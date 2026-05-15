@@ -31,3 +31,4 @@
 - [#6545](https://github.com/NationalSecurityAgency/ghidra/pull/6545) AArch32: (Thumb32) BranchWritePC does not clear bit-0
 - [#6551](https://github.com/NationalSecurityAgency/ghidra/pull/6551) RISCV: NV and DZ float flags
 - [#6552](https://github.com/NationalSecurityAgency/ghidra/pull/6552) RISCV: fixed fmv.x.d
+- [#6553](https://github.com/NationalSecurityAgency/ghidra/pull/6553) x86: PC-relative addressing with a 32-bit address size should mask upper bits.
