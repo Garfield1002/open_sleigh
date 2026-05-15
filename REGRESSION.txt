@@ -199,3 +199,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6604: AArch32: vpush (sreg variant) had faulty address ordering
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6604
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6605: AArch32: vpop (sreg variant) had faulty mult_addr ordering
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6605
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
