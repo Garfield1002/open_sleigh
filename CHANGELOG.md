@@ -59,5 +59,6 @@
 - [icicle-emu/ghidra@06c3adaad79c](https://github.com/icicle-emu/ghidra/commit/06c3adaad79c945554a51892c5675b8b644ef684) [x86] Relax constraints on REP prefixes.
 - [icicle-emu/ghidra@b886866d292e](https://github.com/icicle-emu/ghidra/commit/b886866d292ee8ae639e92b2cdac4e5e52a21e61) [x86] Replace several bitwise operations with logical operations in flag calculation.
 - [icicle-emu/ghidra@36eb7918ea7f](https://github.com/icicle-emu/ghidra/commit/36eb7918ea7f072312924c5441534d0bb3643dbf) [x86] Add longMode checks to additional instructions.
+- [icicle-emu/ghidra@b4fb44dd2ce9](https://github.com/icicle-emu/ghidra/commit/b4fb44dd2ce946933459b7e4987bab60daaa2043) [x86] Fix zxt issue with PEXTRW
 - [icicle-emu/ghidra@6808fea8fdd6](https://github.com/icicle-emu/ghidra/commit/6808fea8fdd657fc24180dc184fc1fdf58e06427) [x86] Implement PSRAW and PSLLW
 - [icicle-emu/ghidra@63c40e7ec0fd](https://github.com/icicle-emu/ghidra/commit/63c40e7ec0fd11bcab9ee4dc84beb832a63fa9cb) [x86] Implement PMULHW
