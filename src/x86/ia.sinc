@@ -8686,11 +8686,39 @@ define pcodeop pmulhuw;
 :PMULHUW        XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE4; XmmReg ... & m128 { XmmReg = pmulhuw(XmmReg, m128); }
 :PMULHUW        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE4; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = pmulhuw(XmmReg1, XmmReg2); }
 
-define pcodeop pmulhw;
-:PMULHW         mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE5; mmxreg ... & m64 { mmxreg = pmulhw(mmxreg, m64); }
-:PMULHW         mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE5; mmxmod = 3 & mmxreg1 & mmxreg2 { mmxreg1 = pmulhw(mmxreg1, mmxreg2); }
-:PMULHW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE5; XmmReg ... & m128 { XmmReg = pmulhw(XmmReg, m128); }
-:PMULHW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE5; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = pmulhw(XmmReg1, XmmReg2); }
+macro pmulhw64(mmx1, mmx2) {
+	local tmp0:8 = sext(mmx1[ 0,16]) * sext(mmx2[ 0,16]);
+    mmx1[ 0,16] = tmp0[16,16];
+	local tmp1:8 = sext(mmx1[16,16]) * sext(mmx2[16,16]);
+    mmx1[16,16] = tmp1[16,16];
+	local tmp2:8 = sext(mmx1[32,16]) * sext(mmx2[32,16]);
+    mmx1[32,16] = tmp2[16,16];
+	local tmp3:8 = sext(mmx1[48,16]) * sext(mmx2[48,16]);
+    mmx1[48,16] = tmp3[16,16];
+}
+:PMULHW         mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE5; mmxreg ... & m64                { pmulhw64(mmxreg, m64); }
+:PMULHW         mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE5; mmxmod = 3 & mmxreg1 & mmxreg2  { pmulhw64(mmxreg1, mmxreg2); }
+
+macro pmulhw128(xmm1, xmm2) {
+	local tmp0:8 = sext(xmm1[  0,16]) * sext(xmm2[  0,16]);
+    xmm1[  0,16] = tmp0[16,16];
+	local tmp1:8 = sext(xmm1[ 16,16]) * sext(xmm2[ 16,16]);
+    xmm1[ 16,16] = tmp1[16,16];
+	local tmp2:8 = sext(xmm1[ 32,16]) * sext(xmm2[ 32,16]);
+    xmm1[ 32,16] = tmp2[16,16];
+	local tmp3:8 = sext(xmm1[ 48,16]) * sext(xmm2[ 48,16]);
+    xmm1[ 48,16] = tmp3[16,16];
+	local tmp4:8 = sext(xmm1[ 64,16]) * sext(xmm2[ 64,16]);
+    xmm1[ 64,16] = tmp4[16,16];
+	local tmp5:8 = sext(xmm1[ 80,16]) * sext(xmm2[ 80,16]);
+    xmm1[ 80,16] = tmp5[16,16];
+	local tmp6:8 = sext(xmm1[ 96,16]) * sext(xmm2[ 96,16]);
+    xmm1[ 96,16] = tmp6[16,16];
+	local tmp7:8 = sext(xmm1[112,16]) * sext(xmm2[112,16]);
+    xmm1[112,16] = tmp7[16,16];
+}
+:PMULHW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE5; XmmReg ... & m128                { pmulhw128(XmmReg, m128); }
+:PMULHW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE5; xmmmod = 3 & XmmReg1 & XmmReg2   { pmulhw128(XmmReg1, XmmReg2); }
 
 :PMULLW         mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD5; mmxreg ... & m64 {
   local m:8 = m64;
