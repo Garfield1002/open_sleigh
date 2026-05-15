@@ -59,3 +59,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6492: RISCV: remove used of rdW and sign extend in fcvt/fmv
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6492
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6500: RISCV: Compressed Disasembly
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6500
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
