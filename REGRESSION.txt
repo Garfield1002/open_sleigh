@@ -263,3 +263,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@cf0cf810e910: [x86] Model CPUID as returning a temporary not a pointer.
 Source: https://github.com/icicle-emu/ghidra/commit/cf0cf810e91096b48cbbeb8b9dde9eeb253f32f4
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@ce77c5ade69b: [x86] Encode additional syscall semantics in pcode
+Source: https://github.com/icicle-emu/ghidra/commit/ce77c5ade69be0dc6fe22e89791246a3b29a6cf6
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.

@@ -4835,7 +4835,11 @@ define pcodeop skinit;
 @endif
                                                                 }
 
-:SYSCALL            is vexMode=0 & byte=0x0f; byte=0x05                     { syscall(); }
+:SYSCALL            is vexMode=0 & byte=0x0f; byte=0x05                     {
+	RCX = inst_next;
+	packflags(R11);
+	syscall();
+}
 
 # returning to 32bit mode loads ECX
 # returning to 64bit mode loads RCX
