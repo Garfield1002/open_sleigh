@@ -49,3 +49,4 @@
 - [#6588](https://github.com/NationalSecurityAgency/ghidra/pull/6588) AArch32: STR/STRT had missing offset when rt/rd is PC
 - [#6589](https://github.com/NationalSecurityAgency/ghidra/pull/6589) AArch64: Change rmif bit shift to rotate
 - [#6600](https://github.com/NationalSecurityAgency/ghidra/pull/6600) x86: Zero upper bits of 64-bit registers on repeat/loop/string instructions
+- [#6604](https://github.com/NationalSecurityAgency/ghidra/pull/6604) AArch32: vpush (sreg variant) had faulty address ordering
