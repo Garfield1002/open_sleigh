@@ -1,0 +1,9 @@
+Future regression test cases
+============================
+
+These entries track upstream Ghidra SLEIGH PR imports that still need
+dedicated regression coverage in this repository.
+
+PR #6399: AArch64: fix set_NZCV macro
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6399
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
