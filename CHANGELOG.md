@@ -22,3 +22,4 @@
 - [#6516](https://github.com/NationalSecurityAgency/ghidra/pull/6516) AArch64: Fix output datatype in frint instructions
 - [#6517](https://github.com/NationalSecurityAgency/ghidra/pull/6517) RISCV: Implemented fclass
 - [#6518](https://github.com/NationalSecurityAgency/ghidra/pull/6518) RISCV: cleaned up fmin/fmax
+- [#6519](https://github.com/NationalSecurityAgency/ghidra/pull/6519) AArch64: Separate fmls vector subtraction into vector elements
