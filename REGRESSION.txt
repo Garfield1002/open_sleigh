@@ -11,3 +11,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6439: AArch64: Change xar shift to rotate, or to xor
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6439
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6440: AArch64: Change bcax OR to XOR
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6440
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
