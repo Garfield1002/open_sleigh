@@ -52,3 +52,4 @@
 - [#6604](https://github.com/NationalSecurityAgency/ghidra/pull/6604) AArch32: vpush (sreg variant) had faulty address ordering
 - [#6605](https://github.com/NationalSecurityAgency/ghidra/pull/6605) AArch32: vpop (sreg variant) had faulty mult_addr ordering
 - [#6606](https://github.com/NationalSecurityAgency/ghidra/pull/6606) AArch32: vmov had incorrect vmask & missing position shift of vector element being copied
+- [#6607](https://github.com/NationalSecurityAgency/ghidra/pull/6607) AArch32: addrmode3 incorrectly had load in address pointer export
