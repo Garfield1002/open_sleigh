@@ -159,3 +159,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6563: AArch32: (Thumb32) missing DecodeImmShift() defaults to 32 for type '01' (SRType_LSR ) & '10' (SRType_ASR)
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6563
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6565: x86: Add constraint to mod field of instructions that can only encode registers
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6565
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.

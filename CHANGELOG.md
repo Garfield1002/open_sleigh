@@ -40,3 +40,4 @@
 - [#6559](https://github.com/NationalSecurityAgency/ghidra/pull/6559) x86: Allow RIP relative address for LEA instructions with a 67 prefix
 - [#6560](https://github.com/NationalSecurityAgency/ghidra/pull/6560) x86: XSAVEOPT is under-constrained preventing CLRSSBSY from being decoded
 - [#6563](https://github.com/NationalSecurityAgency/ghidra/pull/6563) AArch32: (Thumb32) missing DecodeImmShift() defaults to 32 for type '01' (SRType_LSR ) & '10' (SRType_ASR)
+- [#6565](https://github.com/NationalSecurityAgency/ghidra/pull/6565) x86: Add constraint to mod field of instructions that can only encode registers
