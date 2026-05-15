@@ -67,3 +67,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 PR #6507: RISCV: CSR fixes
 Source: https://github.com/NationalSecurityAgency/ghidra/pull/6507
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
+
+PR #6508: RISCV: handle divide by 0
+Source: https://github.com/NationalSecurityAgency/ghidra/pull/6508
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream PR title and fails on the pre-import specification.
