@@ -70,3 +70,4 @@
 - [icicle-emu/ghidra@1cbc589b81bd](https://github.com/icicle-emu/ghidra/commit/1cbc589b81bd731b7d4996fb25e4c4cef6b7fc4e) [arm] Work around limitation in sleigh-runtime that prevents backtracking when decoding subtables.
 - [icicle-emu/ghidra@3c56fa54984e](https://github.com/icicle-emu/ghidra/commit/3c56fa54984e55b076ac5552744caed026d7fb6d) [arm] Fix semantics of division instructions
 - [icicle-emu/ghidra@e89f565e214c](https://github.com/icicle-emu/ghidra/commit/e89f565e214ca823546dba1d5fc1bddc3f177062) [arm] use correct mask for msr rn,ipsr
+- [icicle-emu/ghidra@f654612796cd](https://github.com/icicle-emu/ghidra/commit/f654612796cd74a42c18143e59990635273587b0) [arm] Fix issue setting stack mode
