@@ -71,3 +71,4 @@
 - [icicle-emu/ghidra@3c56fa54984e](https://github.com/icicle-emu/ghidra/commit/3c56fa54984e55b076ac5552744caed026d7fb6d) [arm] Fix semantics of division instructions
 - [icicle-emu/ghidra@e89f565e214c](https://github.com/icicle-emu/ghidra/commit/e89f565e214ca823546dba1d5fc1bddc3f177062) [arm] use correct mask for msr rn,ipsr
 - [icicle-emu/ghidra@f654612796cd](https://github.com/icicle-emu/ghidra/commit/f654612796cd74a42c18143e59990635273587b0) [arm] Fix issue setting stack mode
+- [icicle-emu/ghidra@e1ca957ffce2](https://github.com/icicle-emu/ghidra/commit/e1ca957ffce2b946af93bad4fe9129485f0c7356) [arm] Improve the way writes to primask and faultmask are handled

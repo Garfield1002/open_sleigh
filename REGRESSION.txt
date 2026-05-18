@@ -283,3 +283,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@f654612796cd: [arm] Fix issue setting stack mode
 Source: https://github.com/icicle-emu/ghidra/commit/f654612796cd74a42c18143e59990635273587b0
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@e1ca957ffce2: [arm] Improve the way writes to primask and faultmask are handled
+Source: https://github.com/icicle-emu/ghidra/commit/e1ca957ffce2b946af93bad4fe9129485f0c7356
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.

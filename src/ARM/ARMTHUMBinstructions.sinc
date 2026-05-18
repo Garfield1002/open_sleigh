@@ -2986,7 +2986,13 @@ define pcodeop setBasePriority;
   build ItCond;
   b:1 = isCurrentModePrivileged();
   if (!b) goto inst_next;
-  enableIRQinterrupts((Rn0003 & 1) == 1); # should set/clear primask register/bit
+
+  IRQsDisabled:1 = (Rn0003 & 1) == 1;
+  if (IRQsDisabled) goto <disableIRQs>;
+  enableIRQinterrupts();
+  goto inst_next;
+<disableIRQs>
+  disableIRQinterrupts();
 }
 
 :msr^ItCond basepri,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=17 & basepri
@@ -3014,7 +3020,13 @@ define pcodeop setBasePriority;
   build ItCond;
   b:1 = isCurrentModePrivileged();
   if (!b) goto inst_next;
-  enableFIQinterrupts((Rn0003 & 1) == 1);
+  
+  FIQsDisabled:1 = (Rn0003 & 1) == 1;
+  if (FIQsDisabled) goto <disableFIQs>;
+  enableFIQinterrupts();
+  goto inst_next;
+<disableFIQs>
+  disableFIQinterrupts();
 }
 
 define pcodeop setStackMode;
