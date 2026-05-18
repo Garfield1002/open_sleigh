@@ -5021,12 +5021,22 @@ macro BitReverse_arm(val) {
 
 @if defined(VERSION_7)
 
+macro sdiv(result, a, b) {
+	if (b != 0) goto <non_zero>;
+	result = 0;
+	goto <end>;
+
+	<non_zero>
+	result = a s/ b;
+
+	<end>
+}
+
 # Warning: note the non-standard use of Rd, Rm, Rn
 :sdiv^COND   RdHi,RnLo,RmHi    is $(AMODE) & ARMcond=1 & COND & c2027=0x71 & RdHi & c1215=0xf & RmHi & c0407=0x1 & RnLo
 {
     build COND;
-    local result = RnLo s/ RmHi;
-    RdHi = result;
+    sdiv(RdHi, RnLo, RmHi);
 }
 
 @endif # VERSION_7
@@ -6068,11 +6078,22 @@ armEndianNess: "BE" is c0031=0xf1010200 { export 1:1; }
 
 @if defined(VERSION_7)
 
+macro udiv(result, a, b) {
+	if (b != 0) goto <non_zero>;
+	result = 0;
+	goto <end>;
+
+	<non_zero>
+	local tmp:8 = zext(a) / zext(b);
+	result = tmp(0);
+
+	<end>
+}
+
 :udiv^COND   RdHi,RnLo,RmHi    is $(AMODE) & ARMcond=1 & COND & c2027=0x73 & RdHi & c1215=0xf & RmHi & c0407=0x1 & RnLo
 {
     build COND;
-    result:8 = zext(RnLo) / zext(RmHi);
-    RdHi = result(0);
+    udiv(RdHi, RnLo, RmHi);
 }
 
 @endif # VERSION_7
@@ -6582,4 +6603,3 @@ armEndianNess: "BE" is c0031=0xf1010200 { export 1:1; }
 
 
 } # End with : ARMcondCk=1
-

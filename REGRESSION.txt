@@ -271,3 +271,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@1cbc589b81bd: [arm] Work around limitation in sleigh-runtime that prevents backtracking when decoding subtables.
 Source: https://github.com/icicle-emu/ghidra/commit/1cbc589b81bd731b7d4996fb25e4c4cef6b7fc4e
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@3c56fa54984e: [arm] Fix semantics of division instructions
+Source: https://github.com/icicle-emu/ghidra/commit/3c56fa54984e55b076ac5552744caed026d7fb6d
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
