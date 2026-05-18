@@ -1190,11 +1190,12 @@
     build unlock; 
 }
 
-:XADD^lockx m32,Reg32	is vexMode=0 & lockx & unlock & opsize=1 & byte=0x0F; byte=0xC1; m32 & Reg32 ... 
+:XADD^lockx m32,Reg32	is vexMode=0 & lockx & unlock & opsize=1 & byte=0x0F; byte=0xC1; m32 & Reg32 & check_Reg32_dest ... 
 {
     build lockx;
     build m32;
     xadd(m32,Reg32);
+    build check_Reg32_dest;
     build unlock; 
 }
 
