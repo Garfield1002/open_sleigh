@@ -793,7 +793,7 @@ YBIT: "t" is y=1 & smRm       { local tmpRm = smRm; tmp:2 = tmpRm(2);  export tm
 ######  shift1 ######
 #####################
 
-shift1: "#"^value 		is I25=1 & immed & rotate
+shift1_old: "#"^value 		is I25=1 & immed & rotate
   [ value=((immed<<(32-rotate*2))|(immed>>(rotate*2))) $and 0xffffffff; ]
 {
   local tmp:4 = (value >> 31); shift_carry = ((rotate == 0:1) && CY) || ((rotate != 0:1) && tmp(0)); export *[const]:4 value;
@@ -976,6 +976,9 @@ shift3: rm, "ror "^rs		is I25=0 & rs & c0407=7 & rm
   local sa=rs&0x1f; local tmp1=(rm>>sa)|(rm<<(32-sa)); local tmp2=tmp1>>31; shift_carry=(((rs&0xff)==0:4)&&CY) || (((rs&0xff)!=0:4)&&tmp2(0)); export tmp1;
 }
 
+shift1: shift1_old 	is I25=1 & shift1_old 							{ export shift1_old; }
+shift1: shift2 		is I25=0 & (c0406=0 | c0406=2 | c0406=4 | c0406=6 | c0411=6) & shift2 	{ export shift2; }
+shift1: shift3		is I25=0 & (c0407=1 | c0407=3 | c0407=5 | c0407=7) & shift3		{ export shift3; }
 
 #####################
 ######  shift4 ######

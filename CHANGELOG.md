@@ -67,3 +67,4 @@
 - [icicle-emu/ghidra@f04834b4ce1c](https://github.com/icicle-emu/ghidra/commit/f04834b4ce1c9c6914e89b3746f98349354a0b92) [x86] Implement PACKSSDW and PACKSSWB
 - [icicle-emu/ghidra@cf0cf810e910](https://github.com/icicle-emu/ghidra/commit/cf0cf810e91096b48cbbeb8b9dde9eeb253f32f4) [x86] Model CPUID as returning a temporary not a pointer.
 - [icicle-emu/ghidra@ce77c5ade69b](https://github.com/icicle-emu/ghidra/commit/ce77c5ade69be0dc6fe22e89791246a3b29a6cf6) [x86] Encode additional syscall semantics in pcode
+- [icicle-emu/ghidra@1cbc589b81bd](https://github.com/icicle-emu/ghidra/commit/1cbc589b81bd731b7d4996fb25e4c4cef6b7fc4e) [arm] Work around limitation in sleigh-runtime that prevents backtracking when decoding subtables.
