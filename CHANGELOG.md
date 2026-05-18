@@ -73,3 +73,4 @@
 - [icicle-emu/ghidra@f654612796cd](https://github.com/icicle-emu/ghidra/commit/f654612796cd74a42c18143e59990635273587b0) [arm] Fix issue setting stack mode
 - [icicle-emu/ghidra@e1ca957ffce2](https://github.com/icicle-emu/ghidra/commit/e1ca957ffce2b946af93bad4fe9129485f0c7356) [arm] Improve the way writes to primask and faultmask are handled
 - [icicle-emu/ghidra@24b26453abf2](https://github.com/icicle-emu/ghidra/commit/24b26453abf287735511523d6d6b33a66f72a198) [x86] Zero extend 32-bit registers on lockable XADD
+- [icicle-emu/ghidra@50230050fa58](https://github.com/icicle-emu/ghidra/commit/50230050fa58bd40d5a96cab9c167fc55bc92a76) Re-introduce code for _fxrstor and _fxsave
