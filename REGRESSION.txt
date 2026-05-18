@@ -275,3 +275,7 @@ Future test: add a focused decode and p-code/lift regression that exercises the 
 Commit icicle-emu/ghidra@3c56fa54984e: [arm] Fix semantics of division instructions
 Source: https://github.com/icicle-emu/ghidra/commit/3c56fa54984e55b076ac5552744caed026d7fb6d
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
+
+Commit icicle-emu/ghidra@e89f565e214c: [arm] use correct mask for msr rn,ipsr
+Source: https://github.com/icicle-emu/ghidra/commit/e89f565e214ca823546dba1d5fc1bddc3f177062
+Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
