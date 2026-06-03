@@ -288,10 +288,6 @@ Commit icicle-emu/ghidra@e1ca957ffce2: [arm] Improve the way writes to primask a
 Source: https://github.com/icicle-emu/ghidra/commit/e1ca957ffce2b946af93bad4fe9129485f0c7356
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
 
-Commit icicle-emu/ghidra@24b26453abf2: [x86] Zero extend 32-bit registers on lockable XADD
-Source: https://github.com/icicle-emu/ghidra/commit/24b26453abf287735511523d6d6b33a66f72a198
-Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
-
 Commit icicle-emu/ghidra@50230050fa58: Re-introduce code for _fxrstor and _fxsave
 Source: https://github.com/icicle-emu/ghidra/commit/50230050fa58bd40d5a96cab9c167fc55bc92a76
 Future test: add a focused decode and p-code/lift regression that exercises the instruction behavior described by the upstream patch title and fails on the pre-import specification.
