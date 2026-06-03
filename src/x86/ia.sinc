@@ -1514,18 +1514,12 @@ n1: one	is epsilon			[ one = 1; ] { export *[const]:1 one; }
 check_Reg32_dest:	is $(LONGMODE_ON) & Reg32 & Reg64 				{ Reg64 = zext(Reg32); }
 check_Rmr32_dest:	is $(LONGMODE_ON) & Rmr32 & Rmr64				{ Rmr64 = zext(Rmr32); }
 check_rm32_dest:	is $(LONGMODE_ON) & mod=3 & check_Rmr32_dest	{ build check_Rmr32_dest; }
-check_Rmr16_dest:	is $(LONGMODE_ON) & Rmr16 & Rmr64				{ Rmr64 = zext(Rmr16); }
-check_rm16_dest:	is $(LONGMODE_ON) & mod=3 & check_Rmr16_dest	{ build check_Rmr16_dest; }
 check_EAX_dest:		is $(LONGMODE_ON)								{ RAX = zext(EAX); }
 check_EDX_dest:		is $(LONGMODE_ON)								{ RDX = zext(EDX); }
 check_vexVVVV_r32_dest: is $(LONGMODE_ON) & vexVVVV_r64 & vexVVVV_r32  { vexVVVV_r64 = zext(vexVVVV_r32);}
 @endif
 check_Reg32_dest:	is epsilon	{ }
 check_Rmr32_dest:	is epsilon	{ }
-check_Rmr16_dest:	is $(LONGMODE_OFF) & Rmr16 & Rmr32				{ Rmr32 = zext(Rmr16); }
-check_rm16_dest:	is $(LONGMODE_OFF) & mod=3 & check_Rmr16_dest	{ build check_Rmr16_dest; }
-check_Rmr16_dest:	is epsilon	{ }
-check_rm16_dest:	is epsilon	{ }
 check_EAX_dest:		is epsilon  { }
 check_EDX_dest:		is epsilon  { }
 check_vexVVVV_r32_dest: is epsilon {  }
@@ -3977,7 +3971,7 @@ define pcodeop TaskRegister;
 @ifdef IA64
 :MOV Reg64,rm64     is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0x8b; rm64 & Reg64 ...       { Reg64 = rm64; }
 @endif
-:MOV rm16,Sreg      is vexMode=0 & byte=0x8c; rm16 & check_rm16_dest ... & Sreg ...               { rm16 = Sreg; build check_rm16_dest; }
+:MOV rm16,Sreg      is vexMode=0 & byte=0x8c; rm16 & Sreg ...               { rm16 = Sreg; }
 :MOV Sreg,rm16      is vexMode=0 & byte=0x8e; rm16 & Sreg ...               { Sreg=rm16; }
 :MOV AL,moffs8      is vexMode=0 & byte=0xa0; AL & moffs8               { AL=moffs8; }
 :MOV AX,moffs16     is vexMode=0 & opsize=0 & byte=0xa1; AX & moffs16         { AX=moffs16; }

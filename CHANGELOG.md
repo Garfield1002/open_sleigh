@@ -61,7 +61,6 @@
 - [icicle-emu/ghidra@36eb7918ea7f](https://github.com/icicle-emu/ghidra/commit/36eb7918ea7f072312924c5441534d0bb3643dbf) [x86] Add longMode checks to additional instructions.
 - [icicle-emu/ghidra@b4fb44dd2ce9](https://github.com/icicle-emu/ghidra/commit/b4fb44dd2ce946933459b7e4987bab60daaa2043) [x86] Fix zxt issue with PEXTRW
 - [icicle-emu/ghidra@67d6e37e3dd5](https://github.com/icicle-emu/ghidra/commit/67d6e37e3dd5e376cbb8942d78dc0c4c8f06653c) [x86] Improve stack manipulation
-- [icicle-emu/ghidra@23cacded5661](https://github.com/icicle-emu/ghidra/commit/23cacded566171baf17a30064fb1bc3b33fcf188) [x86] Fix missing zxt of segment registers in MOV.
 - [icicle-emu/ghidra@6808fea8fdd6](https://github.com/icicle-emu/ghidra/commit/6808fea8fdd657fc24180dc184fc1fdf58e06427) [x86] Implement PSRAW and PSLLW
 - [icicle-emu/ghidra@63c40e7ec0fd](https://github.com/icicle-emu/ghidra/commit/63c40e7ec0fd11bcab9ee4dc84beb832a63fa9cb) [x86] Implement PMULHW
 - [icicle-emu/ghidra@f04834b4ce1c](https://github.com/icicle-emu/ghidra/commit/f04834b4ce1c9c6914e89b3746f98349354a0b92) [x86] Implement PACKSSDW and PACKSSWB
