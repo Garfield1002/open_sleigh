@@ -36,6 +36,30 @@ A specification being present here does not mean it has been reviewed, tested,
 or accepted by upstream Ghidra. Use these files with care and report issues if
 you find problems.
 
+## Installation
+
+Use [`scripts/install.py`](./scripts/install.py) to deploy these specifications
+into an existing Ghidra installation. SLEIGH specs are data, so this only copies
+the language files and compiles them with Ghidra's bundled `sleigh` compiler — it
+does **not** rebuild Ghidra.
+
+```bash
+python scripts/install.py /path/to/ghidra
+```
+
+The Ghidra root can also be supplied via the `$GHIDRA_INSTALL_DIR` environment
+variable, in which case it can be omitted from the command line.
+
+Useful options:
+
+- `--only P1,P2` — only deploy the named processors (comma-separated).
+- `--no-compile` — skip the pre-compile step (Ghidra recompiles lazily).
+- `--no-backup` — do not back up files that get overwritten.
+- `--dry-run` — print the actions without changing anything.
+
+By default, any overwritten files are backed up under `open_sleigh_backup/` in
+the Ghidra install.
+
 ## Requesting imports
 
 If you have opened a SLEIGH-related pull request against Ghidra and would like
