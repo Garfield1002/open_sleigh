@@ -1,0 +1,381 @@
+##################
+#
+# Arithmetic Operations
+#
+##################
+
+###########################################################################################
+# Add
+###########################################################################################
+
+#
+# rA += rB
+# => add rA, rB
+#
+:add regA, regB is group=0 & ins0812=0x18 & regA & regB
+{
+	regA = regA + regB;
+}
+
+#
+# rA = rB + rC
+# => add rA, rB, rC
+#
+:add regAl, regBl, regCxl is group=0 & ins0912=0xE & regAl & regBl & regCxl
+{
+	regAl = regBl + regCxl;
+}
+
+#
+# rA += imm8
+# => add rA, #imm8
+#
+:add regAl, #imm8 is group=1 & ins0607=3 & regAl & imm0305s & imm0812
+[ imm8 = (imm0305s << 5) | imm0812; ]
+{
+	regAl = regAl + imm8;
+}
+
+#
+# sp += imm10
+# => add sp, #imm10
+#
+:add sp, #imm10 is group=4 & ins0004=0x02 & imm0812 & imm0507s & sp
+[ imm10 = (imm0507s << 7) | (imm0812 << 2); ]
+{
+	sp = sp + imm10;
+}
+
+#
+# rA = rB + imm5
+# => add rA, rB, #imm5
+#
+:add regAl, regBl, #imm0812 is group=4 & ins0707=0 & ins0303=1 & regAl & regBl & imm0812
+{
+	regAl = regBl + imm0812;
+}
+
+#
+# rA = sp + imm7
+# => add rA, sp, #imm7
+#
+:add regAl, sp, #imm7 is group=4 & ins0707=1 & ins0304=1 & regAl & sp & imm0812 & imm0506
+[ imm7 = (imm0506 << 5) | imm0812; ]
+{
+	regAl = sp + imm7;
+}
+
+#
+# rA = sp + imm12
+# => add rA, sp, #imm12
+#
+:add eregA, sp, #imm1627 is group=7 & ins0011=0x8f8 ; eregA & imm1627 & sp
+{
+    eregA = sp + imm1627;
+}
+
+#
+# rA = rB + imm12
+# => add rA, rb, #imm12
+#
+:add regA, eregA, #imm1627 is group=7 & ins0411=0x10 & regA ; eregA & imm1627
+{
+    regA = eregA + imm1627;
+}
+
+#
+# rA = rB + imm12s
+# => add rA, rb, #imm12
+#
+:add regA, eregA, #imm1627s is group=7 & ins0411=0x13 & regA ; eregA & imm1627s
+{
+    regA = eregA + imm1627s;
+}
+
+#
+# rA = rB + -imm12
+# => add rA, rb, #imm12
+#
+:add regA, eregA, #imm14 is group=7 & ins0411=0x12 & regA & imm0405; eregA & imm1627
+[ imm14 = -(((imm1627 | (imm0405<<12))^0x3fff)+1);]
+{
+    regA = eregA + imm14;
+}
+
+#
+# rA = rB + (imm12 + 4096)
+# => add rA, rb, #imm12
+#
+:add regA, eregA, imm12p4096 is group=7 & ins0411=0x11 & regA ; eregA & imm1627
+[ imm12p4096 = imm1627 + 4096; ]
+{
+    regA = eregA + imm12p4096;
+}
+
+#
+# rA = rB + packedimm12
+# => add rA, rB, #packedimm12
+#
+:add regA, eregA, packedimm12 is group=7 & ins0411=0x0e & regA ; eregA & packedimm12
+{
+    regA = eregA + packedimm12;
+}
+
+#
+# [rA+#imm5] += #imm16s
+# add [rA + #imm5], #imm16s
+#
+:add [eregA + offset], #imm1627s is group=7 & ins0511=0x5E & imm0004 ; eregA & imm1627s
+[ offset = imm0004*4; ]
+{
+    addr:4 = eregA + offset;
+    *:4 addr = *addr + imm1627s;
+}
+
+#
+# [rA+#imm5] += rB
+# add [rA + #imm5], rB
+#
+:add [eregA + offset], eregC is group=7 & ins0011=0x868 ; eregA & eregC & imm1617=0 & imm1823
+[ offset = (imm1823<<2); ]
+{
+    addr:4 = eregA + offset;
+    *:4 addr = *addr + eregC;
+}
+
+#
+# rA = rB + rC
+# => add rA, rB, rC
+#
+:add eregA, eregB, eregC is group=7 & ins0011=0xB4 ; eregA & eregB & eregC & imm1619=0
+{
+    eregA = eregB + eregC;
+}
+
+# Add registers + carry into reg
+# rA = rB + rC + C
+# => addc rA, rB, rC
+#
+:addc eregA, eregB, eregC is group=7 & ins0011=0xB8 ; eregA & eregB & eregC & imm1619=0
+{
+    # TODO: handle carry
+    eregA = eregB + eregC;
+}
+
+#
+# rB_rA += rC * rD (signed)
+# => muladd.s rB_rA, rC, rD
+#
+:muladd.s edregA, eregB, eregC is group=7 & ins0011=0x1fc ; edregA & eregB & eregC & imm1619=0 & imm2828=1
+{
+    # Zero-extend eregC and eregB
+    C:8 = sext(eregC);
+    B:8 = sext(eregB); 
+
+    # Multiply and add to edregA
+    edregA = edregA + C*B;
+}
+
+#
+# rB_rA += rC * rD (unsigned)
+# => muladd.s rB_rA, rC, rD
+#
+:muladd.s edregA, eregB, eregC is group=7 & ins0011=0x1fc ; edregA & eregB & eregC & imm1619=0 & imm2828=0
+{
+    # Zero-extend eregC and eregB
+    C:8 = zext(eregC);
+    B:8 = zext(eregB); 
+
+    # Multiply and add to edregA
+    edregA =edregA + C*B;
+}
+
+
+###########################################################################################
+# Subtract
+###########################################################################################
+
+#
+# rA = rB - rC
+# => sub rA, rB, rC
+#
+:sub regAl, regBl, regCxl is group=0 & ins0912=0xF & regAl & regBl & regCxl
+{
+	regAl = regBl - regCxl;
+}
+
+#
+# [rA+#imm5] -= rB
+# sub [rA + #imm5], rB
+#
+:sub [eregA + offset], eregC is group=7 & ins0011=0x868 ; eregA & eregC & imm1617=2 & imm1823
+[ offset = (imm1823<<2); ]
+{
+    addr:4 = eregA + offset;
+    *:4 addr = *addr - eregC;
+}
+
+#
+# rA = packedimm12 - rB
+# => sub bitmask, #packedimm12
+#
+:sub regA, #packedimm12, eregA is group=7 & ins0411=0x0A & regA ; eregA & packedimm12
+{
+    regA = packedimm12 - eregA;
+}
+
+#
+# rA = rB - rC
+# => sub rA, rB, rC
+#
+:sub eregA, eregB, eregC is group=7 & ins0011=0xB4 ; eregA & eregB & eregC & imm1619=2
+{
+    eregA = eregB - eregC;
+}
+
+# Substract registers and not(C)
+# rA = rB - rC - !C
+# => subc rA, rB, rC
+#
+:subc eregA, eregB, eregC is group=7 & ins0011=0xB8 ; eregA & eregB & eregC & imm1619=2
+{
+    # TODO: handle carry !
+    eregA = eregB - eregC;
+}
+
+#
+# rA = rB - packedimm12
+# => sub rA, rB, #imm
+:sub regA, eregA, #packedimm12 is group=7 & ins0411=0x0f & regA ; eregA & packedimm12
+{
+    regA = eregA - packedimm12;
+}
+
+###########################################################################################
+# Multiply
+###########################################################################################
+
+#
+# rA *= rB
+# => mul rA, rB
+#
+:mul regA, regB is group=0 & ins0812=0x1B & regA & regB
+{
+	regA = regA * regB;
+}
+
+#
+# rA = rC * rB
+# => mul rA, rC, rB
+#
+:mul eregA, eregB, eregC is group=7 & ins0011=0x1f0 ; eregA & eregB & eregC & imm1619=0
+{
+    eregA = eregC * eregB;
+}
+
+#
+# rB_rA = rC * rD (signed)
+# => mul rB_rA, rC, rD
+#
+:mul edregA, eregB, eregC is group=7 & ins0011=0x1f8 ; edregA & eregB & eregC & imm1619=0 & imm2828=0
+{
+    # Sign-extend eregC and eregB
+    C:8 = sext(eregC);
+    B:8 = sext(eregB); 
+
+    # Multiply
+    edregA = C*B;
+}
+
+
+#
+# rB_rA = rC * rD (unsigned)
+# => mul rB_rA, rC, rD
+#
+:mul.z edregA, eregB, eregC is group=7 & ins0011=0x1f8 ; edregA & eregB & eregC & imm1619=0 & imm2828=1
+{
+    # Zero-extend eregC and eregB
+    C:8 = zext(eregC);
+    B:8 = zext(eregB); 
+
+    # Multiply
+    edregA = C*B;
+}
+
+
+#
+# rA = rB * packedimm12
+#
+:mul regA, eregA, #packedimm12 is group=7 & ins0411=0x1e & regA ; eregA & imm1623 & packedimm12
+{
+    regA = eregA * packedimm12;
+}
+
+###########################################################################################
+# Divide
+###########################################################################################
+
+#
+# rA = rB / rC (unsigned)
+# => div.s rA, rB, rC
+#
+:div eregA, eregB, eregC is group=7 & ins0011=0x1f4 ; eregA & eregB & eregC & imm1619=0
+{
+
+    eregA = eregB / eregC;
+}
+
+#
+# rA = rC / rB (signed)
+# => div.s rA, rC, rB
+#
+:div.s eregA, eregB, eregC is group=7 & ins0011=0x1f4 ; eregA & eregB & eregC & imm1619=1
+{
+
+    eregA = eregB s/ eregC;
+}
+
+
+###########################################################################################
+# Absolute value
+###########################################################################################
+
+#
+# rA = abs(rB)
+#
+:abs eregA, eregC is group=7 & ins0011=0x430 ; eregA & eregC & imm1623=0
+{
+    if (eregC s>=0) goto <skip>;
+    eregA = (eregC ^ 0xffffffff) + 1;
+    goto inst_next;
+<skip>
+    eregA = eregC;
+}
+
+###########################################################################################
+# Min value
+###########################################################################################
+
+#
+# rA = umin(rB, rC) (unsigned)
+#
+:umin eregA, eregB, eregC is group=7 & ins0011=0x435 ; eregA & eregB & eregC & imm1619=0
+{
+    if (eregB <= eregC) goto <skip>;
+    eregA = eregC;
+    goto inst_next;
+<skip>
+    eregA = eregB;
+}
+
+#
+# rA = smin(rB, rC) (signed)
+#
+:smin eregA, eregB, eregC is group=7 & ins0011=0x435 ; eregA & eregB & eregC & imm1619=1
+{
+    if (eregB s<= eregC) goto <skip>;
+    eregA = eregC;
+    goto inst_next;
+<skip>
+    eregA = eregB;
+}

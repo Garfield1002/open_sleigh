@@ -71,3 +71,4 @@
 - [icicle-emu/ghidra@f654612796cd](https://github.com/icicle-emu/ghidra/commit/f654612796cd74a42c18143e59990635273587b0) [arm] Fix issue setting stack mode
 - [icicle-emu/ghidra@e1ca957ffce2](https://github.com/icicle-emu/ghidra/commit/e1ca957ffce2b946af93bad4fe9129485f0c7356) [arm] Improve the way writes to primask and faultmask are handled
 - [icicle-emu/ghidra@50230050fa58](https://github.com/icicle-emu/ghidra/commit/50230050fa58bd40d5a96cab9c167fc55bc92a76) Re-introduce code for _fxrstor and _fxsave
+- [quarkslab/ghidra-jieli@e1bd07078747](https://github.com/quarkslab/ghidra-jieli/commit/e1bd0707874b77b759401555d24839ad43af1267) pi32v2: Add JieLi pi32v2 processor (by Damien Cauquil / Quarkslab, Apache-2.0)

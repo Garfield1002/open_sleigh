@@ -1,0 +1,88 @@
+##################
+#
+# Bit Operations
+#
+##################
+
+###########################################################################################
+# Set bit
+###########################################################################################
+
+#
+# rA |= (1<<shamt)
+# => bitset rA, shamt
+#
+:bitset regAl, imm0812 is group=1 & ins0307=0x06 & regAl & imm0812
+{
+	regAl = regAl | (1 << imm0812);
+}
+
+#
+# [rA + imm8] |= (1 << rB)
+# => bitset [rA + imm8], rB
+#
+:bitset "["eregA + imm8"]", eregC is group=7 & ins0011=0x866 ; eregA & eregC & imm1617=0 & imm1623
+[imm8 = (imm1623 & 0xFC);]
+{
+    local addr:4 = eregA + imm8;
+    *:4 addr = addr | (1 << eregC);
+}
+
+
+###########################################################################################
+# Toggle bit
+###########################################################################################
+
+#
+# rA ^= (1<<shamt)
+# => bittgl rA, shamt
+#
+:bittgl regAl, imm0812 is group=1 & ins0307=0x07 & regAl & imm0812
+{
+	regAl = regAl ^ (1 << imm0812);
+}
+
+###########################################################################################
+# Clear bit
+###########################################################################################
+
+#
+# rA &= ~(1<<shamt)
+# => bitclr rA, shamt
+#
+:bitclr regAl, imm0812 is group=1 & ins0307=0x17 & regAl & imm0812
+{
+	regAl = regAl & ~(1 << imm0812);
+}
+
+#
+# [rA + imm8] |= (1 << rB)
+# => bitclr [rA + imm8], rB
+#
+:bitclr "["eregA + imm8"]", eregC is group=7 & ins0011=0x866 ; eregA & eregC & imm1617=3 & imm1623
+[imm8 = (imm1623 & 0xFC);]
+{
+    local addr:4 = eregA + imm8;
+    *:4 addr = addr & ~(1 << eregC);
+}
+
+
+#################################
+# Bit count
+#################################
+
+#
+# rA = clz(rB)
+#
+:clz eregA, eregC is group=7 & ins0011=0x180 ; eregA & eregC & imm1623=0
+{
+    eregA = lzcount(eregC);
+}
+
+#
+# rA = zcmp(rB)
+#
+#:zcmp eregA, eregC is group=7 & ins0411=0x180 ; eregA & eregC & imm1623=2
+#{
+#    # ?
+#}

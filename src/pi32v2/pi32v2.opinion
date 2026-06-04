@@ -1,0 +1,5 @@
+<opinions>
+  <constraint loader="Executable and Linking Format (ELF)" compilerSpecID="default">
+    <constraint primary="241" processor="JieLi pi32v2" size="32" variant="default" />
+  </constraint>
+</opinions>

@@ -1,0 +1,811 @@
+define endian    = little;
+define alignment = 2;
+
+define space ram      type=ram_space      size=4 default;
+define space register type=register_space size=4;
+
+#############################################################################
+#
+# General purpose registers
+#
+define register offset=0x0 size=4
+	[ r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 ];
+
+# Paired registers
+define register offset=0x0 size=8
+	[ r0_r1 r2_r3 r4_r5 r6_r7 r8_r9 r10_r11 r12_r13 r14_r15 ];
+
+#
+# Special function registers
+#
+define register offset=0x100 size=4
+	[ reti rete retx rets sr4 psr cnum sr7
+	  sr8  sr9  sr10 icfg usp ssp sp pc
+    ];
+
+define register offset=0x0160 size=4
+    [
+        mult_addr 	  # Special internal register for dealing with multiple stores/loads
+        cres          # Register used to store any if...then...else condition result
+        rep_count     # Repeat block counter
+        rep_start     # Repeat start address
+    ];
+
+##
+# Pi32v2 Context register
+##
+
+define register offset=0x300 size=8 [ contextreg ];
+
+define context contextreg
+    # Used while parsing any if...then...else structure
+    ifblock = (0,0)
+    closebracket = (1,1) noflow
+    thenbranch = (2,4)
+    elsebranch = (5,6)
+    
+    # Used to generate registers list from bitmap
+    counter = (7,10)
+    sep = (11,11)
+    bitset = (12,12)
+
+    # Group preprocessing
+    group = (13, 15)
+
+    # Repeat block
+    reploop = (16,16)
+    replen = (17,23)
+
+    parallel_phase = (29,29)
+    parallel = (30,30)
+    phase = (31,31)
+
+    repblock_endaddr = (32,63)
+;
+
+
+#############################################################################
+#
+# Instruction tokens
+#
+
+# Base word
+define token instr(16)
+	prefix = (13,15)
+
+	#
+	# instruction type fields (group != 7)
+	#
+
+	ins0012 = (0,12)
+	ins0312 = (3,12)
+	ins0412 = (4,12)
+    ins0512 = (5,12)
+	ins0612 = (6,12)
+	ins0712 = (7,12)
+	ins0812 = (8,12)
+	ins0912 = (9,12)
+
+	ins0307 = (3,7)
+	ins0407 = (4,7)
+	ins0607 = (6,7)
+	ins0707 = (7,7)
+
+	ins0004 = (0,4)
+	ins0304 = (3,4)
+
+	ins0003 = (0,3)
+	ins0203 = (2,3)
+	ins0303 = (3,3)
+    ins0305 = (3,5)
+
+    #
+    # Extra instruction type fields for group 7
+    #
+    ins1112 = (11,12)
+    ins0111 = (1,11)
+    ins0011 = (0,11)
+	ins0311 = (3,11)
+	ins0411 = (4,11)
+    ins0511 = (5,11)
+	ins0611 = (6,11)
+	ins0711 = (7,11)
+	ins0811 = (8,11)
+	ins0911 = (9,11)
+
+	#
+	# immediate fields
+	#
+    imm0000 = (0,0)
+	imm0001s = (0,1) signed
+
+	imm0002 = (0,2)
+    imm0002s = (0,2) signed
+
+    imm0003 = (0,3)
+    imm0004 = (0,4)
+
+    imm0005 = (0,5)
+	imm0005s = (0,5) signed
+	imm0305  = (3,5)
+	imm0305s = (3,5) signed
+
+	imm0506  = (5,6)
+
+    imm0405 =  (4,5)
+    imm0406  = (4,6)
+	imm0406s = (4,6) signed
+
+	imm0407  = (4,7)
+	imm0507s = (5,7) signed
+
+	imm0812  = (8,12)
+	imm0812s = (8,12) signed
+
+	#
+	# register fields
+	#
+	regA = (0,3)
+	regB = (4,7)
+
+	regAl = (0,2)
+	regAh = (0,2)
+	regBl = (4,6)
+
+	regCxle = (7,8)
+	regCxlo = (7,8)
+	regCxs  = (3,3)
+
+	dregA = (1,3)
+	dregB = (5,7)
+
+	sregA = (0,3)
+;
+
+# Used by the group=7 instructions
+define token instr2(16)
+    imm1616 = (0,0)
+    imm1617 = (0,1)
+    imm1618 = (0,2)
+	imm1619 = (0,3)
+    imm1620 = (0,4)
+    imm1621 = (0,5)
+    imm1622 = (0,6)
+    imm1623 = (0,7)
+    imm1624 = (0,8)
+    imm1624s = (0, 8) signed # used for relative jumps encoded on 9 bits
+    imm1625 = (0,9)
+    imm1626 = (0, 10)
+    imm1627 = (0,11)
+    imm1627s = (0,11) signed
+    imm1628 = (0,12)
+    imm1629 = (0,13)
+    imm1630 = (0,14)
+	imm1631 = (0,15)
+    imm1631s = (0,15) signed
+    imm1719 = (1,3)
+    imm1727 = (1,11)
+    imm1819 = (2,3)
+    imm1822 = (2,6)
+    imm1823 = (2,7)
+    imm2325 = (7, 9)
+    imm2327 = (7,11)
+    imm2425 = (8, 9)
+    imm2627 = (10,11)
+    imm2427 = (8,11)
+
+    imm1731 = (1,15)
+    imm1831 = (2,15)
+    imm1931 = (3,15)
+    imm2031 = (4,15)
+    imm2131 = (5,15)
+    imm2231 = (6,15)
+    imm2331 = (7,15)
+    imm2431 = (8,15)
+    imm2531 = (9,15)
+    imm2631 = (10,15)
+    imm2731 = (11,15)
+    imm2828 = (12,12)
+    imm2831 = (12,15)
+    imm2931 = (13,15)
+    imm3031 = (14,15)
+
+
+    elsecnt = (12,13)
+    ifcnt = (14,15)
+	
+	eregA = (12,15)
+    eregAl = (12,14)
+	eregC = (8,11)
+    esregC = (8, 11)
+	eregB = (4,7)
+
+    edregA = (13,15)
+    edregC = (9,11)
+    edregB = (5,7)
+;
+
+
+# Even more bits for some group=7 instructions (ins0812=0x1f)
+define token instr3(16)
+	imm3247 = (0,15)
+    imm3247s = (0,15) signed
+;
+
+
+#############################################################################
+#
+# Variables
+#
+
+attach variables [ regAl regBl eregAl ]
+	[ r0 r1 r2 r3 r4 r5 r6 r7 ];
+
+attach variables [ regAh ]
+	[ r8 r9 r10 r11 r12 r13 r14 r15 ];
+
+attach variables [ regA regB ]
+	[ r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 ];
+
+attach variables [ sregA esregC ]
+	[ reti rete retx rets sr4 psr cnum sr7
+	  sr8  sr9  sr10 icfg usp ssp sp   pc ];
+
+attach variables [ dregA dregB edregA edregB edregC ]
+	[ r0_r1 r2_r3 r4_r5 r6_r7 r8_r9 r10_r11 r12_r13 r14_r15 ];
+
+attach variables [ eregA eregB eregC]
+	[ r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 ];
+
+attach variables [ regCxle ]
+	[ r0 r2 r4 r6 ];
+
+attach variables [ regCxlo ]
+	[ r1 r3 r5 r7 ];
+
+# PSR bits
+@define V	"psr[0,1]"	# overflow
+@define C	"psr[1,1]"	# carry
+@define Z	"psr[2,1]"	# zero
+@define N	"psr[3,1]"	# negative
+
+#############################################################################
+#
+# Macros
+#
+
+macro push(reg)
+{
+	sp = sp - 4;
+	*:4 sp = reg;
+}
+
+macro pop(reg)
+{
+	reg = *:4 sp;
+	sp = sp + 4;
+}
+
+#############################################################################
+#
+# Stuff
+#
+
+# weird register split addressing..
+regCxl: regCxle is regCxs=0 & regCxle { export regCxle; }
+regCxl: regCxlo is regCxs=1 & regCxlo { export regCxlo; }
+
+
+#
+# 12-bit bitmask on second 16-bit instruction (group 7)
+#
+packedimm12: imm1623 is imm1623 & imm2427=0 { imm:4 = imm1623; export imm; }
+
+packedimm12: res is imm1623 & imm2427=3
+    [ res = (imm1623 << 24) | (imm1623 << 16) | (imm1623 << 8) | imm1623; ]
+    { imm:4 = res; export imm;}
+
+packedimm12: res is imm1623 & imm2427=1
+    [ res = (imm1623 << 24) | (imm1623 << 8); ]
+    { imm:4 = res; export imm;}
+    
+packedimm12: res is imm1622 & imm2325 & imm2627=1
+    [ res = ((0x80 | imm1622) << 24 ) >> imm2325; ]
+    { imm:4 = res; export imm;}
+
+packedimm12: res is imm1622 & imm2325 & imm2627=2
+    [ res = ((0x80 | imm1622) << 16 ) >> imm2325; ]
+    { imm:4 = res; export imm;}
+
+packedimm12: res is imm1622 & imm2325 & imm2627=3
+    [ res = ((0x80 | imm1622) << 8 ) >> imm2325; ]
+    { imm:4 = res; export imm;}
+
+
+#
+# 12-bit complemented bitmask on second 16-bit instruction (group 7)
+#
+
+notpackedimm12: res is imm1623 & imm2427=0 
+    [ res = imm1623^0xffffffff; ]
+    { imm:4 = res; export imm; }
+
+notpackedimm12: res is imm1623 & imm2427=3
+    [ res = ((imm1623 << 24) | (imm1623 << 16) | (imm1623 << 8) | imm1623)^0xffffffff; ]
+    { imm:4 = res^0xffffffff; export imm;}
+
+notpackedimm12: res is imm1623 & imm2427=1
+    [ res = ((imm1623 << 24) | (imm1623 << 8))^0xffffffff; ]
+    { imm:4 = res^0xffffffff; export imm;}
+
+notpackedimm12: res is imm1622 & imm2325 & imm2627=1
+    [ res = (((0x80 | imm1622) << 24 ) >> imm2325)^0xffffffff; ]
+    { imm:4 = 0xffffffff^res; export imm;}
+
+notpackedimm12: res is imm1622 & imm2325 & imm2627=2
+    [ res = (((0x80 | imm1622) << 16 ) >> imm2325)^0xffffffff; ]
+    { imm:4 = 0xffffffff^res; export imm;}
+
+notpackedimm12: res is imm1622 & imm2325 & imm2627=3
+    [ res = (((0x80 | imm1622) << 8 ) >> imm2325)^0xffffffff; ]
+    { imm:4 = 0xffffffff^res; export imm;}
+
+#
+# 9-bit jump immediate (pc-relative)
+#
+jaddr9: res is imm0812 & imm0406s
+	[ res = ((imm0406s << 6) | (imm0812 << 1)) + inst_next; ]
+	{ export *:4 res; }
+
+
+#
+# 9-bit jump immediate (pc-relative) for 32-bits conditional jumps
+#
+jaddr9e: res is imm1624s [res = imm1624s * 2 + inst_next; ] { export *:4 res;}
+
+#
+# 12-bit jump immediate (pc-relative)
+#
+jaddr12: res is imm0812 & imm0407 & imm0001s
+	[ res = ((imm0001s << 10) | (imm0407 << 6) | (imm0812 << 1)) + inst_next; ]
+	{ export *:4 res; }
+
+#
+# 16-bit jump immediate (pc-relative) for 32-bit conditional jumps
+#
+jaddr16: res is imm1631s
+    [ res = imm1631s * 2 + inst_next; ]
+    { export *:4 res; }
+
+#
+# 16-bit jump immediate (pc-relative) for 48-bit conditional jumps
+#
+jaddr16e: res is imm3247s
+    [ res = imm3247s * 2 + inst_next; ]
+    { export *:4 res; }
+
+#
+# 23-bit jump immediate (pc-relative)
+#
+jaddr23: res is imm0005s ; imm1631
+	[ res = ((imm0005s << 17) | (imm1631 << 1)) + inst_next; ]
+	{ export *:4 res; }
+
+#
+# 32-bit jump immediate (pc-relative)
+#
+jaddr32: res is imm1631 ; imm3247s
+    [ res = ((imm3247s << 16) | imm1631) + inst_next; ]
+    { export *:4 res;}
+
+######################################################
+# Parallel execution
+#
+# Instructions with prefix=6 are basic group 0 instructions
+# that are parallelized, so we set the group to 0 and 
+# we parse the instruction accordingly.
+#
+# Instructions with prefix=7 are part of the extended set
+# and only instructions with bit 12 set and bit 11 clear
+# seem to support a parallelized version.
+#
+# The following lines define the `parainst` table that
+# is used to take care of the order of execution of such
+# parallelized instructions.
+#
+######################################################
+
+# For prefixes below 6, no parallelization.
+parainst:^instruction is parallel_phase=0 & prefix<6 & prefix & instruction
+[parallel_phase=1; group=prefix; parallel=0; ]
+{
+    build instruction;
+}
+
+# If instruction prefix is 6, then it is parallelized.
+# Next instruction is executed first, then this one.
+parainst:^instruction is parallel_phase=0 & prefix=6 & instruction
+[   
+    parallel_phase=1;
+    parallel=1;
+    group=0; globalset(inst_next, group);
+]
+{
+    delayslot(1);
+    build instruction;
+}
+
+# If instruction prefix is 7, then it is parallelized only
+# when bit 12 is set and bit 11 not set. Instructions defined for group 7 must
+# not use this bit for instruction matching.
+parainst:^instruction is parallel_phase=0 & prefix=7 & ins1112=0b10 & instruction
+[
+    parallel=1;
+    parallel_phase=1;
+    group=7; globalset(inst_next, group);
+]
+{
+    delayslot(1);
+    build instruction;
+}
+
+# If instruction prefix is 7 and bit 12 is not set, we simply
+# execute this instruction.
+parainst:^instruction is parallel_phase=0 & prefix=7 & ins1112!=0b10 & instruction
+[ parallel=0; parallel_phase=1; group=7; globalset(inst_next, group); ]
+{
+    build instruction;
+}
+
+######################################################
+# Repeat blocks
+######################################################
+
+repstart: target is replen [target = inst_next - replen; ]
+{
+    export *:4 target;
+}
+
+# Disassemble repeat block instructions
+:^parainst is parainst & phase=0 & reploop=1 & repstart
+[ phase=1; reploop=0; globalset(inst_next, reploop); ]
+{
+    build parainst;
+
+    # Repeat until counter reaches zero
+    rep_count = rep_count - 1;
+    if (rep_count != 0) goto repstart;
+}
+
+
+######################################################
+# Conditional blocks
+#
+# The Pi32v2 architecture provides specific instructions
+# to test a specific condition and execute a block composed
+# of at most 4 instructions if this condition is met, or
+# another block of at most 3 instructions if it is not.
+#
+# The following lines specify the `cdtinst` table that
+# deals with these conditional blocks using our context
+# register `ifblock`, `closebracket`, `thenbranch` and
+# `elsebranch` bits.
+######################################################
+
+theninst:^parainst is parainst
+[ thenbranch=thenbranch-1; globalset(inst_next, thenbranch); ]
+{
+    if (cres != 1) goto inst_next;
+        build parainst;
+}
+
+elseinst:^parainst is parainst
+[ elsebranch=elsebranch-1; globalset(inst_next, elsebranch); ]
+{
+    if (cres==1) goto inst_next;
+    build parainst;
+}
+
+# Processing `then` instructions while we have more than 1 inst.
+cdtinst:^theninst is thenbranch>1 & theninst {}
+
+# Last instruction in the `then` branch, set `closebracket` to
+# force the next instruction to include a closing bracket (cap'n obvious).
+# We don't close the if block as we have some instructions in the else branch.
+cdtinst:^theninst is thenbranch=1 & theninst & elsebranch>0
+    [ closebracket=1; globalset(inst_next, closebracket); ]{}
+
+# Last instruction in the `then` branch, set `closebracket` to
+# force the next instruction to include a closing bracket (cap'n obvious).
+# We close the if block.
+cdtinst:^theninst is thenbranch=1 & theninst & elsebranch=0
+    [
+        closebracket=1; globalset(inst_next, closebracket);
+        ifblock=0; globalset(inst_next, ifblock);
+    ]{}
+
+## We are out of the `then` branch and we don't have any `else`
+## branch, let's insert a bracket and get back to normal by
+## exiting our if block.
+#cdtinst:^"} " parainst is thenbranch=0 & elsebranch=0 & closebracket=1 & parainst
+#    [
+#        closebracket=0; globalset(inst_next, closebracket);
+#        ifblock=0; globalset(inst_next, ifblock);
+#    ]{}
+
+# Otherwise, we are done with our `then` branch and switch to our
+# `else` branch.
+cdtinst:^"} else { " elseinst is thenbranch=0 & elsebranch>1 & elseinst & closebracket=1
+    [ closebracket=0; globalset(inst_next, closebracket); ]{}
+
+# Special case: else branch only has a single instruction (keep closebracket to 1)
+cdtinst:^"} else { " elseinst is thenbranch=0 & elsebranch=1 & elseinst & closebracket=1
+    [
+        ifblock=0; globalset(inst_next, ifblock);
+        closebracket=1; globalset(inst_next, closebracket);
+    ]{}
+
+# Other instructions in else branch
+cdtinst:^elseinst is thenbranch=0 & elsebranch>1 & closebracket=0 & elseinst {}
+
+# Last instruction of our `else` branch forces a close bracket for the next one
+# We also consider our if structure closed.
+cdtinst:^elseinst is thenbranch=0 & elsebranch=1 & elseinst & closebracket=0
+    [
+        closebracket=1; globalset(inst_next, closebracket);
+        ifblock=0; globalset(inst_next, ifblock);
+    ]{}
+
+# Conditional instruction
+:^cdtinst is phase=0 & ifblock=1 & cdtinst [phase=1;]{}
+
+# Default case, we are not processing a conditional instruction.
+:^parainst is parainst & phase=0 & ifblock=0 & closebracket=0 [phase=1;]{}
+
+# Special case, we need to add a final bracket to an if block
+# but this instruction does not belong to the if..then..else structure.
+:^"} " parainst is parainst & phase=0 & ifblock=0 & closebracket=1
+[ phase=1; closebracket=0; globalset(inst_next, closebracket); ]{}
+
+
+#############################################################################
+#
+# Instructions
+#
+
+define pcodeop nop;
+define pcodeop Idle;
+define pcodeop Breakpoint;
+define pcodeop HBreakpoint;
+define pcodeop CoreSynchronize;
+define pcodeop SystemCall;
+define pcodeop SystemSynchronize;
+define pcodeop BTBClear;
+define pcodeop ClearLock;
+define pcodeop SetLock;
+define pcodeop DisableInterrupts;
+define pcodeop EnableInterrupts;
+define pcodeop SoftwareInterrupt;
+define pcodeop DataCachePrefetch;
+define pcodeop InstructionCacheFlush;
+define pcodeop DataCacheFlush;
+define pcodeop DataCacheLineInvalidate;
+define pcodeop Trigger;
+
+define pcodeop IfElseBlock;
+define pcodeop RepeatBlock;
+
+define pcodeop TODO;
+
+# Categorized
+@include "pi32v2_ins_progflow.sinc"
+@include "pi32v2_ins_stack.sinc"
+@include "pi32v2_ins_move.sinc"
+@include "pi32v2_ins_arithops.sinc"
+@include "pi32v2_ins_para_arithops.sinc"
+@include "pi32v2_ins_logicops.sinc"
+@include "pi32v2_ins_shiftrot.sinc"
+@include "pi32v2_ins_bitops.sinc"
+@include "pi32v2_ins_loadimm.sinc"
+@include "pi32v2_ins_loadstore.sinc"
+@include "pi32v2_ins_ifthenelse.sinc"
+
+##########################################################################################
+# Uncategorized #
+#################
+
+#
+# nop
+#
+:nop is group=0 & ins0012=0x0000
+{
+	nop();
+}
+
+#
+# idle
+#
+:idle is group=0 & ins0012=0x0001
+{
+	Idle();
+}
+
+#
+# bkpt
+#
+:bkpt is group=0 & ins0012=0x0002
+{
+	Breakpoint();
+}
+
+#
+# hbkpt
+#
+:hbkpt is group=0 & ins0012=0x0003
+{
+	HBreakpoint();
+}
+
+#
+# csync
+#
+:csync is group=0 & ins0012=0x0020
+{
+	CoreSynchronize();
+}
+
+#
+# syscall
+#
+:syscall is group=0 & ins0012=0x0021
+{
+	SystemCall();
+}
+
+#
+# ssync
+#
+:ssync is group=0 & ins0012=0x0022
+{
+	SystemSynchronize();
+}
+
+#
+# btbclr
+#
+:btbclr is group=0 & ins0012=0x0023
+{
+	BTBClear();
+}
+
+#
+# lockclr
+#
+:lockclr is group=0 & ins0012=0x0040
+{
+	ClearLock();
+}
+
+#
+# lockset
+#
+:lockset is group=0 & ins0012=0x0041
+{
+	SetLock();
+}
+
+#
+# cli
+#
+:cli is group=0 & ins0012=0x0060
+{
+	DisableInterrupts();
+}
+
+#
+# sti
+#
+:sti is group=0 & ins0012=0x0061
+{
+	EnableInterrupts();
+}
+
+#
+# swi imm3
+#
+:swi imm0002 is group=0 & ins0412=0x00A & imm0002
+{
+	SoftwareInterrupt(imm0002:1);
+}
+
+#
+# testset b[rA]
+#
+:testset "b"[regA] is group=0 & ins0412=0x00B & regA
+{
+	TODO(regA:4);
+}
+
+#
+# cli rA
+#
+:cli regA is group=0 & ins0412=0x00E & regA
+{
+	DisableInterrupts(regA:4);
+}
+
+#
+# sti rA
+#
+:sti regA is group=0 & ins0412=0x00F & regA
+{
+	EnableInterrupts(regA:4);
+}
+
+#
+# pfetch [rA]
+#
+:pfetch [regA] is group=0 & ins0412=0x020 & regA
+{
+	DataCachePrefetch(regA:4);
+}
+
+#
+# iflush [rA]
+#
+:iflush [regA] is group=0 & ins0412=0x021 & regA
+{
+	InstructionCacheFlush(regA:4);
+}
+
+#
+# flush [rA]
+#
+:flush [regA] is group=0 & ins0412=0x022 & regA
+{
+	DataCacheFlush(regA:4);
+}
+
+#
+# flushinv [rA]
+#
+:flushinv [regA] is group=0 & ins0412=0x023 & regA
+{
+	DataCacheLineInvalidate(regA:4);
+}
+
+#
+# cc = 0
+# => clc
+#
+:clc is group=0 & ins0012=0x1400
+{
+	$(C) = 0;
+}
+
+#
+# cc = 1
+# => stc
+#
+:stc is group=0 & ins0012=0x1401
+{
+	$(C) = 1;
+}
+
+#
+# rA_rA = 0
+# => clr rA_rA
+#
+:clr dregA is group=0 & ins0412=0x148 & dregA
+{
+	dregA = 0;
+}
+
+#
+# rA<8-15> = 0
+# => clr rA<8-15>
+#
+:clr regAh is group=0 & ins0312=0x298 & regAh
+{
+	regAh = 0;
+}
