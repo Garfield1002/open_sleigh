@@ -13,6 +13,18 @@ define endian=little;
 define space ram type=ram_space size=$(SIZE) default;
 define space register type=register_space size=4;
 
+# The I/O address space: 64K byte-addressable ports, reachable only by
+# IN/OUT/INS/OUTS.  The Intel manual describes this as an address space
+# separate from memory, so it is one here.  Modelling it with `in`/`out`
+# p-code operations instead would hide which registers carry the port number
+# and the data, and would leave every consumer unable to tell a device access
+# from a memory access -- the two are governed by quite different rules.
+#
+# A caller must not assume an I/O access behaves like a memory access in every
+# respect: reading a port can change device state, so two reads of one port
+# need not agree, and a read after a write need not return what was written.
+define space io type=ram_space size=2;
+
 # General purpose registers
 
 @ifdef IA64
@@ -761,8 +773,9 @@ attach variables [ bnd1_ub bnd2_ub ] [ BND0_UB BND1_UB BND2_UB BND3_UB _ _ _ _ ]
 define pcodeop segment;    # Define special pcodeop that calculates the RAM address
                            # given the segment selector and offset as input
 
-define pcodeop in;         # force in/out to show up in decompiler
-define pcodeop out;
+# IN/OUT are not p-code operations: they load from and store to the `io`
+# address space defined above, which states which registers carry the port
+# and the datum instead of hiding them inside an opaque call.
 define pcodeop sysenter;
 define pcodeop sysexit;
 define pcodeop syscall;
@@ -3675,17 +3688,17 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 #:IMUL Reg16,simm16 is vexMode=0 & opsize=0 & byte=0x69; Reg16; simm16
 #:IMUL Reg32,simm32 is vexMode=0 & opsize=1 & byte=0x69; Reg32; simm32
 
-:IN    AL, imm8     is vexMode=0 & AL & (byte=0xe4; imm8)               { tmp:1 = imm8; AL = in(tmp); }
-:IN    AX, imm8     is vexMode=0 & opsize=0 & AX & (byte=0xe5; imm8)    { tmp:1 = imm8; AX = in(tmp); }
-:IN    EAX, imm8    is vexMode=0 & opsize=1 & EAX & check_EAX_dest & (byte=0xe5; imm8)   { tmp:1 = imm8; EAX = in(tmp); build check_EAX_dest; }
+:IN    AL, imm8     is vexMode=0 & AL & (byte=0xe4; imm8)               { tmp:2 = zext(imm8:1); AL = *[io]:1 tmp; }
+:IN    AX, imm8     is vexMode=0 & opsize=0 & AX & (byte=0xe5; imm8)    { tmp:2 = zext(imm8:1); AX = *[io]:2 tmp; }
+:IN    EAX, imm8    is vexMode=0 & opsize=1 & EAX & check_EAX_dest & (byte=0xe5; imm8)   { tmp:2 = zext(imm8:1); EAX = *[io]:4 tmp; build check_EAX_dest; }
 @ifdef IA64
-:IN    RAX, imm8    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & RAX & (byte=0xe5; imm8)   { tmp:1 = imm8; RAX = in(tmp); }
+:IN    RAX, imm8    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & RAX & (byte=0xe5; imm8)   { tmp:2 = zext(imm8:1); RAX = zext(*[io]:4 tmp); }
 @endif
-:IN    AL, DX       is vexMode=0 & AL & DX & (byte=0xec)                { AL  = in(DX); }
-:IN    AX, DX       is vexMode=0 & opsize=0 & AX & DX & (byte=0xed)     { AX  = in(DX); }
-:IN    EAX, DX      is vexMode=0 & opsize=1 & EAX & check_EAX_dest & DX & (byte=0xed)    { EAX = in(DX); build check_EAX_dest; }
+:IN    AL, DX       is vexMode=0 & AL & DX & (byte=0xec)                { AL  = *[io]:1 DX; }
+:IN    AX, DX       is vexMode=0 & opsize=0 & AX & DX & (byte=0xed)     { AX  = *[io]:2 DX; }
+:IN    EAX, DX      is vexMode=0 & opsize=1 & EAX & check_EAX_dest & DX & (byte=0xed)    { EAX = *[io]:4 DX; build check_EAX_dest; }
 @ifdef IA64
-:IN    RAX, DX      is $(LONGMODE_ON) & vexMode=0 & opsize=2 & RAX & DX & (byte=0xed)    { RAX = in(DX); }
+:IN    RAX, DX      is $(LONGMODE_ON) & vexMode=0 & opsize=2 & RAX & DX & (byte=0xed)    { RAX = zext(*[io]:4 DX); }
 @endif
 
 # See 'lockable.sinc' for memory destination, lockable variants
@@ -3699,10 +3712,10 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :INC          Rmr16	is $(LONGMODE_OFF) & vexMode=0 & opsize=0 & row = 4 & page = 0 & Rmr16 { incflags(Rmr16);   Rmr16 =  Rmr16 + 1; resultflags( Rmr16); }
 :INC          Rmr32	is $(LONGMODE_OFF) & vexMode=0 & opsize=1 & row = 4 & page = 0 & Rmr32 { incflags(Rmr32);   Rmr32 =  Rmr32 + 1; resultflags( Rmr32); }
 
-:INSB^rep^reptail eseDI1,DX is vexMode=0 & rep & reptail & byte=0x6c & eseDI1 & DX      { build rep; build eseDI1; eseDI1 = in(DX); build reptail; }
-:INSW^rep^reptail eseDI2,DX is vexMode=0 & rep & reptail & opsize=0 & byte=0x6d & eseDI2 & DX   { build rep; build eseDI2; eseDI2 = in(DX); build reptail; }
-:INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=1 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = in(DX); build reptail; }
-:INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=2 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = in(DX); build reptail; }
+:INSB^rep^reptail eseDI1,DX is vexMode=0 & rep & reptail & byte=0x6c & eseDI1 & DX      { build rep; build eseDI1; eseDI1 = *[io]:1 DX; build reptail; }
+:INSW^rep^reptail eseDI2,DX is vexMode=0 & rep & reptail & opsize=0 & byte=0x6d & eseDI2 & DX   { build rep; build eseDI2; eseDI2 = *[io]:2 DX; build reptail; }
+:INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=1 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = *[io]:4 DX; build reptail; }
+:INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=2 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = *[io]:4 DX; build reptail; }
 
 :INT1           is vexMode=0 & byte=0xf1                            { tmp:1 = 0x1; intloc:$(SIZE) = swi(tmp); call [intloc]; return [0:1]; }
 :INT3           is vexMode=0 & byte=0xcc                            { tmp:1 = 0x3; intloc:$(SIZE) = swi(tmp); call [intloc]; return [0:1]; }
@@ -4213,16 +4226,16 @@ define pcodeop swap_bytes;
 :OR  Reg64,rm64        is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xb; rm64 & Reg64 ...     { logicalflags(); Reg64 = Reg64 |  rm64; resultflags(Reg64); }
 @endif
 
-:OUT imm8,AL        is vexMode=0 & byte=0xe6; imm8 & AL                 { tmp:1 = imm8; out(tmp,AL); }
-:OUT imm8,AX        is vexMode=0 & opsize=0 & byte=0xe7; imm8 & AX      { tmp:1 = imm8; out(tmp,AX); }
-:OUT imm8,EAX       is vexMode=0 &            byte=0xe7; imm8 & EAX     { tmp:1 = imm8; out(tmp,EAX); }
-:OUT DX,AL          is vexMode=0 & byte=0xee & DX & AL                  { out(DX,AL); }
-:OUT DX,AX          is vexMode=0 & opsize=0 & byte=0xef & DX & AX       { out(DX,AX); }
-:OUT DX,EAX         is vexMode=0 &            byte=0xef & DX & EAX      { out(DX,EAX); }
+:OUT imm8,AL        is vexMode=0 & byte=0xe6; imm8 & AL                 { tmp:2 = zext(imm8:1); *[io]:1 tmp = AL; }
+:OUT imm8,AX        is vexMode=0 & opsize=0 & byte=0xe7; imm8 & AX      { tmp:2 = zext(imm8:1); *[io]:2 tmp = AX; }
+:OUT imm8,EAX       is vexMode=0 &            byte=0xe7; imm8 & EAX     { tmp:2 = zext(imm8:1); *[io]:4 tmp = EAX; }
+:OUT DX,AL          is vexMode=0 & byte=0xee & DX & AL                  { *[io]:1 DX = AL; }
+:OUT DX,AX          is vexMode=0 & opsize=0 & byte=0xef & DX & AX       { *[io]:2 DX = AX; }
+:OUT DX,EAX         is vexMode=0 &            byte=0xef & DX & EAX      { *[io]:4 DX = EAX; }
 
-:OUTSB^rep^reptail DX,dseSI1    is vexMode=0 & rep & reptail & byte=0x6e & DX & dseSI1      { build rep; build dseSI1; out(dseSI1,DX); build reptail;}
-:OUTSW^rep^reptail DX,dseSI2    is vexMode=0 & rep & reptail & opsize=0 & byte=0x6f & DX & dseSI2   { build rep; build dseSI2; out(dseSI2,DX); build reptail;}
-:OUTSD^rep^reptail DX,dseSI4    is vexMode=0 & rep & reptail &            byte=0x6f & DX & dseSI4   { build rep; build dseSI4; out(dseSI4,DX); build reptail;}
+:OUTSB^rep^reptail DX,dseSI1    is vexMode=0 & rep & reptail & byte=0x6e & DX & dseSI1      { build rep; build dseSI1; *[io]:1 DX = dseSI1; build reptail;}
+:OUTSW^rep^reptail DX,dseSI2    is vexMode=0 & rep & reptail & opsize=0 & byte=0x6f & DX & dseSI2   { build rep; build dseSI2; *[io]:2 DX = dseSI2; build reptail;}
+:OUTSD^rep^reptail DX,dseSI4    is vexMode=0 & rep & reptail &            byte=0x6f & DX & dseSI4   { build rep; build dseSI4; *[io]:4 DX = dseSI4; build reptail;}
 
 :PAUSE          is vexMode=0 & opsize=0 & $(PRE_F3) & byte=0x90     {  }
 :PAUSE          is vexMode=0 & opsize=1 & $(PRE_F3) & byte=0x90     {  }
