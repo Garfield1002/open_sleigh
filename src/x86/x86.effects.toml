@@ -1,0 +1,96 @@
+# Effects of this specification's p-code operations that p-code itself cannot
+# express.
+#
+# P-code describes values: what an instruction reads, computes and writes.  It
+# has no construct for *ordering* — for the fact that an instruction constrains
+# when other agents observe memory accesses around it.  A fence is the clearest
+# case: `MFENCE` has no register or value semantics at all, so the only honest
+# p-code body is a bare operation, and everything that matters about it lives
+# here.
+#
+# A consumer needs this to decide questions like Rust's `asm!` `nomem` option,
+# which promises the assembly "does not perform any kind of synchronization
+# with other threads, e.g. via fences".  Without the file below, a consumer can
+# only say "I saw no synchronisation", which is not the same as "there is
+# none" — and would let it prove `nomem` for `MFENCE`.
+
+# What this file was checked against, and when.  A consumer may treat an
+# operation absent from every list below as non-synchronising *only* because
+# this key is present: it is the specification asserting that its operations
+# have been reviewed, not the consumer assuming it.
+reviewed = "Intel SDM Vol. 2 (MFENCE/LFENCE/SFENCE, XCHG), Vol. 3 ch. 8 (LOCK, serializing instructions); AMD64 APM Vol. 3 (INVLPGB, TLBSYNC); 2026-08"
+
+# Operations that order memory as *other agents* observe it.
+#
+# The test applied is inter-agent visibility, not local pipeline draining.  The
+# SDM draws that line itself in MFENCE's own description: preceding accesses
+# "become globally visible" before following ones, and yet "MFENCE does not
+# serialize the instruction stream".  Being serializing for the local processor
+# is a different property and is not sufficient to appear here.
+synchronizing = [
+    # "This serializing operation guarantees that every load and store
+    # instruction that precedes the MFENCE instruction in program order becomes
+    # globally visible before any load or store instruction that follows"
+    # (Intel SDM Vol. 2, MFENCE).
+    "mfence",
+    "lfence",
+    "sfence",
+    # The LOCK prefix gives the processor exclusive use of the memory operand
+    # for the duration of the operation; locked operations are ordered with
+    # respect to all other memory accesses (Intel SDM Vol. 3 ch. 8).
+    "LOCK",
+    "UNLOCK",
+    # "TLBSYNC acts as a synchronizing instruction to ensure that all logical
+    # processors in a system have responded to an INVLPGB previously executed
+    # by the current logical processor. [...] The TLBSYNC instruction is
+    # strongly ordered with respect to surrounding loads and stores.  TLBSYNC
+    # is a serializing instruction" (AMD64 APM Vol. 3).
+    "tlbsync",
+]
+
+# Operations whose ordering behaviour this review did not settle.
+#
+# A consumer must treat these as unknown rather than as either answer.  They
+# are listed rather than omitted precisely so that omission can mean
+# "reviewed and not synchronising".
+unclear = [
+    # Serializing for the local instruction stream, which the SDM distinguishes
+    # from memory ordering; whether that amounts to inter-thread
+    # synchronisation for a caller's purposes was not established here.
+    "cpuid",
+    "cpuid_basic_info",
+    "cpuid_Version_info",
+    "cpuid_cache_tlb_info",
+    "cpuid_serial_info",
+    "cpuid_Deterministic_Cache_Parameters_info",
+    "cpuid_MONITOR_MWAIT_Features_info",
+    "cpuid_Thermal_Power_Management_info",
+    "cpuid_Extended_Feature_Enumeration_info",
+    "cpuid_Direct_Cache_Access_info",
+    "cpuid_Architectural_Performance_Monitoring_info",
+    "cpuid_Extended_Topology_info",
+    "cpuid_Processor_Extended_States_info",
+    "cpuid_Quality_of_Service_info",
+    "cpuid_brand_part1_info",
+    "cpuid_brand_part2_info",
+    "cpuid_brand_part3_info",
+    # Cache management and monitoring: plainly affect what other agents see,
+    # but the manuals do not describe them in the ordering terms used above.
+    "monitor",
+    "monitorx",
+    "mwait",
+    "mwaitx",
+    "invlpgb",
+    # Entering and leaving other execution contexts.
+    "syscall",
+    "sysenter",
+    "sysexit",
+    "sysret",
+    "swi",
+    "swapgs",
+    "vmcall",
+    "vmlaunch",
+    "vmresume",
+    "vmrun",
+    "vmmcall",
+]

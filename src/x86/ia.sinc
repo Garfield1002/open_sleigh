@@ -796,6 +796,7 @@ define pcodeop sysret;
 define pcodeop swapgs;
 define pcodeop invlpg;
 define pcodeop invlpga;
+define pcodeop invlpgb;
 define pcodeop invpcid;
 define pcodeop rdtscp;
 define pcodeop mwait;
@@ -803,6 +804,15 @@ define pcodeop mwaitx;
 define pcodeop monitor;
 define pcodeop monitorx;
 define pcodeop swi;        # for INT instruction
+
+# Memory-ordering operations.  These have no register or value semantics, so
+# an empty constructor body would be the only alternative -- and that says the
+# instruction does nothing, which is false.  A p-code operation at least lets a
+# consumer see that something happened; `x86.effects.toml` says what.
+define pcodeop mfence;     # SDM: preceding loads and stores become globally
+define pcodeop lfence;     # visible before any that follow.  "MFENCE does not
+define pcodeop sfence;     # serialize the instruction stream."
+define pcodeop tlbsync;    # AMD APM: synchronizes with all logical processors
 
 define pcodeop LOCK;       # for LOCK prefix
 define pcodeop UNLOCK;     # for LOCK prefix
@@ -3757,6 +3767,14 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :INVD           is vexMode=0 & byte=0xf; byte=0x8                   {}
 :INVLPG Mem     is vexMode=0 & byte=0xf; byte=0x1; ( reg_opcode=7 ) ... & Mem     { invlpg(Mem); }
 
+# AMD INVLPGB / TLBSYNC (AMD64 APM Vol. 3).  INVLPGB broadcasts a TLB
+# invalidation described by RAX/ECX/EDX and does not wait; TLBSYNC waits for
+# every other logical processor to acknowledge it, and is documented as a
+# synchronizing, serializing instruction strongly ordered with respect to
+# surrounding loads and stores.
+:INVLPGB        is vexMode=0 & byte=0x0f; byte=0x01; byte=0xfe   { invlpgb(RAX, ECX, EDX); }
+:TLBSYNC        is vexMode=0 & byte=0x0f; byte=0x01; byte=0xff   { tlbsync(); }
+
 :INVLPGA        is vexMode=0 & addrsize=0 & byte=0xf; byte=0x1; byte=0xDF                   { invlpga(AX,ECX); }
 :INVLPGA        is vexMode=0 & addrsize=1 & byte=0xf; byte=0x1; byte=0xDF                   { invlpga(EAX,ECX); }
 @ifdef IA64
@@ -5133,9 +5151,9 @@ define pcodeop xrstors64;
 define pcodeop xtest;
 :XTEST          is byte=0x0F; byte=0x01; byte=0xD6       { ZF = xtest(); }
 
-:LFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=5 & r_m=0 { }
-:MFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=6 & r_m=0 { }
-:SFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=7 & r_m=0 { }
+:LFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=5 & r_m=0 { lfence(); }
+:MFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=6 & r_m=0 { mfence(); }
+:SFENCE         is vexMode=0 & $(PRE_NO) & byte=0x0F; byte=0xAE; mod = 0b11 & reg_opcode=7 & r_m=0 { sfence(); }
 
 #
 # floating point instructions
