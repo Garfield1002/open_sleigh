@@ -2217,6 +2217,25 @@ macro subCarryFlags ( op1, op2 ) {
 	op1 = result - zext(CFcopy);
 }
 
+# An operation with no defined result.  There is no p-code for "undefined",
+# and inventing a value would state something the architecture does not.
+define pcodeop undef;
+
+macro undefinedflags() {
+  # The manual says these flags are *undefined* after the instruction, which
+  # is not the same as unchanged: software may not rely on their value, so a
+  # consumer asking "does this instruction preserve the flags?" must be told
+  # no.  Omitting them -- the previous state of this specification -- is
+  # indistinguishable from preserving them, and a consumer checking Rust's
+  # `preserves_flags` contract read it that way.
+  CF = undef();
+  OF = undef();
+  SF = undef();
+  ZF = undef();
+  AF = undef();
+  PF = undef();
+}
+
 macro resultflags(result) {
  SF = result s< 0;
  ZF = result == 0;
@@ -3375,13 +3394,13 @@ define pcodeop cpuid_brand_part3_info;
                                                   local quotient = AX / rm8ext;  # DE exception if quotient doesn't fit in AL
                                                   local rem      = AX % rm8ext;
                                                   AL = quotient:1;
-                                                  AH = rem:1; }
+                                                  AH = rem:1;  undefinedflags(); }
 :DIV rm16       is vexMode=0 & opsize=0 & byte=0xf7; rm16 & reg_opcode=6 ...    { rm16ext:4 = zext(rm16);
                                                   tmp:4 = (zext(DX) << 16) | zext(AX);   # DE exception if quotient doesn't fit in AX
                                                   local quotient = tmp / rm16ext;
                                                   AX = quotient:2;
                                                   local rem = tmp % rm16ext;
-                                                  DX = rem:2; }
+                                                  DX = rem:2;  undefinedflags(); }
 :DIV rm32       is vexMode=0 & opsize=1 & byte=0xf7; rm32 & check_EDX_dest ... & check_EAX_dest ... & reg_opcode=6 ...    { rm32ext:8 = zext(rm32);
                                                   tmp:8 = (zext(EDX) << 32) | zext(EAX); # DE exception if quotient doesn't fit in EAX
                                                   local quotient = tmp / rm32ext;
@@ -3389,14 +3408,14 @@ define pcodeop cpuid_brand_part3_info;
                                                   build check_EAX_dest;
                                                   local rem = tmp % rm32ext;
                                                   EDX = rem:4;
-                                                  build check_EDX_dest; }
+                                                  build check_EDX_dest;  undefinedflags(); }
 @ifdef IA64
 :DIV rm64       is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf7; rm64 & reg_opcode=6 ...    { rm64ext:16 = zext(rm64);
                                                   tmp:16 = (zext(RDX) << 64) | zext(RAX); # DE exception if quotient doesn't fit in RAX
                                                   local quotient = tmp / rm64ext;
                                                   RAX = quotient:8;
                                                   local rem = tmp % rm64ext;
-                                                  RDX = rem:8; }                                                  
+                                                  RDX = rem:8;  undefinedflags(); }                                                  
 @endif
 
 enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
@@ -3644,13 +3663,13 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
                                                   local quotient = AX s/ rm8ext;  # DE exception if quotient doesn't fit in AL
                                                   local rem = AX s% rm8ext;
                                                   AL = quotient:1;
-                                                  AH = rem:1; }
+                                                  AH = rem:1;  undefinedflags(); }
 :IDIV rm16      is vexMode=0 & opsize=0 & byte=0xf7; rm16 & reg_opcode=7 ...    { rm16ext:4 = sext(rm16);
                                                   tmp:4 = (zext(DX) << 16) | zext(AX);   # DE exception if quotient doesn't fit in AX
                                                   local quotient = tmp s/ rm16ext;
                                                   AX = quotient:2;
                                                   local rem = tmp s% rm16ext;
-                                                  DX = rem:2; }
+                                                  DX = rem:2;  undefinedflags(); }
 :IDIV rm32      is vexMode=0 & opsize=1 & byte=0xf7; rm32 & check_EAX_dest ... & check_EDX_dest ... & reg_opcode=7 ...    { rm32ext:8 = sext(rm32);
                                                   tmp:8 = (zext(EDX) << 32) | zext(EAX); # DE exception if quotient doesn't fit in EAX
                                                   local quotient = tmp s/ rm32ext;
@@ -3658,14 +3677,14 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
                                                   build check_EAX_dest;
                                                   local rem = tmp s% rm32ext;
                                                   EDX = rem:4; 
-                                                  build check_EDX_dest; }
+                                                  build check_EDX_dest;  undefinedflags(); }
 @ifdef IA64
 :IDIV rm64      is $(LONGMODE_ON) & vexMode=0 & opsize=2 & byte=0xf7; rm64 & reg_opcode=7 ...    { rm64ext:16 = sext(rm64);
                                                   tmp:16 = (zext(RDX) << 64) | zext(RAX); # DE exception if quotient doesn't fit in RAX
                                                   local quotient = tmp s/ rm64ext;
                                                   RAX = quotient:8;
                                                   local rem = tmp s% rm64ext;
-                                                  RDX = rem:8; }
+                                                  RDX = rem:8;  undefinedflags(); }
 @endif
 
 :IMUL             rm8   is vexMode=0 & byte=0xf6; rm8 & reg_opcode=5 ...            { AX = sext(AL) * sext(rm8); imultflags(AL,AX); }    
