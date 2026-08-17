@@ -25,6 +25,16 @@ define space register type=register_space size=4;
 # need not agree, and a read after a write need not return what was written.
 define space io type=ram_space size=2;
 
+# The model-specific registers: a space of 64-bit registers indexed by the
+# 32-bit MSR number, reachable only by RDMSR/WRMSR (and RDTSCP/SWAPGS, which
+# name particular ones).  As with `io`, a space says which register carries
+# the index and which carries the datum, where a p-code operation would hide
+# both.
+#
+# Writing an MSR can change how the processor itself behaves -- EFER selects
+# long mode, for one -- so a consumer must not treat this as inert storage.
+define space msr type=ram_space size=4;
+
 # General purpose registers
 
 @ifdef IA64
@@ -4467,9 +4477,8 @@ define pcodeop readgsbase;
 :RDGSBASE r64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0f; byte=0xae; reg_opcode=1 & r64 { r64 = readgsbase(); }
 @endif
 
-define pcodeop rdmsr;
 :RDMSR          is vexMode=0 & byte=0xf; byte=0x32 & check_EAX_dest & check_EDX_dest {
-	tmp:8 = rdmsr(ECX);
+	tmp:8 = *[msr]:8 ECX;
 	EDX = tmp(4); build check_EDX_dest;
 	EAX = tmp(0); build check_EAX_dest;
 }
@@ -4979,8 +4988,7 @@ define pcodeop writegsbase;
 define pcodeop wrpkru;
 :WRPKRU         is byte=0x0F; byte=0x01; byte=0xEF              { wrpkru(EAX); }
 
-define pcodeop wrmsr;
-:WRMSR is vexMode=0 & byte=0xf; byte=0x30 { tmp:8 = (zext(EDX) << 32) | zext(EAX); wrmsr(ECX,tmp); }
+:WRMSR is vexMode=0 & byte=0xf; byte=0x30 { tmp:8 = (zext(EDX) << 32) | zext(EAX); *[msr]:8 ECX = tmp; }
 
 macro xadd(dst,src) {
     local tmp = dst;
