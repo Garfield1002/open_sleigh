@@ -3,9 +3,12 @@
 @ifdef IA64
 @define SIZE     "8"
 @define STACKPTR "RSP"
+# Size of one IDT gate descriptor: 16 bytes in long mode, 8 in protected mode.
+@define IDTGATE  "16"
 @else
 @define SIZE     "4"
 @define STACKPTR "ESP"
+@define IDTGATE  "8"
 @endif
 
 define endian=little;
@@ -3727,9 +3730,20 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=1 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = *[io]:4 DX; build reptail; }
 :INSD^rep^reptail eseDI4,DX is vexMode=0 & rep & reptail & opsize=2 & byte=0x6d & eseDI4 & DX   { build rep; build eseDI4; eseDI4 = *[io]:4 DX; build reptail; }
 
-:INT1           is vexMode=0 & byte=0xf1                            { tmp:1 = 0x1; intloc:$(SIZE) = swi(tmp); call [intloc]; return [0:1]; }
-:INT3           is vexMode=0 & byte=0xcc                            { tmp:1 = 0x3; intloc:$(SIZE) = swi(tmp); call [intloc]; return [0:1]; }
-:INT imm8       is vexMode=0 & byte=0xcd; imm8                      { tmp:1 = imm8; intloc:$(SIZE) = swi(tmp); call [intloc]; }
+# Event delivery reads the gate descriptor for the vector out of the IDT, at
+# IDTR base + vector * gate size (Intel SDM Vol. 3, "Interrupt and Exception
+# Handling": "Each vector provides an index to a gate descriptor in the IDT").
+# That read is of ordinary memory the program owns, so it must be visible in
+# the p-code rather than hidden inside `swi`; a consumer that cannot see it
+# cannot tell that the instruction touches memory at all.
+#
+# Decoding the gate into a handler address stays in `swi`, and the stack frame
+# event delivery pushes is deliberately not modelled: which stack it lands on
+# depends on the gate's IST field and on whether the privilege level changes,
+# and guessing would state something the specification does not know.
+:INT1           is vexMode=0 & byte=0xf1                            { tmp:1 = 0x1; gate:$(SIZE) = *:$(SIZE) (IDTR_Address + zext(tmp) * $(IDTGATE)); intloc:$(SIZE) = swi(gate); call [intloc]; return [0:1]; }
+:INT3           is vexMode=0 & byte=0xcc                            { tmp:1 = 0x3; gate:$(SIZE) = *:$(SIZE) (IDTR_Address + zext(tmp) * $(IDTGATE)); intloc:$(SIZE) = swi(gate); call [intloc]; return [0:1]; }
+:INT imm8       is vexMode=0 & byte=0xcd; imm8                      { tmp:1 = imm8; gate:$(SIZE) = *:$(SIZE) (IDTR_Address + zext(tmp) * $(IDTGATE)); intloc:$(SIZE) = swi(gate); call [intloc]; }
 :INTO           is $(LONGMODE_OFF) & vexMode=0 & byte=0xce
 {
   tmp:1 = 0x4;
