@@ -9093,8 +9093,35 @@ macro pmulhw128(xmm1, xmm2) {
 :POR            XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xEB; xmmmod = 3 & XmmReg1 & XmmReg2	{ XmmReg1 = XmmReg1 | XmmReg2; }
 
 define pcodeop psadbw;
-:PSADBW         mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxreg ... & m64 { mmxreg = psadbw(mmxreg, m64); }
-:PSADBW         mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxmod = 3 & mmxreg1 & mmxreg2 { mmxreg1 = psadbw(mmxreg1, mmxreg2); }
+
+# Accumulate one unsigned-byte absolute difference. The 16-bit difference is
+# sufficient for [-255,255], so its arithmetic sign bit is bit 15.
+macro psadbw_byte(sum, left_byte, right_byte) {
+    local x:2 = zext(left_byte);
+    local y:2 = zext(right_byte);
+    local difference:2 = x - y;
+    local sign_mask:2 = difference s>> 15;
+    sum = sum + ((difference ^ sign_mask) - sign_mask);
+}
+
+# PSADBW's MMX form has eight byte lanes. Deliberately unroll it: this is the
+# p-code equivalent of the lane loop, without introducing local control flow.
+macro psadbw_mmx(dst, src) {
+    local left:8 = dst;
+    local right:8 = src;
+    local sum:2 = 0;
+    psadbw_byte(sum, left[0,8], right[0,8]);
+    psadbw_byte(sum, left[8,8], right[8,8]);
+    psadbw_byte(sum, left[16,8], right[16,8]);
+    psadbw_byte(sum, left[24,8], right[24,8]);
+    psadbw_byte(sum, left[32,8], right[32,8]);
+    psadbw_byte(sum, left[40,8], right[40,8]);
+    psadbw_byte(sum, left[48,8], right[48,8]);
+    psadbw_byte(sum, left[56,8], right[56,8]);
+    dst = zext(sum);
+}
+:PSADBW         mmxreg, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxreg ... & m64 { psadbw_mmx(mmxreg, m64); }
+:PSADBW         mmxreg1, mmxreg2 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxmod = 3 & mmxreg1 & mmxreg2 { psadbw_mmx(mmxreg1, mmxreg2); }
 :PSADBW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; XmmReg ... & m128 { XmmReg = psadbw(XmmReg, m128); }
 :PSADBW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = psadbw(XmmReg1, XmmReg2); }
 
