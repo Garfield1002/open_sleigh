@@ -1,7 +1,10 @@
 macro lzcntflags(input, output) {
  ZF = (output == 0);
  CF = (input == 0);
- # OF, SF, PF, AF are undefined
+ OF = undef();
+ SF = undef();
+ PF = undef();
+ AF = undef();
 }
 
 ####

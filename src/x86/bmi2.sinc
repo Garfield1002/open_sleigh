@@ -18,7 +18,8 @@
   SF = (Reg32 s< 0);
   CF = indexTmp > 31;
   OF = 0;
-  # AF and PF are undefined
+  AF = undef();
+  PF = undef();
 }
 
 @ifdef IA64
@@ -36,7 +37,8 @@
   SF = (Reg64 s< 0);
   CF = indexTmp > 63;
   OF = 0;
-  # AF and PF are undefined
+  AF = undef();
+  PF = undef();
 }
 @endif
 

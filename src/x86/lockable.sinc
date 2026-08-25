@@ -350,6 +350,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr= *:1 ptr ^(1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -366,6 +367,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr ^ (1<<bit);
     CF = (val != 0);
+    bitTestUndefinedFlags();
     build unlock;
 }
 
@@ -379,6 +381,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr ^ (1<<bit);
     CF = (val != 0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
@@ -391,6 +394,7 @@
     local val=(m16>>bit)&1;
     m16=m16^(1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -401,6 +405,7 @@
     local bit=imm8&0x1f;
     local val=(m32>>bit)&1;
     CF=(val!=0);
+    bitTestUndefinedFlags();
     m32=m32^(1<<bit);
     build unlock; 
 }
@@ -414,6 +419,7 @@
     local val=(m64>>bit)&1;
     m64=m64^(1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
@@ -427,6 +433,7 @@
     local val=(*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr & ~(1<<bit);
     CF = (val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -443,6 +450,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr & ~(1<<bit);
     CF = (val!=0);
+    bitTestUndefinedFlags();
     build unlock;
 }
 
@@ -456,6 +464,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr & ~(1<<bit);
     CF = (val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
@@ -468,6 +477,7 @@
     local val=(m16>>bit)&1;
     m16=m16 & ~(1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -478,6 +488,7 @@
     local bit=imm8&0x1f;
     local val=(m32>>bit)&1;
     CF=(val!=0);
+    bitTestUndefinedFlags();
     m32=m32 & ~(1<<bit);
     build unlock; 
 }
@@ -491,6 +502,7 @@
     local val=(m64>>bit)&1;
     m64=m64 & ~(1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
@@ -504,6 +516,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr | (1<<bit);
     CF = (val != 0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -520,6 +533,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr | (1<<bit);
     CF = (val != 0);
+    bitTestUndefinedFlags();
     build unlock;
 }
 
@@ -533,6 +547,7 @@
     local val = (*:1 ptr >> bit) & 1;
     *:1 ptr = *:1 ptr | (1<<bit);
     CF = (val != 0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
@@ -545,6 +560,7 @@
     local val=(m16>>bit)&1;
     m16=m16 | (1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 
@@ -555,6 +571,7 @@
     local bit=imm8&0x1f;
     local val=(m32>>bit)&1;
     CF=(val!=0);
+    bitTestUndefinedFlags();
     m32=m32 | (1<<bit);
     build unlock; 
 }
@@ -568,6 +585,7 @@
     local val=(m64>>bit)&1;
     m64=m64 | (1<<bit);
     CF=(val!=0);
+    bitTestUndefinedFlags();
     build unlock; 
 }
 @endif
