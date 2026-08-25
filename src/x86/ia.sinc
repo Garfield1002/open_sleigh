@@ -8237,7 +8237,32 @@ define pcodeop paddusb;
 :PADDUSB        mmxreg1, mmxreg2_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xDC; mmxreg1 ... & mmxreg2_m64 { mmxreg1 = paddusb(mmxreg1, mmxreg2_m64); }
 
 define pcodeop paddusw;
-:PADDUSW        mmxreg1, mmxreg2_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xDD; mmxreg1 ... & mmxreg2_m64 { mmxreg1 = paddusw(mmxreg1, mmxreg2_m64); }
+
+# Unsigned saturating addition of one 16-bit lane. A carry into bit 16 becomes
+# an all-ones mask, which saturates the low 16 bits without a branch.
+macro paddusw_lane(result, left_word, right_word) {
+    result = zext(left_word) + zext(right_word);
+    local carry:4 = result >> 16:4;
+    local mask:4 = -carry;
+    result = result | mask;
+}
+
+# MMX has exactly four lanes. Do not hide the lane semantics in a user-op:
+# explicit expansion produces ordinary p-code that downstream lifters can use.
+macro paddusw_mmx(dst, src) {
+    local left:8 = dst;
+    local right:8 = src;
+    local sum0:4;
+    local sum1:4;
+    local sum2:4;
+    local sum3:4;
+    paddusw_lane(sum0, left[0,16], right[0,16]);
+    paddusw_lane(sum1, left[16,16], right[16,16]);
+    paddusw_lane(sum2, left[32,16], right[32,16]);
+    paddusw_lane(sum3, left[48,16], right[48,16]);
+    dst = zext(sum0:2) | (zext(sum1:2) << 16) | (zext(sum2:2) << 32) | (zext(sum3:2) << 48);
+}
+:PADDUSW        mmxreg1, mmxreg2_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xDD; mmxreg1 ... & mmxreg2_m64 { paddusw_mmx(mmxreg1, mmxreg2_m64); }
 
 :PADDUSB        XmmReg1, XmmReg2_m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xDC; XmmReg1 ... & XmmReg2_m128 { XmmReg1 = paddusb(XmmReg1, XmmReg2_m128); }
 :PADDUSW        XmmReg1, XmmReg2_m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xDD; XmmReg1 ... & XmmReg2_m128 { XmmReg1 = paddusw(XmmReg1, XmmReg2_m128); }
