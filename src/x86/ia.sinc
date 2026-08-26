@@ -1158,54 +1158,54 @@ m64:  "qword ptr" Mem  	is Mem      { export *:8 Mem; }
 
 
 # MMX is the low-64 view of the same physical x87 slots.
-mmxregop: "MM0" is mmxreg=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxregop: "MM1" is mmxreg=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxregop: "MM2" is mmxreg=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxregop: "MM3" is mmxreg=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxregop: "MM4" is mmxreg=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxregop: "MM5" is mmxreg=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxregop: "MM6" is mmxreg=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxregop: "MM7" is mmxreg=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 70:2; }
-mmxreg1op: "MM0" is mmxreg1=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxreg1op: "MM1" is mmxreg1=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxreg1op: "MM2" is mmxreg1=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxreg1op: "MM3" is mmxreg1=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxreg1op: "MM4" is mmxreg1=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxreg1op: "MM5" is mmxreg1=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxreg1op: "MM6" is mmxreg1=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxreg1op: "MM7" is mmxreg1=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 70:2; }
-mmxreg2op: "MM0" is mmxreg2=0 { FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxreg2op: "MM1" is mmxreg2=1 { FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxreg2op: "MM2" is mmxreg2=2 { FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxreg2op: "MM3" is mmxreg2=3 { FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxreg2op: "MM4" is mmxreg2=4 { FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxreg2op: "MM5" is mmxreg2=5 { FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxreg2op: "MM6" is mmxreg2=6 { FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxreg2op: "MM7" is mmxreg2=7 { FPUTagWord = 0; export *[x87]:8 70:2; }
-mmxregsrc: "MM0" is mmxreg=0 { FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxregsrc: "MM1" is mmxreg=1 { FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxregsrc: "MM2" is mmxreg=2 { FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxregsrc: "MM3" is mmxreg=3 { FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxregsrc: "MM4" is mmxreg=4 { FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxregsrc: "MM5" is mmxreg=5 { FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxregsrc: "MM6" is mmxreg=6 { FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxregsrc: "MM7" is mmxreg=7 { FPUTagWord = 0; export *[x87]:8 70:2; }
-mmxreg1src: "MM0" is mmxreg1=0 { FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxreg1src: "MM1" is mmxreg1=1 { FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxreg1src: "MM2" is mmxreg1=2 { FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxreg1src: "MM3" is mmxreg1=3 { FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxreg1src: "MM4" is mmxreg1=4 { FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxreg1src: "MM5" is mmxreg1=5 { FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxreg1src: "MM6" is mmxreg1=6 { FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxreg1src: "MM7" is mmxreg1=7 { FPUTagWord = 0; export *[x87]:8 70:2; }
-mmxreg2dest: "MM0" is mmxreg2=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 0:2; }
-mmxreg2dest: "MM1" is mmxreg2=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 10:2; }
-mmxreg2dest: "MM2" is mmxreg2=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 20:2; }
-mmxreg2dest: "MM3" is mmxreg2=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 30:2; }
-mmxreg2dest: "MM4" is mmxreg2=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 40:2; }
-mmxreg2dest: "MM5" is mmxreg2=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 50:2; }
-mmxreg2dest: "MM6" is mmxreg2=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 60:2; }
-mmxreg2dest: "MM7" is mmxreg2=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; export *[x87]:8 70:2; }
+mmxregop: "MM0" is mmxreg=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxregop: "MM1" is mmxreg=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxregop: "MM2" is mmxreg=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxregop: "MM3" is mmxreg=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxregop: "MM4" is mmxreg=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxregop: "MM5" is mmxreg=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxregop: "MM6" is mmxreg=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxregop: "MM7" is mmxreg=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
+mmxreg1op: "MM0" is mmxreg1=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxreg1op: "MM1" is mmxreg1=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxreg1op: "MM2" is mmxreg1=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxreg1op: "MM3" is mmxreg1=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxreg1op: "MM4" is mmxreg1=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxreg1op: "MM5" is mmxreg1=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxreg1op: "MM6" is mmxreg1=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxreg1op: "MM7" is mmxreg1=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
+mmxreg2op: "MM0" is mmxreg2=0 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxreg2op: "MM1" is mmxreg2=1 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxreg2op: "MM2" is mmxreg2=2 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxreg2op: "MM3" is mmxreg2=3 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxreg2op: "MM4" is mmxreg2=4 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxreg2op: "MM5" is mmxreg2=5 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxreg2op: "MM6" is mmxreg2=6 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxreg2op: "MM7" is mmxreg2=7 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
+mmxregsrc: "MM0" is mmxreg=0 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxregsrc: "MM1" is mmxreg=1 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxregsrc: "MM2" is mmxreg=2 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxregsrc: "MM3" is mmxreg=3 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxregsrc: "MM4" is mmxreg=4 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxregsrc: "MM5" is mmxreg=5 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxregsrc: "MM6" is mmxreg=6 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxregsrc: "MM7" is mmxreg=7 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
+mmxreg1src: "MM0" is mmxreg1=0 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxreg1src: "MM1" is mmxreg1=1 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxreg1src: "MM2" is mmxreg1=2 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxreg1src: "MM3" is mmxreg1=3 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxreg1src: "MM4" is mmxreg1=4 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxreg1src: "MM5" is mmxreg1=5 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxreg1src: "MM6" is mmxreg1=6 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxreg1src: "MM7" is mmxreg1=7 { FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
+mmxreg2dest: "MM0" is mmxreg2=0 { *[x87]:2 8:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 0:2; }
+mmxreg2dest: "MM1" is mmxreg2=1 { *[x87]:2 18:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 10:2; }
+mmxreg2dest: "MM2" is mmxreg2=2 { *[x87]:2 28:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 20:2; }
+mmxreg2dest: "MM3" is mmxreg2=3 { *[x87]:2 38:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 30:2; }
+mmxreg2dest: "MM4" is mmxreg2=4 { *[x87]:2 48:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 40:2; }
+mmxreg2dest: "MM5" is mmxreg2=5 { *[x87]:2 58:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 50:2; }
+mmxreg2dest: "MM6" is mmxreg2=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 60:2; }
+mmxreg2dest: "MM7" is mmxreg2=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
 # Logical ST(i) views dynamically address the physical file through TOP.
 # They are memory lvalues, not register-space aliases.
 fregop: "ST0" is freg=0 {
@@ -2568,6 +2568,50 @@ macro tagvalid7() {
     FPUTagWord = FPUTagWord - (old_tag << shift);
 }
 
+# Copy the complete full-tag class of ST(0) to a fixed logical destination.
+# These are separate no-argument macros because raw SLEIGH fields and literal
+# macro arguments leak into the flat p-code lowering as discarded expressions.
+macro tagcopy0to0() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = top * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to1() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 1) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to2() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 2) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to3() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 3) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to4() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 4) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to5() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 5) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to6() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 6) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to7() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 7) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+
 macro tagempty0() {
     local top:2 = (FPUStatusWord >> 11) & 7;
     local shift:2 = ((top + 0) & 7) * 2;
@@ -2628,6 +2672,7 @@ macro tagempty7() {
 # ModR/M-selected logical operand is specialized below, so these helpers have
 # no macro arguments and expand reliably in SLEIGH.
 macro tagswap1() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 1) & 7) * 2;
@@ -2637,6 +2682,7 @@ macro tagswap1() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap2() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 2) & 7) * 2;
@@ -2646,6 +2692,7 @@ macro tagswap2() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap3() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 3) & 7) * 2;
@@ -2655,6 +2702,7 @@ macro tagswap3() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap4() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 4) & 7) * 2;
@@ -2664,6 +2712,7 @@ macro tagswap4() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap5() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 5) & 7) * 2;
@@ -2673,6 +2722,7 @@ macro tagswap5() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap6() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 6) & 7) * 2;
@@ -2682,6 +2732,7 @@ macro tagswap6() {
     FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
 }
 macro tagswap7() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     local top:2 = (FPUStatusWord >> 11) & 7;
     local s0:2 = top * 2;
     local s1:2 = ((top + 7) & 7) * 2;
@@ -2720,14 +2771,60 @@ macro fpopv(val) {
     fpop();
 }
 
-macro fcom(val) {
-    C1 = 0;
-    
-    C2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
-    C0 = C2 | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
-    C3 = C2 | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
+# Update only x87 condition codes.  TOP, exception/sticky status, and the
+# busy/error-summary bits are not comparison results and must survive.
+macro fpu_set_condition_codes(c0, c1, c2, c3) {
+    FPUStatusWord = (FPUStatusWord & 0xb8ff) |
+                    (zext(c0) << 8) | (zext(c1) << 9) |
+                    (zext(c2) << 10) | (zext(c3) << 14);
+}
 
-    FPUStatusWord = (zext(C0)<<8) | (zext(C1)<<9) | (zext(C2)<<10) | (zext(C3)<<14);
+macro fcom(val) {
+    local c2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+    local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
+    local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
+    fpu_set_condition_codes(c0, 0:1, c2, c3);
+}
+
+# Produce the architectural full tag associated with an occupied f80 slot.
+# The abridged tag transport only distinguishes occupied from empty, so saves
+# must recover zero and special classes from the physical f80 encoding.
+macro fpu_tag_class(value, old_tag, result) {
+    local exponent:2 = value[64,15];
+    local significand:8 = value[0,64];
+    local integer_bit:1 = value[63,1];
+    local is_zero:1 = (exponent == 0) && (significand == 0);
+    local is_normal:1 = (exponent != 0) && (exponent != 0x7fff) && integer_bit;
+    local occupied_class:2 = zext(is_zero) | (zext(!is_zero && !is_normal) << 1);
+    local is_empty:1 = old_tag == 3;
+    local is_occupied:1 = old_tag != 3;
+    result = (zext(is_empty) * 3) | (zext(is_occupied) * occupied_class);
+}
+
+macro fpu_synthesized_tag(result) {
+    local r0:10 = *[x87]:10 0:2;  local old0:2 = (FPUTagWord >>  0) & 3; local c0:2; fpu_tag_class(r0, old0, c0);
+    local r1:10 = *[x87]:10 10:2; local old1:2 = (FPUTagWord >>  2) & 3; local c1:2; fpu_tag_class(r1, old1, c1);
+    local r2:10 = *[x87]:10 20:2; local old2:2 = (FPUTagWord >>  4) & 3; local c2:2; fpu_tag_class(r2, old2, c2);
+    local r3:10 = *[x87]:10 30:2; local old3:2 = (FPUTagWord >>  6) & 3; local c3:2; fpu_tag_class(r3, old3, c3);
+    local r4:10 = *[x87]:10 40:2; local old4:2 = (FPUTagWord >>  8) & 3; local c4:2; fpu_tag_class(r4, old4, c4);
+    local r5:10 = *[x87]:10 50:2; local old5:2 = (FPUTagWord >> 10) & 3; local c5:2; fpu_tag_class(r5, old5, c5);
+    local r6:10 = *[x87]:10 60:2; local old6:2 = (FPUTagWord >> 12) & 3; local c6:2; fpu_tag_class(r6, old6, c6);
+    local r7:10 = *[x87]:10 70:2; local old7:2 = (FPUTagWord >> 14) & 3; local c7:2; fpu_tag_class(r7, old7, c7);
+    # Build incrementally so every shift/OR inherits the two-byte result type.
+    result = c0;
+    result = result | (c1 << 2);
+    result = result | (c2 << 4);
+    result = result | (c3 << 6);
+    result = result | (c4 << 8);
+    result = result | (c5 << 10);
+    result = result | (c6 << 12);
+    result = result | (c7 << 14);
+}
+
+macro store_synthesized_fpu_tag(Mem) {
+    local full_tag:2;
+    fpu_synthesized_tag(full_tag);
+    *:2 (Mem + 8) = full_tag;
 }
 
 macro fcomi(val) {
@@ -5770,9 +5867,9 @@ define pcodeop fcos;
 :FDECSTP		    is vexMode=0 & byte=0xD9; byte=0xF6					
 { 
    FPUInstructionPointer = inst_start;
-   fdec(); 
-   FPUStatusWord = FPUStatusWord & 0xfeff; 
-   C0 = 0; #Clear C0
+   fdec();
+   # C1 is the only defined condition code for FINCSTP/FDECSTP.
+   FPUStatusWord = FPUStatusWord & 0xfdff;
 }
 
 # Legacy 8087 instructions. Still valid but treated as NOP instructions.
@@ -6030,7 +6127,9 @@ define pcodeop fcos;
 :FINCSTP            is vexMode=0 & byte=0xD9; byte=0xF7                 
 { 
     FPUInstructionPointer = inst_start;
-    finc(); 
+    finc();
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
 }                                   
 
 :FINIT              is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE3          
@@ -6334,12 +6433,12 @@ define pcodeop fptan;
 
 :FSAVE Mem      is vexMode=0 & byte=0x9B; byte=0xDD; reg_opcode=6 ... & Mem
 {
-  *:2  (Mem)      = FPUControlWord;
-  *:2  (Mem +  4) = FPUStatusWord;
-  *:2  (Mem +  8) = FPUTagWord;
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
-  *:2  (Mem + 18) = FPULastInstructionOpcode;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
 
   *:10 (Mem + 28) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
   *:10 (Mem + 38) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
@@ -6360,12 +6459,12 @@ define pcodeop fptan;
 
 :FNSAVE Mem     is vexMode=0 & byte=0xDD; reg_opcode=6 ... & Mem
 {
-  *:2  (Mem)      = FPUControlWord;
-  *:2  (Mem +  4) = FPUStatusWord;
-  *:2  (Mem +  8) = FPUTagWord;
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
-  *:2  (Mem + 18) = FPULastInstructionOpcode;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
 
   *:10 (Mem + 28) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
   *:10 (Mem + 38) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
@@ -6424,11 +6523,22 @@ define pcodeop fsin;
     m64fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
 }     
 
-:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop
-{
-    FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-}
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=0
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to0(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=1
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to1(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=2
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to2(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=3
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to3(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=4
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to4(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=5
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to5(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=6
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to6(); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=7
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to7(); }
 
 :FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp 
 {
@@ -6450,11 +6560,22 @@ define pcodeop fsin;
     fpopv(m80fp); 
 }             
 
-:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop
-{
-    FPUInstructionPointer = inst_start;
-    fpopv(fregop);
-}
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=0
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to0(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=1
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to1(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=2
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to2(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=3
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to3(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=4
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to4(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=5
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to5(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=6
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to6(); fpop(); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=7
+{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to7(); fpop(); }
 
 :FSTCW m16      is vexMode=0 & byte=0x9B; byte=0xD9; (mod != 0b11 & reg_opcode=7) ... & m16
 {
@@ -6468,22 +6589,22 @@ define pcodeop fsin;
 
 :FSTENV Mem     is vexMode=0 & byte=0x9B; byte=0xD9; (mod != 0b11 & reg_opcode=6) ... & Mem
 {
-  *:2  (Mem)      = FPUControlWord;
-  *:2  (Mem +  4) = FPUStatusWord;
-  *:2  (Mem +  8) = FPUTagWord;
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
-  *:2  (Mem + 18) = FPULastInstructionOpcode;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
 }
 
 :FNSTENV Mem    is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=6) ... & Mem
 {
-  *:2  (Mem)      = FPUControlWord;
-  *:2  (Mem +  4) = FPUStatusWord;
-  *:2  (Mem +  8) = FPUTagWord;
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
-  *:2  (Mem + 18) = FPULastInstructionOpcode;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
 }
 
 :FSTSW m16      is vexMode=0 & byte=0x9B; byte=0xDD; reg_opcode=7 ... & m16     
@@ -6648,28 +6769,33 @@ define pcodeop fsin;
 :FXAM           is vexMode=0 & byte=0xD9; byte=0xE5
 {
   FPUInstructionPointer = inst_start;
-  # this is not an exact implementation, but gets the sign and zero tests right
-  izero:4 = 0;
-  fzero:10 = int2float(izero);
-  
-  # did not know how test for infinity or empty
-  C0 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-  
-  # sign of *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)
-  C1 = ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< fzero );
-
-  # assume normal if not zero 
-  C2 = ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f!= fzero );
-
-  # equal to zero  
-  C3 = ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== fzero );
-  
-  FPUStatusWord = (zext(C0)<<8) | (zext(C1)<<9) | (zext(C2)<<10) | (zext(C3)<<14);
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local value:10 = *[x87]:10 (top * 10);
+  local tag:2 = (FPUTagWord >> (top * 2)) & 3;
+  local exponent:2 = value[64,15];
+  local significand:8 = value[0,64];
+  local fraction:8 = value[0,63];
+  local integer_bit:1 = value[63,1];
+  local sign:1 = value[79,1];
+  local empty:1 = tag == 3;
+  local zero:1 = !empty && exponent == 0 && significand == 0;
+  local normal:1 = !empty && exponent != 0 && exponent != 0x7fff && integer_bit;
+  local infinity:1 = !empty && exponent == 0x7fff && integer_bit && fraction == 0;
+  local nan:1 = !empty && exponent == 0x7fff && integer_bit && fraction != 0;
+  local denormal:1 = !empty && exponent == 0 && significand != 0;
+  # Codes are C3:C2:C0: unsupported=000, NaN=001, normal=010,
+  # infinity=011, zero=100, empty=101, denormal=110.
+  local c0:1 = empty || infinity || nan;
+  local c1:1 = !empty && sign;
+  local c2:1 = normal || infinity || denormal;
+  local c3:1 = empty || zero || denormal;
+  fpu_set_condition_codes(c0, c1, c2, c3);
 }
                                                                     
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=0
 {
     FPUInstructionPointer = inst_start;
+    FPUStatusWord = FPUStatusWord & 0xfdff;
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=1
 {
