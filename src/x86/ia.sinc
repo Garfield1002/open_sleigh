@@ -6311,8 +6311,11 @@ define pcodeop fldenv;
   FPUControlWord           = *:2 (Mem);
   FPUStatusWord            = *:2 (Mem +  4);
   FPUTagWord               = *:2 (Mem +  8);
-  FPUDataPointer           = *:4 (Mem + 20);
-  FPUInstructionPointer    = *:4 (Mem + 12);
+  # Legacy environments carry 32-bit pointers.  Explicitly zero-extend them:
+  # assigning a bare *:4 to the 64-bit x86-64 register makes SLEIGH widen the
+  # memory load itself, incorrectly consuming the FOP/selector-adjacent bytes.
+  FPUDataPointer           = zext(*:4 (Mem + 20));
+  FPUInstructionPointer    = zext(*:4 (Mem + 12));
   FPULastInstructionOpcode = *:2 (Mem + 18);
 }
 
@@ -6417,8 +6420,10 @@ define pcodeop fptan;
   FPUControlWord           = *:2  (Mem);
   FPUStatusWord            = *:2  (Mem +  4);
   FPUTagWord               = *:2  (Mem +  8);
-  FPUDataPointer           = *:4  (Mem + 20);
-  FPUInstructionPointer    = *:4  (Mem + 12);
+  # The legacy image has 32-bit pointers even in long mode; do not widen the
+  # memory access when assigning the x86-64 pointer registers.
+  FPUDataPointer           = zext(*:4 (Mem + 20));
+  FPUInstructionPointer    = zext(*:4 (Mem + 12));
   FPULastInstructionOpcode = *:2  (Mem + 18);
 
   *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)                      = *:10 (Mem + 28);
@@ -6899,10 +6904,8 @@ macro _fxsave(Mem) {
   *:2  (Mem +  2) = FPUStatusWord;
   fxsave_tag(Mem);
   *:2  (Mem +  6) = FPULastInstructionOpcode;
-  *:4  (Mem +  8) = FPUInstructionPointer;
-  *:2  (Mem + 12) = FPUPointerSelector;
-  *:4  (Mem + 16) = FPUDataPointer;
-  *:2  (Mem + 20) = FPUDataSelector;
+  *:8  (Mem +  8) = FPUInstructionPointer;
+  *:8  (Mem + 16) = FPUDataPointer;
   *:4  (Mem + 24) = MXCSR;
 
   # Save the FPU ST registers to the ST/MM area of the structure.
@@ -6940,10 +6943,8 @@ macro _fxrstor(Mem) {
   FPUStatusWord            = *:2  (Mem +  2);
   fxrstor_tag(Mem);
   FPULastInstructionOpcode = *:2  (Mem +  6);
-  FPUInstructionPointer    = *:4  (Mem +  8);
-  FPUPointerSelector       = *:2  (Mem + 12);
-  FPUDataPointer           = *:4  (Mem + 16);
-  FPUDataSelector          = *:2  (Mem + 20);
+  FPUInstructionPointer    = *:8  (Mem +  8);
+  FPUDataPointer           = *:8  (Mem + 16);
   MXCSR                    = *:4  (Mem + 24);
 
   *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *:10 (Mem +  32);
