@@ -9733,14 +9733,38 @@ define pcodeop pavgw;
 }
 
 define pcodeop phaddd;
-:PHADDD        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x02; mmxregop ... & m64                          { mmxregop=phaddd(mmxregop,m64); }
-:PHADDD        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x02; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phaddd(mmxreg1op,mmxreg2op); }
+:PHADDD        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x02; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    mmxregop[0,32] = hdst[0,32] + hdst[32,32];
+    mmxregop[32,32] = hsrc[0,32] + hsrc[32,32];
+}
+:PHADDD        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x02; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    mmxreg1op[0,32] = hdst[0,32] + hdst[32,32];
+    mmxreg1op[32,32] = hsrc[0,32] + hsrc[32,32];
+}
 :PHADDD        XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x02; XmmReg ... & m128              { XmmReg=phaddd(XmmReg,m128); }
 :PHADDD        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x02; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phaddd(XmmReg1,XmmReg2); }
 
 define pcodeop phaddw;
-:PHADDW        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x01; mmxregop ... & m64                          { mmxregop=phaddw(mmxregop,m64); }
-:PHADDW        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x01; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phaddw(mmxreg1op,mmxreg2op); }
+:PHADDW        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x01; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    mmxregop[0,16] = hdst[0,16] + hdst[16,16];
+    mmxregop[16,16] = hdst[32,16] + hdst[48,16];
+    mmxregop[32,16] = hsrc[0,16] + hsrc[16,16];
+    mmxregop[48,16] = hsrc[32,16] + hsrc[48,16];
+}
+:PHADDW        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x01; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    mmxreg1op[0,16] = hdst[0,16] + hdst[16,16];
+    mmxreg1op[16,16] = hdst[32,16] + hdst[48,16];
+    mmxreg1op[32,16] = hsrc[0,16] + hsrc[16,16];
+    mmxreg1op[48,16] = hsrc[32,16] + hsrc[48,16];
+}
 :PHADDW        XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x01; XmmReg ... & m128              { XmmReg=phaddw(XmmReg,m128); }
 :PHADDW        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x01; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phaddw(XmmReg1,XmmReg2); }
 
@@ -9751,14 +9775,38 @@ define pcodeop phaddsw;
 :PHADDSW       XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x03; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phaddsw(XmmReg1,XmmReg2); }
 
 define pcodeop phsubd;
-:PHSUBD        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x06; mmxregop ... & m64                          { mmxregop=phsubd(mmxregop,m64); }
-:PHSUBD        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x06; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phsubd(mmxreg1op,mmxreg2op); }
+:PHSUBD        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x06; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    mmxregop[0,32] = hdst[0,32] - hdst[32,32];
+    mmxregop[32,32] = hsrc[0,32] - hsrc[32,32];
+}
+:PHSUBD        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x06; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    mmxreg1op[0,32] = hdst[0,32] - hdst[32,32];
+    mmxreg1op[32,32] = hsrc[0,32] - hsrc[32,32];
+}
 :PHSUBD        XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x06; XmmReg ... & m128              { XmmReg=phsubd(XmmReg,m128); }
 :PHSUBD        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x06; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phsubd(XmmReg1,XmmReg2); }
 
 define pcodeop phsubw;
-:PHSUBW        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x05; mmxregop ... & m64                          { mmxregop=phsubw(mmxregop,m64); }
-:PHSUBW        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x05; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phsubw(mmxreg1op,mmxreg2op); }
+:PHSUBW        mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x05; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    mmxregop[0,16] = hdst[0,16] - hdst[16,16];
+    mmxregop[16,16] = hdst[32,16] - hdst[48,16];
+    mmxregop[32,16] = hsrc[0,16] - hsrc[16,16];
+    mmxregop[48,16] = hsrc[32,16] - hsrc[48,16];
+}
+:PHSUBW        mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x05; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    mmxreg1op[0,16] = hdst[0,16] - hdst[16,16];
+    mmxreg1op[16,16] = hdst[32,16] - hdst[48,16];
+    mmxreg1op[32,16] = hsrc[0,16] - hsrc[16,16];
+    mmxreg1op[48,16] = hsrc[32,16] - hsrc[48,16];
+}
 :PHSUBW        XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x05; XmmReg ... & m128              { XmmReg=phsubw(XmmReg,m128); }
 :PHSUBW        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x05; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phsubw(XmmReg1,XmmReg2); }
 
