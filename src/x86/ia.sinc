@@ -6276,40 +6276,55 @@ define pcodeop fcos;
 :FLDL2T		is vexMode=0 & byte=0xD9; byte=0xE9
 { 
     FPUInstructionPointer = inst_start;
-    src:8 = 0x400a934f0979a371; 
-    tmp:10 = float2float(src); 
+    # Exact 80-bit log2(10); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xd49a784bcd1b8afe:8);
+    sign_exponent:10 = zext(0x4000:2);
+    tmp:10 = (sign_exponent << 64) | significand;
     fpushv(tmp); 
 }
 
 :FLDL2E		is vexMode=0 & byte=0xD9; byte=0xEA			
 { 
     FPUInstructionPointer = inst_start;
-    src:8 = 0x3ff71547652b82fe;
-    tmp:10 = float2float(src); 
+    # Exact 80-bit log2(e); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xb8aa3b295c17f0bc:8);
+    sign_exponent:10 = zext(0x3fff:2);
+    tmp:10 = (sign_exponent << 64) | significand;
     fpushv(tmp); 
 }
 
 :FLDPI		is vexMode=0 & byte=0xD9; byte=0xEB			
 {
     FPUInstructionPointer = inst_start;
-    src:8 = 0x400921fb54442d18; 
-    tmp:10 = float2float(src); 
+    # Exact 80-bit pi; the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xc90fdaa22168c235:8);
+    sign_exponent:10 = zext(0x4000:2);
+    tmp:10 = (sign_exponent << 64) | significand;
     fpushv(tmp);
 }
 
 :FLDLG2		is vexMode=0 & byte=0xD9; byte=0xEC			
 { 
     FPUInstructionPointer = inst_start;
-    src:8 = 0x3fd34413509f79ff; 
-    tmp:10 = float2float(src); 
+    # Exact 80-bit log10(2); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0x9a209a84fbcff799:8);
+    sign_exponent:10 = zext(0x3ffd:2);
+    tmp:10 = (sign_exponent << 64) | significand;
     fpushv(tmp); 
 }
 
 :FLDLN2		is vexMode=0 & byte=0xD9; byte=0xED			
 { 
     FPUInstructionPointer = inst_start;
-    src:8 = 0x3fe62e42fefa39ef;
-    tmp:10 = float2float(src); 
+    # Exact 80-bit ln(2); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xb17217f7d1cf79ac:8);
+    sign_exponent:10 = zext(0x3ffe:2);
+    tmp:10 = (sign_exponent << 64) | significand;
     fpushv(tmp); 
 }
 
