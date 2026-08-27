@@ -6491,20 +6491,26 @@ define pcodeop fpatan;
     fpop(); 
 }
 
+define pcodeop fprem;
+define pcodeop fprem1;
 :FPREM          is vexMode=0 & byte=0xD9; byte=0xF8                 
 { 
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    tmp = tmp f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- tmp;
+    # The remainder is exact, and its condition codes are operation
+    # results: the quotient's low three bits in C0/C3/C1, and C2 for an
+    # incomplete reduction. Computing it as x - trunc(x/y)*y reported
+    # none of them.
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fprem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
 }
 
 :FPREM1         is vexMode=0 & byte=0xD9; byte=0xF5                 
 { 
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    tmp = tmp f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- tmp;
+    # The remainder is exact, and its condition codes are operation
+    # results: the quotient's low three bits in C0/C3/C1, and C2 for an
+    # incomplete reduction. Computing it as x - trunc(x/y)*y reported
+    # none of them.
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fprem1(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
 }
 
 define pcodeop fptan;
@@ -7157,10 +7163,25 @@ define pcodeop extract_exponent;
 :FXTRACT        is vexMode=0 & byte=0xD9; byte=0xF4                 
 { 
     FPUInstructionPointer = inst_start;
+    # A stack overflow aborts the extraction before it runs, so the
+    # divide-by-zero a zero operand would raise never appears. Decide it
+    # first: both the old and the new top hold the indefinite QNaN, and
+    # fpushv reports IE, SF and C1.
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = (((top - 1) & 7)) * 2;
+    local full:1 = ((FPUTagWord >> shift) & 3) != 3;
+    if (full) goto <overflow>;
     significand:10 = extract_significand(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
     exponent:10 = extract_exponent(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = exponent;
     fpushv(significand);
+    goto <done>;
+<overflow>
+    local indefinite:10 = zext(0xc000000000000000:8);
+    indefinite = indefinite | (zext(0xffff:2) << 64);
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = indefinite;
+    fpushv(indefinite);
+<done>
 }
 
 :FYL2X          is vexMode=0 & byte=0xD9; byte=0xF1                 
@@ -8136,8 +8157,31 @@ macro maskmov_byte(value, selected, address, offset) {
     *:1 (address + offset) = (value * take) | (previous * (take ^ 1));
 }
 
-define pcodeop maskmovdqu;
-:MASKMOVDQU        XmmReg1, XmmReg2   is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0xF7; XmmReg1 & XmmReg2		{ XmmReg1 = maskmovdqu(XmmReg1, XmmReg2); }
+# The 128-bit masked store. Like MASKMOVQ this writes DS:[rDI] rather than the
+# register, and leaves the source alone. No hardware capture covers it yet, so
+# it follows MASKMOVQ's validated shape rather than being confirmed directly.
+:MASKMOVDQU        XmmReg1, XmmReg2   is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0xF7; XmmReg1 & XmmReg2 & maskmovDI
+{
+    local data:16 = XmmReg1;
+    local mask:16 = XmmReg2;
+    local address:8 = maskmovDI;
+    maskmov_byte(data[  0,8], mask[  7,1], address, 0);
+    maskmov_byte(data[  8,8], mask[ 15,1], address, 1);
+    maskmov_byte(data[ 16,8], mask[ 23,1], address, 2);
+    maskmov_byte(data[ 24,8], mask[ 31,1], address, 3);
+    maskmov_byte(data[ 32,8], mask[ 39,1], address, 4);
+    maskmov_byte(data[ 40,8], mask[ 47,1], address, 5);
+    maskmov_byte(data[ 48,8], mask[ 55,1], address, 6);
+    maskmov_byte(data[ 56,8], mask[ 63,1], address, 7);
+    maskmov_byte(data[ 64,8], mask[ 71,1], address, 8);
+    maskmov_byte(data[ 72,8], mask[ 79,1], address, 9);
+    maskmov_byte(data[ 80,8], mask[ 87,1], address, 10);
+    maskmov_byte(data[ 88,8], mask[ 95,1], address, 11);
+    maskmov_byte(data[ 96,8], mask[103,1], address, 12);
+    maskmov_byte(data[104,8], mask[111,1], address, 13);
+    maskmov_byte(data[112,8], mask[119,1], address, 14);
+    maskmov_byte(data[120,8], mask[127,1], address, 15);
+}
 
 define pcodeop maxpd;
 :MAXPD        XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5F; XmmReg ... & m128 { XmmReg = maxpd(XmmReg, m128); }
