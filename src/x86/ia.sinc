@@ -1208,6 +1208,15 @@ mmxreg2dest: "MM6" is mmxreg2=6 { *[x87]:2 68:2 = 0xffff:2; FPUTagWord = 0; FPUS
 mmxreg2dest: "MM7" is mmxreg2=7 { *[x87]:2 78:2 = 0xffff:2; FPUTagWord = 0; FPUStatusWord = FPUStatusWord & 0xc7ff; export *[x87]:8 70:2; }
 # Logical ST(i) views dynamically address the physical file through TOP.
 # They are memory lvalues, not register-space aliases.
+fregidx: is freg=0 { export *[const]:2 0; }
+fregidx: is freg=1 { export *[const]:2 1; }
+fregidx: is freg=2 { export *[const]:2 2; }
+fregidx: is freg=3 { export *[const]:2 3; }
+fregidx: is freg=4 { export *[const]:2 4; }
+fregidx: is freg=5 { export *[const]:2 5; }
+fregidx: is freg=6 { export *[const]:2 6; }
+fregidx: is freg=7 { export *[const]:2 7; }
+
 fregop: "ST0" is freg=0 {
   local top:2 = (FPUStatusWord >> 11) & 7;
   local offset:2 = ((top + 0) & 7) * 10;
@@ -2794,13 +2803,32 @@ macro fpu_set_condition_codes(c0, c1, c2, c3) {
                     (zext(c2) << 10) | (zext(c3) << 14);
 }
 
+# Refresh ES from the sticky exception bits against their masks.
+macro fpu_refresh_error_summary() {
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
+    FPUStatusWord = (FPUStatusWord & 0xff7f) | (zext(unmasked != 0) << 7);
+}
+
+# Referencing an empty register is a stack fault: IE and SF are set together
+# and C1 reports the direction, cleared for an underflow. `index` is the
+# logical ST(i) of the second operand; ST(0) is always checked too.
+macro fpu_stack_underflow(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift0:2 = (top & 7) * 2;
+    local shift1:2 = ((top + index) & 7) * 2;
+    local empty0:1 = ((FPUTagWord >> shift0) & 3) == 3;
+    local empty1:1 = ((FPUTagWord >> shift1) & 3) == 3;
+    local fault:2 = zext(empty0 || empty1);
+    FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
+    fpu_refresh_error_summary();
+}
+
 # Raise the invalid-operation exception when `cond` holds, and refresh ES to
 # reflect whether any unmasked exception is now pending. Branch-free so it is
 # safe to expand more than once in a constructor.
 macro fpu_signal_invalid_if(cond) {
     FPUStatusWord = FPUStatusWord | zext(cond);
-    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
-    FPUStatusWord = (FPUStatusWord & 0xff7f) | (zext(unmasked != 0) << 7);
+    fpu_refresh_error_summary();
 }
 
 # The unordered compare. Only a signalling NaN raises invalid, which the
@@ -5842,15 +5870,17 @@ define pcodeop to_bcd;
     fcom(tmp); 
 }         
 
-:FCOM fregop      is vexMode=0 & byte=0xD8; frow=13 & fpage=0 & fregop
+:FCOM fregop      is vexMode=0 & byte=0xD8; frow=13 & fpage=0 & fregop & fregidx
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fcom(fregop);
 }                  
 
 :FCOM           is vexMode=0 & byte=0xD8; byte=0xD1                 
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(1:2);
     fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
 }                   
 
@@ -5870,9 +5900,10 @@ define pcodeop to_bcd;
     fpop(); 
 }     
 
-:FCOMP fregop     is vexMode=0 & byte=0xD8; frow=13 & fpage=1 & fregop
+:FCOMP fregop     is vexMode=0 & byte=0xD8; frow=13 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start; 
+    fpu_stack_underflow(fregidx);
     fcom(fregop);
     fpop(); 
 }              
@@ -5880,6 +5911,7 @@ define pcodeop to_bcd;
 :FCOMP          is vexMode=0 & byte=0xD8; byte=0xD9                 
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(1:2);
     fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop();
 }               
@@ -5887,33 +5919,38 @@ define pcodeop to_bcd;
 :FCOMPP         is vexMode=0 & byte=0xDE; byte=0xD9                 
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(1:2);
     fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop(); 
     fpop(); 
 }           
                                                                  
-:FCOMI st0, fregop    is vexMode=0 & byte=0xDB; frow=15 & fpage=0 & fregop & st0
+:FCOMI st0, fregop    is vexMode=0 & byte=0xDB; frow=15 & fpage=0 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fcomi(fregop);
 }                 
 
-:FCOMIP st0, fregop   is vexMode=0 & byte=0xDF; frow=15 & fpage=0 & fregop & st0
+:FCOMIP st0, fregop   is vexMode=0 & byte=0xDF; frow=15 & fpage=0 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fcomi(fregop);
     fpop();
 }             
 
-:FUCOMI st0, fregop   is vexMode=0 & byte=0xDB; frow=14 & fpage=1 & fregop & st0
+:FUCOMI st0, fregop   is vexMode=0 & byte=0xDB; frow=14 & fpage=1 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fucomi(fregop);
 }                 
 
-:FUCOMIP st0, fregop  is vexMode=0 & byte=0xDF; frow=14 & fpage=1 & fregop & st0
+:FUCOMIP st0, fregop  is vexMode=0 & byte=0xDF; frow=14 & fpage=1 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fucomi(fregop);
     fpop();
 }             
@@ -6834,20 +6871,23 @@ define pcodeop fsin;
     fcom(tmp); 
 }    
                                                                     
-:FUCOM fregop     is vexMode=0 & byte=0xDD; frow=14 & fpage=0 & fregop
+:FUCOM fregop     is vexMode=0 & byte=0xDD; frow=14 & fpage=0 & fregop & fregidx
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fucom(fregop);
 }                     
 
 :FUCOM          is vexMode=0 & byte=0xDD; byte=0xE1                 
 { 
+    fpu_stack_underflow(1:2);
     fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
 }                      
 
-:FUCOMP fregop    is vexMode=0 & byte=0xDD; frow=14 & fpage=1 & fregop
+:FUCOMP fregop    is vexMode=0 & byte=0xDD; frow=14 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(fregidx);
     fucom(fregop);
     fpop();
 }                 
@@ -6855,6 +6895,7 @@ define pcodeop fsin;
 :FUCOMP         is vexMode=0 & byte=0xDD; byte=0xE9                 
 {
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(1:2);
     fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop(); 
 }                  
@@ -6862,6 +6903,7 @@ define pcodeop fsin;
 :FUCOMPP        is vexMode=0 & byte=0xDA; byte=0xE9                 
 { 
     FPUInstructionPointer = inst_start;
+    fpu_stack_underflow(1:2);
     fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop();
     fpop(); 
