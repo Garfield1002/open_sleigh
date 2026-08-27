@@ -9886,36 +9886,93 @@ define pcodeop psignd;
 <end>
 }
 
+# The MMX shift instructions take the entire 64-bit source operand as a single
+# count shared by every lane, and a count at or beyond the lane width produces
+# an all-zero lane (all sign bits for an arithmetic shift). SLEIGH narrows a
+# shift's count to the destination lane width, which would silently wrap an
+# oversized count, so clamp the count to the lane width first: at exactly that
+# amount the p-code shift already moves every bit out.
 macro psllw64(mmx, count) {
-    local tmp:8 = count;
-    mmx[ 0,16] = mmx[ 0,16] << tmp;
-    mmx[16,16] = mmx[16,16] << tmp;
-    mmx[32,16] = mmx[32,16] << tmp;
-    mmx[48,16] = mmx[48,16] << tmp;
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    mmx[ 0,16] = mmx[ 0,16] << amount;
+    mmx[16,16] = mmx[16,16] << amount;
+    mmx[32,16] = mmx[32,16] << amount;
+    mmx[48,16] = mmx[48,16] << amount;
 }
+
+macro pslld64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    mmx[ 0,32] = mmx[ 0,32] << amount;
+    mmx[32,32] = mmx[32,32] << amount;
+}
+
+macro psllq64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    mmx = mmx << amount;
+}
+
+macro psrlw64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    mmx[ 0,16] = mmx[ 0,16] >> amount;
+    mmx[16,16] = mmx[16,16] >> amount;
+    mmx[32,16] = mmx[32,16] >> amount;
+    mmx[48,16] = mmx[48,16] >> amount;
+}
+
+macro psrld64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    mmx[ 0,32] = mmx[ 0,32] >> amount;
+    mmx[32,32] = mmx[32,32] >> amount;
+}
+
+macro psrlq64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    mmx = mmx >> amount;
+}
+
+macro psraw64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    mmx[ 0,16] = mmx[ 0,16] s>> amount;
+    mmx[16,16] = mmx[16,16] s>> amount;
+    mmx[32,16] = mmx[32,16] s>> amount;
+    mmx[48,16] = mmx[48,16] s>> amount;
+}
+
+macro psrad64(mmx, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    mmx[ 0,32] = mmx[ 0,32] s>> amount;
+    mmx[32,32] = mmx[32,32] s>> amount;
+}
+
 :PSLLW          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF1; mmxregop ... & m64 ...                        { psllw64(mmxregop, m64); }
 :PSLLW          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF1; mmxmod = 3 & mmxreg1op & mmxreg2op              { psllw64(mmxreg1op, mmxreg2op); }
 :PSLLW          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8   { psllw64(mmxreg2dest, imm8:8); }
 
-:PSLLD          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF2; mmxregop ... & m64 ... {
-  local m:8 = m64;
-  mmxregop[0,32] = mmxregop[0,32] << m[0,32];
-  mmxregop[32,32] = mmxregop[32,32] << m[32,32];
-}
+:PSLLD          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF2; mmxregop ... & m64 ... { pslld64(mmxregop, m64); }
 
-:PSLLD          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF2; mmxmod = 3 & mmxreg1op & mmxreg2op {
-  mmxreg1op[0,32] = mmxreg1op[0,32] << mmxreg2op[0,32];
-  mmxreg1op[32,32] = mmxreg1op[32,32] << mmxreg2op[32,32];
-}
+:PSLLD          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF2; mmxmod = 3 & mmxreg1op & mmxreg2op { pslld64(mmxreg1op, mmxreg2op); }
 
-:PSLLD          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8 {
-  mmxreg2dest[0,32] = mmxreg2dest[0,32] << imm8;
-  mmxreg2dest[32,32] = mmxreg2dest[32,32] << imm8;
-}
+:PSLLD          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8 { pslld64(mmxreg2dest, imm8:8); }
 
-:PSLLQ          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF3; mmxregop ... & m64 ... { mmxregop = mmxregop << m64; }
-:PSLLQ          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF3; mmxmod = 3 & mmxreg1op & mmxreg2op { mmxreg1op = mmxreg1op << mmxreg2op; }
-:PSLLQ          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8 { mmxreg2dest = mmxreg2dest << imm8:8; }
+:PSLLQ          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF3; mmxregop ... & m64 ... { psllq64(mmxregop, m64); }
+:PSLLQ          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF3; mmxmod = 3 & mmxreg1op & mmxreg2op { psllq64(mmxreg1op, mmxreg2op); }
+:PSLLQ          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8 { psllq64(mmxreg2dest, imm8:8); }
 
 macro psllw128(xmm, count) {
     local tmp:8 = count:8;
@@ -9970,37 +10027,18 @@ macro psllw128(xmm, count) {
   XmmReg2[64,64] = XmmReg2[64,64] << imm8;
 }
 
-macro psraw64(mmx, count) {
-    local tmp:8 = count;
-    mmx[ 0,16] = mmx[ 0,16] s>> tmp;
-    mmx[16,16] = mmx[16,16] s>> tmp;
-    mmx[32,16] = mmx[32,16] s>> tmp;
-    mmx[48,16] = mmx[48,16] s>> tmp;
-}
 :PSRAW          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE1; mmxregop ... & m64 ... { psraw64(mmxregop, m64); }
 :PSRAW          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE1; mmxmod = 3 & mmxreg1op & mmxreg2op { psraw64(mmxreg1op, mmxreg2op); }
 :PSRAW          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=4 & mmxreg2dest; imm8 { psraw64(mmxreg2dest, imm8:8); }
                     
 :PSRAD          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE2; mmxregop ... & m64
-{
-# a count greater than 31 just clears all the bits
-    mmxregop[0,32] = mmxregop[0,32] s>> m64;
-    mmxregop[32,32] = mmxregop[32,32] s>> m64;
-}
+{ psrad64(mmxregop, m64); }
 
 :PSRAD          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE2; mmxmod = 3 & mmxreg1op & mmxreg2op
-{
-# a count greater than 31 just clears all the bits
-    mmxreg1op[0,32] = mmxreg1op[0,32] s>> mmxreg2op;
-    mmxreg1op[32,32] = mmxreg1op[32,32] s>> mmxreg2op;
-}
+{ psrad64(mmxreg1op, mmxreg2op); }
 
 :PSRAD          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=4 & mmxreg2dest; imm8
-{
-# a count greater than 31 just clears all the bits
-    mmxreg2dest[0,32] = mmxreg2dest[0,32] s>> imm8;
-    mmxreg2dest[32,32] = mmxreg2dest[32,32] s>> imm8;
-}
+{ psrad64(mmxreg2dest, imm8:8); }
 
 macro psraw128(xmm, count) {
     local tmp:8 = count:8;
@@ -10051,61 +10089,31 @@ macro psraw128(xmm, count) {
 }
 
 :PSRLW          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD1; mmxregop ... & m64 ...
-{
-    mmxregop[0,16]  = mmxregop[0,16]  >> m64;
-    mmxregop[16,16] = mmxregop[16,16] >> m64;
-    mmxregop[32,16] = mmxregop[32,16] >> m64;
-    mmxregop[48,16] = mmxregop[48,16] >> m64;
-}
+{ psrlw64(mmxregop, m64); }
 
 :PSRLW          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD1; mmxmod = 3 & mmxreg1op & mmxreg2op
-{
-    mmxreg1op[0,16]  = mmxreg1op[0,16]  >> mmxreg2op;
-    mmxreg1op[16,16] = mmxreg1op[16,16] >> mmxreg2op;
-    mmxreg1op[32,16] = mmxreg1op[32,16] >> mmxreg2op;
-    mmxreg1op[48,16] = mmxreg1op[48,16] >> mmxreg2op;
-}
+{ psrlw64(mmxreg1op, mmxreg2op); }
 
 :PSRLW          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=2 & mmxreg2dest; imm8
-{
-    mmxreg2dest[0,16]  = mmxreg2dest[0,16]  >> imm8;
-    mmxreg2dest[16,16] = mmxreg2dest[16,16] >> imm8;
-    mmxreg2dest[32,16] = mmxreg2dest[32,16] >> imm8;
-    mmxreg2dest[48,16] = mmxreg2dest[48,16] >> imm8;
-}
+{ psrlw64(mmxreg2dest, imm8:8); }
                     
 :PSRLD          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD2; mmxregop ... & m64 ...
-{
-    mmxregop[0,32]  = mmxregop[0,32]  >> m64;
-    mmxregop[32,32] = mmxregop[32,32] >> m64;
-}
+{ psrld64(mmxregop, m64); }
 
 :PSRLD          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD2; mmxmod = 3 & mmxreg1op & mmxreg2op
-{
-    mmxreg1op[0,32]  = mmxreg1op[0,32]  >> mmxreg2op;
-    mmxreg1op[32,32] = mmxreg1op[32,32] >> mmxreg2op;
-}
+{ psrld64(mmxreg1op, mmxreg2op); }
 
 :PSRLD          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=2 & mmxreg2dest; imm8
-{
-    mmxreg2dest[0,32]  = mmxreg2dest[0,32]  >> imm8;
-    mmxreg2dest[32,32] = mmxreg2dest[32,32] >> imm8;
-}
+{ psrld64(mmxreg2dest, imm8:8); }
 
 :PSRLQ          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD3; mmxregop ... & m64 ...
-{
-    mmxregop = mmxregop >> m64;
- }
+{ psrlq64(mmxregop, m64); }
 
 :PSRLQ          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xD3; mmxmod = 3 & mmxreg1op & mmxreg2op
-{
-    mmxreg1op = mmxreg1op >> mmxreg2op;
-}
+{ psrlq64(mmxreg1op, mmxreg2op); }
 
 :PSRLQ          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=2 & mmxreg2dest; imm8
-{
-    mmxreg2dest = mmxreg2dest >> imm8;
-}
+{ psrlq64(mmxreg2dest, imm8:8); }
                    
 :PSRLW          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD1; XmmReg ... & m128 ...
 {
