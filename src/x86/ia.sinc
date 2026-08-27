@@ -5663,8 +5663,11 @@ define pcodeop f2xm1;
 :FADD st0, fregop     is vexMode=0 & byte=0xD8; frow=12 & fpage=0 & fregop & st0
 { 
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ fregop;
+    # For arithmetic C1 is the rounding indicator, set by the operation when
+    # an inexact result rounds away from zero. Clear it first; clearing after
+    # the add would discard what the add reported.
     fpu_clear_c1();
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ fregop;
 }
              
 :FADD fregop, st0     is vexMode=0 & byte=0xDC; frow=12 & fpage=0 & fregop & st0
