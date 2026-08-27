@@ -2812,6 +2812,20 @@ macro fpu_refresh_error_summary() {
 # Referencing an empty register is a stack fault: IE and SF are set together
 # and C1 reports the direction, cleared for an underflow. `index` is the
 # logical ST(i) of the second operand; ST(0) is always checked too.
+# As `fpu_stack_underflow`, but also reports the fault so a comparison can
+# force its unordered answer instead of comparing empty slots.
+macro fpu_stack_underflow_out(index, faulted) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift0:2 = (top & 7) * 2;
+    local shift1:2 = ((top + index) & 7) * 2;
+    local empty0:1 = ((FPUTagWord >> shift0) & 3) == 3;
+    local empty1:1 = ((FPUTagWord >> shift1) & 3) == 3;
+    faulted = empty0 || empty1;
+    local fault:2 = zext(faulted);
+    FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
+    fpu_refresh_error_summary();
+}
+
 macro fpu_stack_underflow(index) {
     local top:2 = (FPUStatusWord >> 11) & 7;
     local shift0:2 = (top & 7) * 2;
@@ -2821,6 +2835,36 @@ macro fpu_stack_underflow(index) {
     local fault:2 = zext(empty0 || empty1);
     FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
     fpu_refresh_error_summary();
+}
+
+# True when an f80 holds a denormal: a zero exponent with a non-zero
+# significand. An unnormal - a non-zero exponent with the explicit integer bit
+# clear - is an invalid encoding rather than a denormal, and raises IE instead.
+macro fpu_is_denormal(value, result) {
+    local exponent:2 = value[64,15];
+    local significand:8 = value[0,64];
+    result = (exponent == 0) && (significand != 0);
+}
+
+# Raise the denormal-operand exception when `cond` holds.
+macro fpu_signal_denormal_if(cond) {
+    FPUStatusWord = FPUStatusWord | (zext(cond) << 1);
+    fpu_refresh_error_summary();
+}
+
+# Report a denormal operand for a one- or two-source operation.
+macro fpu_signal_denormal1(a) {
+    local da:1; fpu_is_denormal(a, da);
+    fpu_signal_denormal_if(da);
+}
+
+macro fpu_signal_denormal2(a, b) {
+    local da:1; fpu_is_denormal(a, da);
+    local db:1; fpu_is_denormal(b, db);
+    # Invalid takes precedence: when an operand is a NaN the operation reports
+    # IE and leaves DE alone.
+    local invalid:1 = nan(a) || nan(b);
+    fpu_signal_denormal_if((da || db) && !invalid);
 }
 
 # Raise the invalid-operation exception when `cond` holds, and refresh ES to
@@ -2833,8 +2877,10 @@ macro fpu_signal_invalid_if(cond) {
 
 # The unordered compare. Only a signalling NaN raises invalid, which the
 # concrete interpreter already applies to the f80 comparison itself.
-macro fucom(val) {
-    local c2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+macro fucom_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    # An underflowed compare reports unordered: C0, C2 and C3 all set.
+    local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
@@ -2842,8 +2888,10 @@ macro fucom(val) {
 
 # The ordered compare. It raises invalid for a quiet NaN too, which is the only
 # thing separating it from FUCOM: both produce identical p-code otherwise.
-macro fcom(val) {
-    local c2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+macro fcom_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    # An underflowed compare reports unordered: C0, C2 and C3 all set.
+    local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
@@ -2897,8 +2945,9 @@ macro fpu_clear_c1() {
 }
 
 # The unordered EFLAGS compare: like fcomi, but a quiet NaN is not invalid.
-macro fucomi(val) {
-    PF = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+macro fucomi_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    PF = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
 	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
 	CF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
 
@@ -2907,8 +2956,9 @@ macro fucomi(val) {
     SF = 0;
 }
 
-macro fcomi(val) {
-    PF = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+macro fcomi_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    PF = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
 	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
 	CF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
  
@@ -5860,35 +5910,43 @@ define pcodeop to_bcd;
 {
     FPUInstructionPointer = inst_start; 
     local tmp=float2float(m32fp); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
 }         
 
 :FCOM m64fp       is vexMode=0 & byte=0xDC; reg_opcode=2 ... & m64fp            
 { 
     FPUInstructionPointer = inst_start;
     local tmp=float2float(m64fp); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
 }         
 
 :FCOM fregop      is vexMode=0 & byte=0xD8; frow=13 & fpage=0 & fregop & fregidx
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fcom(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcom_faulted(fregop, faulted);
 }                  
 
 :FCOM           is vexMode=0 & byte=0xD8; byte=0xD1                 
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(1:2);
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
 }                   
 
 :FCOMP m32fp      is vexMode=0 & byte=0xD8; reg_opcode=3 ... & m32fp            
 { 
     FPUInstructionPointer = inst_start;
     local tmp=float2float(m32fp); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
     fpop(); 
 }     
 
@@ -5896,31 +5954,36 @@ define pcodeop to_bcd;
 { 
     FPUInstructionPointer = inst_start;
     local tmp=float2float(m64fp); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
     fpop(); 
 }     
 
 :FCOMP fregop     is vexMode=0 & byte=0xD8; frow=13 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start; 
-    fpu_stack_underflow(fregidx);
-    fcom(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcom_faulted(fregop, faulted);
     fpop(); 
 }              
 
 :FCOMP          is vexMode=0 & byte=0xD8; byte=0xD9                 
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(1:2);
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
     fpop();
 }               
 
 :FCOMPP         is vexMode=0 & byte=0xDE; byte=0xD9                 
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(1:2);
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
     fpop(); 
     fpop(); 
 }           
@@ -5928,30 +5991,34 @@ define pcodeop to_bcd;
 :FCOMI st0, fregop    is vexMode=0 & byte=0xDB; frow=15 & fpage=0 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fcomi(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcomi_faulted(fregop, faulted);
 }                 
 
 :FCOMIP st0, fregop   is vexMode=0 & byte=0xDF; frow=15 & fpage=0 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fcomi(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcomi_faulted(fregop, faulted);
     fpop();
 }             
 
 :FUCOMI st0, fregop   is vexMode=0 & byte=0xDB; frow=14 & fpage=1 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fucomi(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucomi_faulted(fregop, faulted);
 }                 
 
 :FUCOMIP st0, fregop  is vexMode=0 & byte=0xDF; frow=14 & fpage=1 & fregop & fregidx & st0
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fucomi(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucomi_faulted(fregop, faulted);
     fpop();
 }             
                                                                  
@@ -6173,21 +6240,27 @@ define pcodeop fcos;
 { 
     FPUInstructionPointer = inst_start;
     local tmp = int2float(m16);
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
 }          
 
 :FICOM m32     is vexMode=0 & byte=0xDA; reg_opcode=2 ... & m32            
 { 
     FPUInstructionPointer = inst_start;
     local tmp = int2float(m32);
-    fcom(tmp);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted);
 }          
 
 :FICOMP m16    is vexMode=0 & byte=0xDE; (mod != 0b11 & reg_opcode=3) ... & m16            
 { 
     FPUInstructionPointer = inst_start;
     local tmp = int2float(m16); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
     fpop(); 
 }  
 
@@ -6195,7 +6268,9 @@ define pcodeop fcos;
 {
     FPUInstructionPointer = inst_start;
     local tmp = int2float(m32); 
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
     fpop(); 
 }  
                                                                   
@@ -6874,43 +6949,51 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     zero:4 = 0;
     tmp:10 = int2float(zero);
-    fcom(tmp); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
 }    
                                                                     
 :FUCOM fregop     is vexMode=0 & byte=0xDD; frow=14 & fpage=0 & fregop & fregidx
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fucom(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucom_faulted(fregop, faulted);
 }                     
 
 :FUCOM          is vexMode=0 & byte=0xDD; byte=0xE1                 
 { 
-    fpu_stack_underflow(1:2);
-    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
 }                      
 
 :FUCOMP fregop    is vexMode=0 & byte=0xDD; frow=14 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(fregidx);
-    fucom(fregop);
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucom_faulted(fregop, faulted);
     fpop();
 }                 
 
 :FUCOMP         is vexMode=0 & byte=0xDD; byte=0xE9                 
 {
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(1:2);
-    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
     fpop(); 
 }                  
 
 :FUCOMPP        is vexMode=0 & byte=0xDA; byte=0xE9                 
 { 
     FPUInstructionPointer = inst_start;
-    fpu_stack_underflow(1:2);
-    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
     fpop();
     fpop(); 
 }                  
