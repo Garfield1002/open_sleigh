@@ -9769,8 +9769,42 @@ define pcodeop phaddw;
 :PHADDW        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x01; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phaddw(XmmReg1,XmmReg2); }
 
 define pcodeop phaddsw;
-:PHADDSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x03; mmxregop ... & m64                          { mmxregop=phaddsw(mmxregop,m64); }
-:PHADDSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x03; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phaddsw(mmxreg1op,mmxreg2op); }
+:PHADDSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x03; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) + sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    mmxregop[0,16] = lane;
+    wide = sext(hdst[32,16]) + sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    mmxregop[16,16] = lane;
+    wide = sext(hsrc[0,16]) + sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    mmxregop[32,16] = lane;
+    wide = sext(hsrc[32,16]) + sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    mmxregop[48,16] = lane;
+}
+:PHADDSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x03; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) + sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[0,16] = lane;
+    wide = sext(hdst[32,16]) + sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[16,16] = lane;
+    wide = sext(hsrc[0,16]) + sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[32,16] = lane;
+    wide = sext(hsrc[32,16]) + sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[48,16] = lane;
+}
 :PHADDSW       XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x03; XmmReg ... & m128              { XmmReg=phaddsw(XmmReg,m128); }
 :PHADDSW       XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x03; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phaddsw(XmmReg1,XmmReg2); }
 
@@ -9811,8 +9845,42 @@ define pcodeop phsubw;
 :PHSUBW        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x05; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phsubw(XmmReg1,XmmReg2); }
 
 define pcodeop phsubsw;
-:PHSUBSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x07; mmxregop ... & m64                          { mmxregop=phsubsw(mmxregop,m64); }
-:PHSUBSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x07; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=phsubsw(mmxreg1op,mmxreg2op); }
+:PHSUBSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x07; mmxregop ... & m64                          {
+    local hsrc:8 = m64;
+    local hdst:8 = mmxregop;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) - sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    mmxregop[0,16] = lane;
+    wide = sext(hdst[32,16]) - sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    mmxregop[16,16] = lane;
+    wide = sext(hsrc[0,16]) - sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    mmxregop[32,16] = lane;
+    wide = sext(hsrc[32,16]) - sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    mmxregop[48,16] = lane;
+}
+:PHSUBSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x07; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local hsrc:8 = mmxreg2op;
+    local hdst:8 = mmxreg1op;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) - sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[0,16] = lane;
+    wide = sext(hdst[32,16]) - sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[16,16] = lane;
+    wide = sext(hsrc[0,16]) - sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[32,16] = lane;
+    wide = sext(hsrc[32,16]) - sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    mmxreg1op[48,16] = lane;
+}
 :PHSUBSW       XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x07; XmmReg ... & m128              { XmmReg=phsubsw(XmmReg,m128); }
 :PHSUBSW       XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x07; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=phsubsw(XmmReg1,XmmReg2); }
 
