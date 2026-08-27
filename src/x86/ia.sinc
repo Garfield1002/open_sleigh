@@ -5741,9 +5741,8 @@ define pcodeop from_bcd;
 :FBLD  m80     is vexMode=0 & byte=0xDF; reg_opcode=4 ... & m80            
 { 
     FPUInstructionPointer = inst_start;
-    fdec(); 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = from_bcd(m80);
-    tagvalid0();
+    local value:10 = from_bcd(m80);
+    fpushv(value);
 }
 
 define pcodeop to_bcd;
@@ -6166,24 +6165,22 @@ define pcodeop fcos;
 :FILD m16      is vexMode=0 & byte=0xDF; reg_opcode=0 ... & m16           
 { 
     FPUInstructionPointer = inst_start;
-    fdec(); *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = int2float(m16);
-    tagvalid0();
+    local value:10 = int2float(m16);
+    fpushv(value);
 }         
 
 :FILD m32      is vexMode=0 & byte=0xDB; reg_opcode=0 ... & m32
 { 
     FPUInstructionPointer = inst_start;
-    fdec(); 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = int2float(m32);
-    tagvalid0();
+    local value:10 = int2float(m32);
+    fpushv(value);
 }         
 
 :FILD m64      is vexMode=0 & byte=0xDF; reg_opcode=5 ... & m64
 { 
     FPUInstructionPointer = inst_start;
-    fdec(); 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = int2float(m64);
-    tagvalid0();
+    local value:10 = int2float(m64);
+    fpushv(value);
 }         
                                                                   
 :FINCSTP            is vexMode=0 & byte=0xD9; byte=0xF7                 
@@ -6284,17 +6281,15 @@ define pcodeop fcos;
 :FLD m32fp        is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=0) ... & m32fp            
 { 
     FPUInstructionPointer = inst_start;
-    fdec();
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m32fp);
-    tagvalid0();
+    local value:10 = float2float(m32fp);
+    fpushv(value);
 }           
 
 :FLD m64fp        is vexMode=0 & byte=0xDD; reg_opcode=0 ... & m64fp
 {
     FPUInstructionPointer = inst_start;
-    fdec(); 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m64fp);
-    tagvalid0();
+    local value:10 = float2float(m64fp);
+    fpushv(value);
 }            
 
 :FLD m80fp        is vexMode=0 & byte=0xDB; reg_opcode=5 ... & m80fp
