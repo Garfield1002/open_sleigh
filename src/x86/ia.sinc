@@ -8989,20 +8989,60 @@ macro sswub(sword, ubyte) {
 }
 
 define pcodeop pabsb;
-:PABSB         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1c; mmxregop ... & m64					{ mmxregop=pabsb(mmxregop,m64); }
-:PABSB         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1c; mmxmod = 3 & mmxreg1op & mmxreg2op	{ mmxreg1op=pabsb(mmxreg1op,mmxreg2op); }
+:PABSB         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1c; mmxregop ... & m64					{
+    local pabssrc:8 = m64;
+    mmxregop[0,8] = (zext(pabssrc[0,8] s< 0) * (0 - pabssrc[0,8])) | (zext(!(pabssrc[0,8] s< 0)) * pabssrc[0,8]);
+    mmxregop[8,8] = (zext(pabssrc[8,8] s< 0) * (0 - pabssrc[8,8])) | (zext(!(pabssrc[8,8] s< 0)) * pabssrc[8,8]);
+    mmxregop[16,8] = (zext(pabssrc[16,8] s< 0) * (0 - pabssrc[16,8])) | (zext(!(pabssrc[16,8] s< 0)) * pabssrc[16,8]);
+    mmxregop[24,8] = (zext(pabssrc[24,8] s< 0) * (0 - pabssrc[24,8])) | (zext(!(pabssrc[24,8] s< 0)) * pabssrc[24,8]);
+    mmxregop[32,8] = (zext(pabssrc[32,8] s< 0) * (0 - pabssrc[32,8])) | (zext(!(pabssrc[32,8] s< 0)) * pabssrc[32,8]);
+    mmxregop[40,8] = (zext(pabssrc[40,8] s< 0) * (0 - pabssrc[40,8])) | (zext(!(pabssrc[40,8] s< 0)) * pabssrc[40,8]);
+    mmxregop[48,8] = (zext(pabssrc[48,8] s< 0) * (0 - pabssrc[48,8])) | (zext(!(pabssrc[48,8] s< 0)) * pabssrc[48,8]);
+    mmxregop[56,8] = (zext(pabssrc[56,8] s< 0) * (0 - pabssrc[56,8])) | (zext(!(pabssrc[56,8] s< 0)) * pabssrc[56,8]);
+}
+:PABSB         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1c; mmxmod = 3 & mmxreg1op & mmxreg2op	{
+    local pabssrc:8 = mmxreg2op;
+    mmxreg1op[0,8] = (zext(pabssrc[0,8] s< 0) * (0 - pabssrc[0,8])) | (zext(!(pabssrc[0,8] s< 0)) * pabssrc[0,8]);
+    mmxreg1op[8,8] = (zext(pabssrc[8,8] s< 0) * (0 - pabssrc[8,8])) | (zext(!(pabssrc[8,8] s< 0)) * pabssrc[8,8]);
+    mmxreg1op[16,8] = (zext(pabssrc[16,8] s< 0) * (0 - pabssrc[16,8])) | (zext(!(pabssrc[16,8] s< 0)) * pabssrc[16,8]);
+    mmxreg1op[24,8] = (zext(pabssrc[24,8] s< 0) * (0 - pabssrc[24,8])) | (zext(!(pabssrc[24,8] s< 0)) * pabssrc[24,8]);
+    mmxreg1op[32,8] = (zext(pabssrc[32,8] s< 0) * (0 - pabssrc[32,8])) | (zext(!(pabssrc[32,8] s< 0)) * pabssrc[32,8]);
+    mmxreg1op[40,8] = (zext(pabssrc[40,8] s< 0) * (0 - pabssrc[40,8])) | (zext(!(pabssrc[40,8] s< 0)) * pabssrc[40,8]);
+    mmxreg1op[48,8] = (zext(pabssrc[48,8] s< 0) * (0 - pabssrc[48,8])) | (zext(!(pabssrc[48,8] s< 0)) * pabssrc[48,8]);
+    mmxreg1op[56,8] = (zext(pabssrc[56,8] s< 0) * (0 - pabssrc[56,8])) | (zext(!(pabssrc[56,8] s< 0)) * pabssrc[56,8]);
+}
 :PABSB         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1c; XmmReg ... & m128              { XmmReg=pabsb(XmmReg,m128); }
 :PABSB         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1c; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=pabsb(XmmReg1,XmmReg2); }
 
 define pcodeop pabsw;
-:PABSW         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1d; mmxregop ... & m64					{ mmxregop=pabsw(mmxregop,m64); }
-:PABSW         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1d; mmxmod = 3 & mmxreg1op & mmxreg2op	{ mmxreg1op=pabsw(mmxreg1op,mmxreg2op); }
+:PABSW         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1d; mmxregop ... & m64					{
+    local pabssrc:8 = m64;
+    mmxregop[0,16] = (zext(pabssrc[0,16] s< 0) * (0 - pabssrc[0,16])) | (zext(!(pabssrc[0,16] s< 0)) * pabssrc[0,16]);
+    mmxregop[16,16] = (zext(pabssrc[16,16] s< 0) * (0 - pabssrc[16,16])) | (zext(!(pabssrc[16,16] s< 0)) * pabssrc[16,16]);
+    mmxregop[32,16] = (zext(pabssrc[32,16] s< 0) * (0 - pabssrc[32,16])) | (zext(!(pabssrc[32,16] s< 0)) * pabssrc[32,16]);
+    mmxregop[48,16] = (zext(pabssrc[48,16] s< 0) * (0 - pabssrc[48,16])) | (zext(!(pabssrc[48,16] s< 0)) * pabssrc[48,16]);
+}
+:PABSW         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1d; mmxmod = 3 & mmxreg1op & mmxreg2op	{
+    local pabssrc:8 = mmxreg2op;
+    mmxreg1op[0,16] = (zext(pabssrc[0,16] s< 0) * (0 - pabssrc[0,16])) | (zext(!(pabssrc[0,16] s< 0)) * pabssrc[0,16]);
+    mmxreg1op[16,16] = (zext(pabssrc[16,16] s< 0) * (0 - pabssrc[16,16])) | (zext(!(pabssrc[16,16] s< 0)) * pabssrc[16,16]);
+    mmxreg1op[32,16] = (zext(pabssrc[32,16] s< 0) * (0 - pabssrc[32,16])) | (zext(!(pabssrc[32,16] s< 0)) * pabssrc[32,16]);
+    mmxreg1op[48,16] = (zext(pabssrc[48,16] s< 0) * (0 - pabssrc[48,16])) | (zext(!(pabssrc[48,16] s< 0)) * pabssrc[48,16]);
+}
 :PABSW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1d; XmmReg ... & m128              { XmmReg=pabsw(XmmReg,m128); }
 :PABSW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1d; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=pabsw(XmmReg1,XmmReg2); }
 
 define pcodeop pabsd;
-:PABSD         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1e; mmxregop ... & m64					{ mmxregop=pabsd(mmxregop,m64); }
-:PABSD         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1e; mmxmod = 3 & mmxreg1op & mmxreg2op	{ mmxreg1op=pabsd(mmxreg1op,mmxreg2op); }
+:PABSD         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1e; mmxregop ... & m64					{
+    local pabssrc:8 = m64;
+    mmxregop[0,32] = (zext(pabssrc[0,32] s< 0) * (0 - pabssrc[0,32])) | (zext(!(pabssrc[0,32] s< 0)) * pabssrc[0,32]);
+    mmxregop[32,32] = (zext(pabssrc[32,32] s< 0) * (0 - pabssrc[32,32])) | (zext(!(pabssrc[32,32] s< 0)) * pabssrc[32,32]);
+}
+:PABSD         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x1e; mmxmod = 3 & mmxreg1op & mmxreg2op	{
+    local pabssrc:8 = mmxreg2op;
+    mmxreg1op[0,32] = (zext(pabssrc[0,32] s< 0) * (0 - pabssrc[0,32])) | (zext(!(pabssrc[0,32] s< 0)) * pabssrc[0,32]);
+    mmxreg1op[32,32] = (zext(pabssrc[32,32] s< 0) * (0 - pabssrc[32,32])) | (zext(!(pabssrc[32,32] s< 0)) * pabssrc[32,32]);
+}
 :PABSD         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1e; XmmReg ... & m128              { XmmReg=pabsd(XmmReg,m128); }
 :PABSD         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1e; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=pabsd(XmmReg1,XmmReg2); }
 
