@@ -8120,6 +8120,22 @@ define pcodeop divps;
 define pcodeop lddqu;
 :LDDQU        XmmReg, m128        is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xF0; XmmReg ... & m128 { XmmReg = lddqu(XmmReg, m128); }
 
+# MASKMOVQ's destination is DS:[rDI], which it reads without advancing, so
+# the auto-incrementing eseDI* string operands do not apply.
+maskmovDI: "DI"  is addrsize=0 & DI  { local address:8 = zext(DI);  export address; }
+maskmovDI: "EDI" is addrsize=1 & EDI { local address:8 = zext(EDI); export address; }
+@ifdef IA64
+maskmovDI: "RDI" is addrsize=2 & RDI { export RDI; }
+@endif
+
+# Store one byte only when its mask bit is set. Read-modify-write keeps the
+# eight lanes straight-line rather than branching per byte.
+macro maskmov_byte(value, selected, address, offset) {
+    local take:1 = zext(selected);
+    local previous:1 = *:1 (address + offset);
+    *:1 (address + offset) = (value * take) | (previous * (take ^ 1));
+}
+
 define pcodeop maskmovdqu;
 :MASKMOVDQU        XmmReg1, XmmReg2   is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0xF7; XmmReg1 & XmmReg2		{ XmmReg1 = maskmovdqu(XmmReg1, XmmReg2); }
 
@@ -11646,8 +11662,23 @@ define pcodeop PackedSwapDWords;
 :PSWAPD mmxregop, m64      is vexMode=0 & suffix3D=0xBB & mandover=0 & byte=0x0F; byte=0x0F; mmxregop ... & m64   { mmxregop = PackedSwapDWords(mmxregop, m64); }
 :PSWAPD mmxreg1op, mmxreg2op is vexMode=0 & suffix3D=0xBB & mandover=0 & byte=0x0F; byte=0x0F; mmxmod = 3 & mmxreg1op & mmxreg2op   { mmxreg1op = PackedSwapDWords(mmxreg1op, mmxreg2op); }
 
-define pcodeop MaskedMoveQWord;
-:MASKMOVQ            mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF7; mmxmod = 3 & mmxreg1op & mmxreg2op		{ mmxreg1op = MaskedMoveQWord(mmxreg1op, mmxreg2op); }
+# A masked store, not a register write: each byte of the first operand reaches
+# DS:[rDI] only when the matching mask byte's high bit is set, and the source
+# register is left alone. Both operands are read-only MMX views.
+:MASKMOVQ            mmxreg1src, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF7; mmxmod = 3 & mmxreg1src & mmxreg2op & maskmovDI
+{
+    local data:8 = mmxreg1src;
+    local mask:8 = mmxreg2op;
+    local address:8 = maskmovDI;
+    maskmov_byte(data[ 0,8], mask[ 7,1], address, 0);
+    maskmov_byte(data[ 8,8], mask[15,1], address, 1);
+    maskmov_byte(data[16,8], mask[23,1], address, 2);
+    maskmov_byte(data[24,8], mask[31,1], address, 3);
+    maskmov_byte(data[32,8], mask[39,1], address, 4);
+    maskmov_byte(data[40,8], mask[47,1], address, 5);
+    maskmov_byte(data[48,8], mask[55,1], address, 6);
+    maskmov_byte(data[56,8], mask[63,1], address, 7);
+}
 
 
 ####
