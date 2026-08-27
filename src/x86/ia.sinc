@@ -9925,8 +9925,62 @@ define pcodeop phsubsw;
 }
 
 define pcodeop pmaddubsw;
-:PMADDUBSW     mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x04; mmxregop ... & m64                          { mmxregop=pmaddubsw(mmxregop,m64); }
-:PMADDUBSW     mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x04; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=pmaddubsw(mmxreg1op,mmxreg2op); }
+:PMADDUBSW     mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x04; mmxregop ... & m64                          {
+    local msrc:8 = m64;
+    local mdst:8 = mmxregop;
+    local lo:4;
+    local hi:4;
+    local sum:4;
+    local lane:2;
+    lo = zext(mdst[0,8]) * sext(msrc[0,8]);
+    hi = zext(mdst[8,8]) * sext(msrc[8,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxregop[0,16] = lane;
+    lo = zext(mdst[16,8]) * sext(msrc[16,8]);
+    hi = zext(mdst[24,8]) * sext(msrc[24,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxregop[16,16] = lane;
+    lo = zext(mdst[32,8]) * sext(msrc[32,8]);
+    hi = zext(mdst[40,8]) * sext(msrc[40,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxregop[32,16] = lane;
+    lo = zext(mdst[48,8]) * sext(msrc[48,8]);
+    hi = zext(mdst[56,8]) * sext(msrc[56,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxregop[48,16] = lane;
+}
+:PMADDUBSW     mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x04; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local msrc:8 = mmxreg2op;
+    local mdst:8 = mmxreg1op;
+    local lo:4;
+    local hi:4;
+    local sum:4;
+    local lane:2;
+    lo = zext(mdst[0,8]) * sext(msrc[0,8]);
+    hi = zext(mdst[8,8]) * sext(msrc[8,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxreg1op[0,16] = lane;
+    lo = zext(mdst[16,8]) * sext(msrc[16,8]);
+    hi = zext(mdst[24,8]) * sext(msrc[24,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxreg1op[16,16] = lane;
+    lo = zext(mdst[32,8]) * sext(msrc[32,8]);
+    hi = zext(mdst[40,8]) * sext(msrc[40,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxreg1op[32,16] = lane;
+    lo = zext(mdst[48,8]) * sext(msrc[48,8]);
+    hi = zext(mdst[56,8]) * sext(msrc[56,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    mmxreg1op[48,16] = lane;
+}
 :PMADDUBSW     XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x04; XmmReg ... & m128              { XmmReg=pmaddubsw(XmmReg,m128); }
 :PMADDUBSW     XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x04; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=pmaddubsw(XmmReg1,XmmReg2); }
 
@@ -10091,8 +10145,42 @@ define pcodeop pmaddwd;
 }
 	
 define pcodeop pmulhrsw;
-:PMULHRSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0B; mmxregop ... & m64                          { mmxregop=pmulhrsw(mmxregop,m64); }
-:PMULHRSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0B; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=pmulhrsw(mmxreg1op,mmxreg2op); }
+:PMULHRSW       mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0B; mmxregop ... & m64                          {
+    local rsrc:8 = m64;
+    local rdst:8 = mmxregop;
+    local prod:4;
+    local rounded:4;
+    prod = sext(rdst[0,16]) * sext(rsrc[0,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxregop[0,16] = rounded:2;
+    prod = sext(rdst[16,16]) * sext(rsrc[16,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxregop[16,16] = rounded:2;
+    prod = sext(rdst[32,16]) * sext(rsrc[32,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxregop[32,16] = rounded:2;
+    prod = sext(rdst[48,16]) * sext(rsrc[48,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxregop[48,16] = rounded:2;
+}
+:PMULHRSW       mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0B; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local rsrc:8 = mmxreg2op;
+    local rdst:8 = mmxreg1op;
+    local prod:4;
+    local rounded:4;
+    prod = sext(rdst[0,16]) * sext(rsrc[0,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxreg1op[0,16] = rounded:2;
+    prod = sext(rdst[16,16]) * sext(rsrc[16,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxreg1op[16,16] = rounded:2;
+    prod = sext(rdst[32,16]) * sext(rsrc[32,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxreg1op[32,16] = rounded:2;
+    prod = sext(rdst[48,16]) * sext(rsrc[48,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    mmxreg1op[48,16] = rounded:2;
+}
 :PMULHRSW       XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0B; XmmReg ... & m128              { XmmReg=pmulhrsw(XmmReg,m128); }
 :PMULHRSW       XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0B; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=pmulhrsw(XmmReg1,XmmReg2); }
 
@@ -10248,7 +10336,54 @@ macro psadbw_mmx(dst, src) {
 
 # these byte and word shuffles need to be done also ?????
 define pcodeop pshufb;
-:PSHUFB         mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x00; mmxreg1op ... & mmxreg2op_m64                          { mmxreg1op=pshufb(mmxreg1op,mmxreg2op_m64); }
+:PSHUFB         mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x00; mmxreg1op ... & mmxreg2op_m64                          {
+    local pmask:8 = mmxreg2op_m64;
+    local pdat:8 = mmxreg1op;
+    local sel:8;
+    local shifted:8;
+    local byte:1;
+    local clear:1;
+    sel = zext(pmask[0,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[7,1];
+    mmxreg1op[0,8] = byte * zext(!clear);
+    sel = zext(pmask[8,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[15,1];
+    mmxreg1op[8,8] = byte * zext(!clear);
+    sel = zext(pmask[16,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[23,1];
+    mmxreg1op[16,8] = byte * zext(!clear);
+    sel = zext(pmask[24,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[31,1];
+    mmxreg1op[24,8] = byte * zext(!clear);
+    sel = zext(pmask[32,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[39,1];
+    mmxreg1op[32,8] = byte * zext(!clear);
+    sel = zext(pmask[40,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[47,1];
+    mmxreg1op[40,8] = byte * zext(!clear);
+    sel = zext(pmask[48,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[55,1];
+    mmxreg1op[48,8] = byte * zext(!clear);
+    sel = zext(pmask[56,3]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[63,1];
+    mmxreg1op[56,8] = byte * zext(!clear);
+}
 :PSHUFB         XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x00; XmmReg1 ... & XmmReg2_m128              { XmmReg1=pshufb(XmmReg1,XmmReg2_m128); }
 
 # determine the total shift required by the bit fields in a shuffle opcode
