@@ -2855,9 +2855,8 @@ macro fcomi(val) {
     OF = 0;
     AF = 0;
     SF = 0;
-	
-    FPUStatusWord = FPUStatusWord & 0xfdff;  # Clear C1
-    C1 = 0;
+    # The FCOMI family reports its result only through ZF/PF/CF. C0-C3 are
+    # unaffected, so C1 must keep whatever the previous operation left there.
 }
 
 # floating point NaN comparison into EFLAGS
