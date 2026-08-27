@@ -2794,11 +2794,32 @@ macro fpu_set_condition_codes(c0, c1, c2, c3) {
                     (zext(c2) << 10) | (zext(c3) << 14);
 }
 
+# Raise the invalid-operation exception when `cond` holds, and refresh ES to
+# reflect whether any unmasked exception is now pending. Branch-free so it is
+# safe to expand more than once in a constructor.
+macro fpu_signal_invalid_if(cond) {
+    FPUStatusWord = FPUStatusWord | zext(cond);
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
+    FPUStatusWord = (FPUStatusWord & 0xff7f) | (zext(unmasked != 0) << 7);
+}
+
+# The unordered compare. Only a signalling NaN raises invalid, which the
+# concrete interpreter already applies to the f80 comparison itself.
+macro fucom(val) {
+    local c2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+    local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
+    local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
+    fpu_set_condition_codes(c0, 0:1, c2, c3);
+}
+
+# The ordered compare. It raises invalid for a quiet NaN too, which is the only
+# thing separating it from FUCOM: both produce identical p-code otherwise.
 macro fcom(val) {
     local c2 = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
+    fpu_signal_invalid_if(c2);
 }
 
 # Produce the architectural full tag associated with an occupied f80 slot.
@@ -2847,6 +2868,17 @@ macro fpu_clear_c1() {
     C1 = 0;
 }
 
+# The unordered EFLAGS compare: like fcomi, but a quiet NaN is not invalid.
+macro fucomi(val) {
+    PF = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
+	CF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
+
+    OF = 0;
+    AF = 0;
+    SF = 0;
+}
+
 macro fcomi(val) {
     PF = nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
 	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
@@ -2857,6 +2889,9 @@ macro fcomi(val) {
     SF = 0;
     # The FCOMI family reports its result only through ZF/PF/CF. C0-C3 are
     # unaffected, so C1 must keep whatever the previous operation left there.
+    # PF is set exactly when an operand is a NaN, which is invalid for an
+    # ordered compare.
+    fpu_signal_invalid_if(PF);
 }
 
 # floating point NaN comparison into EFLAGS
@@ -5874,13 +5909,13 @@ define pcodeop to_bcd;
 :FUCOMI st0, fregop   is vexMode=0 & byte=0xDB; frow=14 & fpage=1 & fregop & st0
 { 
     FPUInstructionPointer = inst_start;
-    fcomi(fregop);
+    fucomi(fregop);
 }                 
 
 :FUCOMIP st0, fregop  is vexMode=0 & byte=0xDF; frow=14 & fpage=1 & fregop & st0
 { 
     FPUInstructionPointer = inst_start;
-    fcomi(fregop);
+    fucomi(fregop);
     fpop();
 }             
                                                                  
@@ -6807,32 +6842,32 @@ define pcodeop fsin;
 :FUCOM fregop     is vexMode=0 & byte=0xDD; frow=14 & fpage=0 & fregop
 { 
     FPUInstructionPointer = inst_start;
-    fcom(fregop);
+    fucom(fregop);
 }                     
 
 :FUCOM          is vexMode=0 & byte=0xDD; byte=0xE1                 
 { 
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
 }                      
 
 :FUCOMP fregop    is vexMode=0 & byte=0xDD; frow=14 & fpage=1 & fregop
 {
     FPUInstructionPointer = inst_start;
-    fcom(fregop);
+    fucom(fregop);
     fpop();
 }                 
 
 :FUCOMP         is vexMode=0 & byte=0xDD; byte=0xE9                 
 {
     FPUInstructionPointer = inst_start;
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop(); 
 }                  
 
 :FUCOMPP        is vexMode=0 & byte=0xDA; byte=0xE9                 
 { 
     FPUInstructionPointer = inst_start;
-    fcom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    fucom(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
     fpop();
     fpop(); 
 }                  
