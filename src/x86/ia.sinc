@@ -9614,7 +9614,7 @@ define pcodeop phsubsw;
 
 :PINSRW        mmxregop, Rmr32, imm8 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC4; mmxmod=3 & Rmr32 & mmxregop; imm8
 { 
-    local destIndex:1 = (imm8 & 0x7) * 16:1;
+    local destIndex:1 = (imm8 & 0x3) * 16:1;
     mmxregop = mmxregop & ~(0xffff:8 << destIndex);
     local newVal:8 = zext(Rmr32[0,16]);
     mmxregop = mmxregop | (newVal << destIndex);
@@ -9622,7 +9622,7 @@ define pcodeop phsubsw;
 
 :PINSRW        mmxregop, m16, imm8 is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC4; m16 & mmxregop ... ; imm8
 { 
-    local destIndex:1 = (imm8 & 0x7) * 16:1;
+    local destIndex:1 = (imm8 & 0x3) * 16:1;
     mmxregop = mmxregop & ~(0xffff:8 << destIndex);
     local newVal:8 = zext(m16);
     mmxregop = mmxregop | (newVal << destIndex);
@@ -10379,6 +10379,7 @@ macro psraw128(xmm, count) {
 :PSUBB           mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF8; mmxmod = 3 & mmxreg1op & mmxreg2op
 {
     mmxreg1op[0,8] =  mmxreg1op[0,8] -  mmxreg2op[0,8];
+    mmxreg1op[8,8] =  mmxreg1op[8,8] -  mmxreg2op[8,8];
     mmxreg1op[16,8] = mmxreg1op[16,8] - mmxreg2op[16,8];
     mmxreg1op[24,8] = mmxreg1op[24,8] - mmxreg2op[24,8];
     mmxreg1op[32,8] = mmxreg1op[32,8] - mmxreg2op[32,8];
