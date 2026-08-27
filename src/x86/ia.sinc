@@ -6562,6 +6562,10 @@ define pcodeop fsin;
 :FSQRT          is vexMode=0 & byte=0xD9; byte=0xFA                 
 { 
     FPUInstructionPointer = inst_start;
+    # C1 is FSQRT's rounding indicator, cleared unless the result rounds
+    # up. Clear it before the operation so a rounding-aware sqrt can set
+    # it; the current f80 sqrt never rounds up.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = sqrt(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
 }
 
