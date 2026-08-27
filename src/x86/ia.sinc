@@ -6652,6 +6652,10 @@ define pcodeop fsin;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
   *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+  # Long mode stores no code or data selector, and both fields are written
+  # rather than left holding whatever the destination already contained.
+  *:2  (Mem + 16) = 0;
+  *:2  (Mem + 24) = 0;
 }
 
 :FNSTENV Mem    is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=6) ... & Mem
@@ -6662,6 +6666,10 @@ define pcodeop fsin;
   *:4  (Mem + 20) = FPUDataPointer;
   *:4  (Mem + 12) = FPUInstructionPointer;
   *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+  # Long mode stores no code or data selector, and both fields are written
+  # rather than left holding whatever the destination already contained.
+  *:2  (Mem + 16) = 0;
+  *:2  (Mem + 24) = 0;
 }
 
 :FSTSW m16      is vexMode=0 & byte=0x9B; byte=0xDD; reg_opcode=7 ... & m16     
