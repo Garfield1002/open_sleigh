@@ -8503,18 +8503,22 @@ macro sswsb(sword, sbyte) {
 }
 
 macro packsswb_mmx(dst, src) {
+	# A bit range passed as a macro output parameter is an rvalue, so the
+	# assignment inside the saturating macro lands on a discarded
+	# temporary and the lane is never written. Saturate into a local.
 	local a:8 = dst;
+	local lane:1;
 	local b:8 = src;
 
-	sswsb(a[ 0,16], dst[ 0,8]);
-	sswsb(a[16,16], dst[ 8,8]);
-	sswsb(a[32,16], dst[16,8]);
-	sswsb(a[48,16], dst[24,8]);
+	sswsb(a[ 0,16], lane);	dst[0,8] = lane;
+	sswsb(a[16,16], lane);	dst[8,8] = lane;
+	sswsb(a[32,16], lane);	dst[16,8] = lane;
+	sswsb(a[48,16], lane);	dst[24,8] = lane;
 
-	sswsb(b[ 0,16], dst[32,8]);
-	sswsb(b[16,16], dst[40,8]);
-	sswsb(b[32,16], dst[48,8]);
-	sswsb(b[48,16], dst[56,8]);
+	sswsb(b[ 0,16], lane);	dst[32,8] = lane;
+	sswsb(b[16,16], lane);	dst[40,8] = lane;
+	sswsb(b[32,16], lane);	dst[48,8] = lane;
+	sswsb(b[48,16], lane);	dst[56,8] = lane;
 }
 :PACKSSWB      mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxregop ... & m64 			  { packsswb_mmx(mmxregop, m64); }
 :PACKSSWB      mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x63; mmxmod = 3 & mmxreg1op & mmxreg2op { packsswb_mmx(mmxreg1op, mmxreg2op); }
@@ -8530,56 +8534,68 @@ macro ssdsw(sword, sbyte) {
 }
 
 macro packssdw_mmx(dst, src) {
+	# A bit range passed as a macro output parameter is an rvalue, so the
+	# assignment inside the saturating macro lands on a discarded
+	# temporary and the lane is never written. Saturate into a local.
 	local a:8 = dst;
+	local lane:2;
 	local b:8 = src;
 
-	ssdsw(a[ 0,32], dst[ 0,16]);
-	ssdsw(a[32,32], dst[16,16]);
+	ssdsw(a[ 0,32], lane);	dst[0,16] = lane;
+	ssdsw(a[32,32], lane);	dst[16,16] = lane;
 
-	ssdsw(b[ 0,32], dst[32,16]);
-	ssdsw(b[32,32], dst[48,16]);
+	ssdsw(b[ 0,32], lane);	dst[32,16] = lane;
+	ssdsw(b[32,32], lane);	dst[48,16] = lane;
 }
 :PACKSSDW      mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxregop ... & m64 			  { packssdw_mmx(mmxregop, m64); }
 :PACKSSDW      mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x6B; mmxmod = 3 & mmxreg1op & mmxreg2op { packssdw_mmx(mmxreg1op, mmxreg2op); }
 
 macro packsswb_xmm(dst, src) {
+	# A bit range passed as a macro output parameter is an rvalue, so the
+	# assignment inside the saturating macro lands on a discarded
+	# temporary and the lane is never written. Saturate into a local.
 	local a:16 = dst;
+	local lane:1;
 	local b:16 = src;
 
-	sswsb(a[  0,16], dst[  0,8]);
-	sswsb(a[ 16,16], dst[  8,8]);
-	sswsb(a[ 32,16], dst[ 16,8]);
-	sswsb(a[ 48,16], dst[ 24,8]);
-	sswsb(a[ 64,16], dst[ 32,8]);
-	sswsb(a[ 80,16], dst[ 40,8]);
-	sswsb(a[ 96,16], dst[ 48,8]);
-	sswsb(a[112,16], dst[ 56,8]);
+	sswsb(a[  0,16], lane);	dst[0,8] = lane;
+	sswsb(a[ 16,16], lane);	dst[8,8] = lane;
+	sswsb(a[ 32,16], lane);	dst[16,8] = lane;
+	sswsb(a[ 48,16], lane);	dst[24,8] = lane;
+	sswsb(a[ 64,16], lane);	dst[32,8] = lane;
+	sswsb(a[ 80,16], lane);	dst[40,8] = lane;
+	sswsb(a[ 96,16], lane);	dst[48,8] = lane;
+	sswsb(a[112,16], lane);	dst[56,8] = lane;
 
-	sswsb(b[  0,16], dst[ 64,8]);
-	sswsb(b[ 16,16], dst[ 72,8]);
-	sswsb(b[ 32,16], dst[ 80,8]);
-	sswsb(b[ 48,16], dst[ 88,8]);
-	sswsb(b[ 64,16], dst[ 96,8]);
-	sswsb(b[ 80,16], dst[104,8]);
-	sswsb(b[ 96,16], dst[112,8]);
-	sswsb(b[112,16], dst[120,8]);
+	sswsb(b[  0,16], lane);	dst[64,8] = lane;
+	sswsb(b[ 16,16], lane);	dst[72,8] = lane;
+	sswsb(b[ 32,16], lane);	dst[80,8] = lane;
+	sswsb(b[ 48,16], lane);	dst[88,8] = lane;
+	sswsb(b[ 64,16], lane);	dst[96,8] = lane;
+	sswsb(b[ 80,16], lane);	dst[104,8] = lane;
+	sswsb(b[ 96,16], lane);	dst[112,8] = lane;
+	sswsb(b[112,16], lane);	dst[120,8] = lane;
 }
 :PACKSSWB      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; XmmReg ... & m128 			 { packsswb_xmm(XmmReg, m128); }
 :PACKSSWB      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x63; xmmmod = 3 & XmmReg1 & XmmReg2 { packsswb_xmm(XmmReg1, XmmReg2); }
 
 macro packssdw_xmm(dst, src) {
+	# A bit range passed as a macro output parameter is an rvalue, so the
+	# assignment inside the saturating macro lands on a discarded
+	# temporary and the lane is never written. Saturate into a local.
 	local a:16 = dst;
+	local lane:2;
 	local b:16 = src;
 
-	ssdsw(a[ 0,32], dst[  0,16]);
-	ssdsw(a[32,32], dst[ 16,16]);
-	ssdsw(a[64,32], dst[ 32,16]);
-	ssdsw(a[96,32], dst[ 48,16]);
+	ssdsw(a[ 0,32], lane);	dst[0,16] = lane;
+	ssdsw(a[32,32], lane);	dst[16,16] = lane;
+	ssdsw(a[64,32], lane);	dst[32,16] = lane;
+	ssdsw(a[96,32], lane);	dst[48,16] = lane;
 
-	ssdsw(b[ 0,32], dst[ 64,16]);
-	ssdsw(b[32,32], dst[ 80,16]);
-	ssdsw(b[64,32], dst[ 96,16]);
-	ssdsw(b[96,32], dst[112,16]);
+	ssdsw(b[ 0,32], lane);	dst[64,16] = lane;
+	ssdsw(b[32,32], lane);	dst[80,16] = lane;
+	ssdsw(b[64,32], lane);	dst[96,16] = lane;
+	ssdsw(b[96,32], lane);	dst[112,16] = lane;
 }
 :PACKSSDW      XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; XmmReg ... & m128 			 { packssdw_xmm(XmmReg, m128); }
 :PACKSSDW      XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x6B; xmmmod = 3 & XmmReg1 & XmmReg2 { packssdw_xmm(XmmReg1, XmmReg2); }
