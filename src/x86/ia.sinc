@@ -5645,6 +5645,8 @@ define pcodeop f2xm1;
 { 
     FPUInstructionPointer = inst_start;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = abs(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
 }
     
 :FADD m32fp      is vexMode=0 & byte=0xD8; reg_opcode=0 ... & m32fp 
@@ -5719,6 +5721,8 @@ define pcodeop to_bcd;
 { 
     FPUInstructionPointer = inst_start;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
 }
 
 :FCLEX          is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE2      
