@@ -9667,10 +9667,10 @@ define pcodeop pmaddwd;
 :PMAXSW        mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xEE; mmxreg1op ... & mmxreg2op_m64
 { 
     local srcCopy:8 = mmxreg2op_m64;
-    conditionalAssign(mmxreg1op[0,16],srcCopy[0,16] s> mmxreg1op[0,16],srcCopy[0,16],mmxreg1op[0,16]);
-    conditionalAssign(mmxreg1op[16,16],srcCopy[16,16] s> mmxreg1op[16,16],srcCopy[16,16],mmxreg1op[16,16]);
-    conditionalAssign(mmxreg1op[32,16],srcCopy[32,16] s> mmxreg1op[32,16],srcCopy[32,16],mmxreg1op[32,16]);
-    conditionalAssign(mmxreg1op[48,16],srcCopy[48,16] s> mmxreg1op[48,16],srcCopy[48,16],mmxreg1op[48,16]);
+    mmxreg1op[0,16] = (zext(srcCopy[0,16] s> mmxreg1op[0,16]) * srcCopy[0,16]) | (zext(!(srcCopy[0,16] s> mmxreg1op[0,16])) * mmxreg1op[0,16]);
+    mmxreg1op[16,16] = (zext(srcCopy[16,16] s> mmxreg1op[16,16]) * srcCopy[16,16]) | (zext(!(srcCopy[16,16] s> mmxreg1op[16,16])) * mmxreg1op[16,16]);
+    mmxreg1op[32,16] = (zext(srcCopy[32,16] s> mmxreg1op[32,16]) * srcCopy[32,16]) | (zext(!(srcCopy[32,16] s> mmxreg1op[32,16])) * mmxreg1op[32,16]);
+    mmxreg1op[48,16] = (zext(srcCopy[48,16] s> mmxreg1op[48,16]) * srcCopy[48,16]) | (zext(!(srcCopy[48,16] s> mmxreg1op[48,16])) * mmxreg1op[48,16]);
 }
 
 :PMAXSW        XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xEE; XmmReg1 ... & XmmReg2_m128 
@@ -9689,14 +9689,14 @@ define pcodeop pmaddwd;
 :PMAXUB        mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xDE; mmxreg1op ... & mmxreg2op_m64
 { 
     local srcCopy:8 = mmxreg2op_m64;
-    conditionalAssign(mmxreg1op[0,8],srcCopy[0,8] > mmxreg1op[0,8],srcCopy[0,8],mmxreg1op[0,8]);
-    conditionalAssign(mmxreg1op[8,8],srcCopy[8,8] > mmxreg1op[8,8],srcCopy[8,8],mmxreg1op[8,8]);
-    conditionalAssign(mmxreg1op[16,8],srcCopy[16,8] > mmxreg1op[16,8],srcCopy[16,8],mmxreg1op[16,8]);
-    conditionalAssign(mmxreg1op[24,8],srcCopy[24,8] > mmxreg1op[24,8],srcCopy[24,8],mmxreg1op[24,8]);
-    conditionalAssign(mmxreg1op[32,8],srcCopy[32,8] > mmxreg1op[32,8],srcCopy[32,8],mmxreg1op[32,8]);
-    conditionalAssign(mmxreg1op[40,8],srcCopy[40,8] > mmxreg1op[40,8],srcCopy[40,8],mmxreg1op[40,8]);
-    conditionalAssign(mmxreg1op[48,8],srcCopy[48,8] > mmxreg1op[48,8],srcCopy[48,8],mmxreg1op[48,8]);
-    conditionalAssign(mmxreg1op[56,8],srcCopy[56,8] > mmxreg1op[56,8],srcCopy[56,8],mmxreg1op[56,8]);
+    mmxreg1op[0,8] = (zext(srcCopy[0,8] > mmxreg1op[0,8]) * srcCopy[0,8]) | (zext(!(srcCopy[0,8] > mmxreg1op[0,8])) * mmxreg1op[0,8]);
+    mmxreg1op[8,8] = (zext(srcCopy[8,8] > mmxreg1op[8,8]) * srcCopy[8,8]) | (zext(!(srcCopy[8,8] > mmxreg1op[8,8])) * mmxreg1op[8,8]);
+    mmxreg1op[16,8] = (zext(srcCopy[16,8] > mmxreg1op[16,8]) * srcCopy[16,8]) | (zext(!(srcCopy[16,8] > mmxreg1op[16,8])) * mmxreg1op[16,8]);
+    mmxreg1op[24,8] = (zext(srcCopy[24,8] > mmxreg1op[24,8]) * srcCopy[24,8]) | (zext(!(srcCopy[24,8] > mmxreg1op[24,8])) * mmxreg1op[24,8]);
+    mmxreg1op[32,8] = (zext(srcCopy[32,8] > mmxreg1op[32,8]) * srcCopy[32,8]) | (zext(!(srcCopy[32,8] > mmxreg1op[32,8])) * mmxreg1op[32,8]);
+    mmxreg1op[40,8] = (zext(srcCopy[40,8] > mmxreg1op[40,8]) * srcCopy[40,8]) | (zext(!(srcCopy[40,8] > mmxreg1op[40,8])) * mmxreg1op[40,8]);
+    mmxreg1op[48,8] = (zext(srcCopy[48,8] > mmxreg1op[48,8]) * srcCopy[48,8]) | (zext(!(srcCopy[48,8] > mmxreg1op[48,8])) * mmxreg1op[48,8]);
+    mmxreg1op[56,8] = (zext(srcCopy[56,8] > mmxreg1op[56,8]) * srcCopy[56,8]) | (zext(!(srcCopy[56,8] > mmxreg1op[56,8])) * mmxreg1op[56,8]);
 }
 
 :PMAXUB        XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xDE; XmmReg1 ... & XmmReg2_m128 
@@ -9723,10 +9723,10 @@ define pcodeop pmaddwd;
 :PMINSW        mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xEA; mmxreg1op ... & mmxreg2op_m64
 { 
     local srcCopy:8 = mmxreg2op_m64;
-    conditionalAssign(mmxreg1op[0,16],srcCopy[0,16] s< mmxreg1op[0,16],srcCopy[0,16],mmxreg1op[0,16]);
-    conditionalAssign(mmxreg1op[16,16],srcCopy[16,16] s< mmxreg1op[16,16],srcCopy[16,16],mmxreg1op[16,16]);
-    conditionalAssign(mmxreg1op[32,16],srcCopy[32,16] s< mmxreg1op[32,16],srcCopy[32,16],mmxreg1op[32,16]);
-    conditionalAssign(mmxreg1op[48,16],srcCopy[48,16] s< mmxreg1op[48,16],srcCopy[48,16],mmxreg1op[48,16]);
+    mmxreg1op[0,16] = (zext(srcCopy[0,16] s< mmxreg1op[0,16]) * srcCopy[0,16]) | (zext(!(srcCopy[0,16] s< mmxreg1op[0,16])) * mmxreg1op[0,16]);
+    mmxreg1op[16,16] = (zext(srcCopy[16,16] s< mmxreg1op[16,16]) * srcCopy[16,16]) | (zext(!(srcCopy[16,16] s< mmxreg1op[16,16])) * mmxreg1op[16,16]);
+    mmxreg1op[32,16] = (zext(srcCopy[32,16] s< mmxreg1op[32,16]) * srcCopy[32,16]) | (zext(!(srcCopy[32,16] s< mmxreg1op[32,16])) * mmxreg1op[32,16]);
+    mmxreg1op[48,16] = (zext(srcCopy[48,16] s< mmxreg1op[48,16]) * srcCopy[48,16]) | (zext(!(srcCopy[48,16] s< mmxreg1op[48,16])) * mmxreg1op[48,16]);
 }
 
 :PMINSW        XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xEA; XmmReg1 ... & XmmReg2_m128 
@@ -9745,14 +9745,14 @@ define pcodeop pmaddwd;
 :PMINUB        mmxreg1op, mmxreg2op_m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xDA; mmxreg1op ... & mmxreg2op_m64
 { 
     local srcCopy:8 = mmxreg2op_m64;
-    conditionalAssign(mmxreg1op[0,8],srcCopy[0,8] < mmxreg1op[0,8],srcCopy[0,8],mmxreg1op[0,8]);
-    conditionalAssign(mmxreg1op[8,8],srcCopy[8,8] < mmxreg1op[8,8],srcCopy[8,8],mmxreg1op[8,8]);
-    conditionalAssign(mmxreg1op[16,8],srcCopy[16,8] < mmxreg1op[16,8],srcCopy[16,8],mmxreg1op[16,8]);
-    conditionalAssign(mmxreg1op[24,8],srcCopy[24,8] < mmxreg1op[24,8],srcCopy[24,8],mmxreg1op[24,8]);
-    conditionalAssign(mmxreg1op[32,8],srcCopy[32,8] < mmxreg1op[32,8],srcCopy[32,8],mmxreg1op[32,8]);
-    conditionalAssign(mmxreg1op[40,8],srcCopy[40,8] < mmxreg1op[40,8],srcCopy[40,8],mmxreg1op[40,8]);
-    conditionalAssign(mmxreg1op[48,8],srcCopy[48,8] < mmxreg1op[48,8],srcCopy[48,8],mmxreg1op[48,8]);
-    conditionalAssign(mmxreg1op[56,8],srcCopy[56,8] < mmxreg1op[56,8],srcCopy[56,8],mmxreg1op[56,8]);
+    mmxreg1op[0,8] = (zext(srcCopy[0,8] < mmxreg1op[0,8]) * srcCopy[0,8]) | (zext(!(srcCopy[0,8] < mmxreg1op[0,8])) * mmxreg1op[0,8]);
+    mmxreg1op[8,8] = (zext(srcCopy[8,8] < mmxreg1op[8,8]) * srcCopy[8,8]) | (zext(!(srcCopy[8,8] < mmxreg1op[8,8])) * mmxreg1op[8,8]);
+    mmxreg1op[16,8] = (zext(srcCopy[16,8] < mmxreg1op[16,8]) * srcCopy[16,8]) | (zext(!(srcCopy[16,8] < mmxreg1op[16,8])) * mmxreg1op[16,8]);
+    mmxreg1op[24,8] = (zext(srcCopy[24,8] < mmxreg1op[24,8]) * srcCopy[24,8]) | (zext(!(srcCopy[24,8] < mmxreg1op[24,8])) * mmxreg1op[24,8]);
+    mmxreg1op[32,8] = (zext(srcCopy[32,8] < mmxreg1op[32,8]) * srcCopy[32,8]) | (zext(!(srcCopy[32,8] < mmxreg1op[32,8])) * mmxreg1op[32,8]);
+    mmxreg1op[40,8] = (zext(srcCopy[40,8] < mmxreg1op[40,8]) * srcCopy[40,8]) | (zext(!(srcCopy[40,8] < mmxreg1op[40,8])) * mmxreg1op[40,8]);
+    mmxreg1op[48,8] = (zext(srcCopy[48,8] < mmxreg1op[48,8]) * srcCopy[48,8]) | (zext(!(srcCopy[48,8] < mmxreg1op[48,8])) * mmxreg1op[48,8]);
+    mmxreg1op[56,8] = (zext(srcCopy[56,8] < mmxreg1op[56,8]) * srcCopy[56,8]) | (zext(!(srcCopy[56,8] < mmxreg1op[56,8])) * mmxreg1op[56,8]);
 }
 
 :PMINUB        XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xDA; XmmReg1 ... & XmmReg2_m128 
