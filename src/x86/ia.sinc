@@ -10168,20 +10168,60 @@ define pcodeop pshufw;
 :PSHUFW         mmxreg1op, mmxreg2op_m64, imm8       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x70; mmxreg2op_m64 & mmxreg1op ...; imm8 { mmxreg1op = pshufw(mmxreg1op, mmxreg2op_m64, imm8:8); }
 
 define pcodeop psignb;
-:PSIGNB         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x08; mmxregop ... & m64                          { mmxregop=psignb(mmxregop,m64); }
-:PSIGNB         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x08; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=psignb(mmxreg1op,mmxreg2op); }
+:PSIGNB         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x08; mmxregop ... & m64                          {
+    local psignsrc:8 = m64;
+    mmxregop[0,8] = (zext(psignsrc[0,8] s< 0) * (0 - mmxregop[0,8])) | (zext(psignsrc[0,8] s> 0) * mmxregop[0,8]);
+    mmxregop[8,8] = (zext(psignsrc[8,8] s< 0) * (0 - mmxregop[8,8])) | (zext(psignsrc[8,8] s> 0) * mmxregop[8,8]);
+    mmxregop[16,8] = (zext(psignsrc[16,8] s< 0) * (0 - mmxregop[16,8])) | (zext(psignsrc[16,8] s> 0) * mmxregop[16,8]);
+    mmxregop[24,8] = (zext(psignsrc[24,8] s< 0) * (0 - mmxregop[24,8])) | (zext(psignsrc[24,8] s> 0) * mmxregop[24,8]);
+    mmxregop[32,8] = (zext(psignsrc[32,8] s< 0) * (0 - mmxregop[32,8])) | (zext(psignsrc[32,8] s> 0) * mmxregop[32,8]);
+    mmxregop[40,8] = (zext(psignsrc[40,8] s< 0) * (0 - mmxregop[40,8])) | (zext(psignsrc[40,8] s> 0) * mmxregop[40,8]);
+    mmxregop[48,8] = (zext(psignsrc[48,8] s< 0) * (0 - mmxregop[48,8])) | (zext(psignsrc[48,8] s> 0) * mmxregop[48,8]);
+    mmxregop[56,8] = (zext(psignsrc[56,8] s< 0) * (0 - mmxregop[56,8])) | (zext(psignsrc[56,8] s> 0) * mmxregop[56,8]);
+}
+:PSIGNB         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x08; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local psignsrc:8 = mmxreg2op;
+    mmxreg1op[0,8] = (zext(psignsrc[0,8] s< 0) * (0 - mmxreg1op[0,8])) | (zext(psignsrc[0,8] s> 0) * mmxreg1op[0,8]);
+    mmxreg1op[8,8] = (zext(psignsrc[8,8] s< 0) * (0 - mmxreg1op[8,8])) | (zext(psignsrc[8,8] s> 0) * mmxreg1op[8,8]);
+    mmxreg1op[16,8] = (zext(psignsrc[16,8] s< 0) * (0 - mmxreg1op[16,8])) | (zext(psignsrc[16,8] s> 0) * mmxreg1op[16,8]);
+    mmxreg1op[24,8] = (zext(psignsrc[24,8] s< 0) * (0 - mmxreg1op[24,8])) | (zext(psignsrc[24,8] s> 0) * mmxreg1op[24,8]);
+    mmxreg1op[32,8] = (zext(psignsrc[32,8] s< 0) * (0 - mmxreg1op[32,8])) | (zext(psignsrc[32,8] s> 0) * mmxreg1op[32,8]);
+    mmxreg1op[40,8] = (zext(psignsrc[40,8] s< 0) * (0 - mmxreg1op[40,8])) | (zext(psignsrc[40,8] s> 0) * mmxreg1op[40,8]);
+    mmxreg1op[48,8] = (zext(psignsrc[48,8] s< 0) * (0 - mmxreg1op[48,8])) | (zext(psignsrc[48,8] s> 0) * mmxreg1op[48,8]);
+    mmxreg1op[56,8] = (zext(psignsrc[56,8] s< 0) * (0 - mmxreg1op[56,8])) | (zext(psignsrc[56,8] s> 0) * mmxreg1op[56,8]);
+}
 :PSIGNB         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x08; XmmReg ... & m128              { XmmReg=psignb(XmmReg,m128); }
 :PSIGNB         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x08; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=psignb(XmmReg1,XmmReg2); }
 
 define pcodeop psignw;
-:PSIGNW         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x09; mmxregop ... & m64                          { mmxregop=psignw(mmxregop,m64); }
-:PSIGNW         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x09; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=psignw(mmxreg1op,mmxreg2op); }
+:PSIGNW         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x09; mmxregop ... & m64                          {
+    local psignsrc:8 = m64;
+    mmxregop[0,16] = (zext(psignsrc[0,16] s< 0) * (0 - mmxregop[0,16])) | (zext(psignsrc[0,16] s> 0) * mmxregop[0,16]);
+    mmxregop[16,16] = (zext(psignsrc[16,16] s< 0) * (0 - mmxregop[16,16])) | (zext(psignsrc[16,16] s> 0) * mmxregop[16,16]);
+    mmxregop[32,16] = (zext(psignsrc[32,16] s< 0) * (0 - mmxregop[32,16])) | (zext(psignsrc[32,16] s> 0) * mmxregop[32,16]);
+    mmxregop[48,16] = (zext(psignsrc[48,16] s< 0) * (0 - mmxregop[48,16])) | (zext(psignsrc[48,16] s> 0) * mmxregop[48,16]);
+}
+:PSIGNW         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x09; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local psignsrc:8 = mmxreg2op;
+    mmxreg1op[0,16] = (zext(psignsrc[0,16] s< 0) * (0 - mmxreg1op[0,16])) | (zext(psignsrc[0,16] s> 0) * mmxreg1op[0,16]);
+    mmxreg1op[16,16] = (zext(psignsrc[16,16] s< 0) * (0 - mmxreg1op[16,16])) | (zext(psignsrc[16,16] s> 0) * mmxreg1op[16,16]);
+    mmxreg1op[32,16] = (zext(psignsrc[32,16] s< 0) * (0 - mmxreg1op[32,16])) | (zext(psignsrc[32,16] s> 0) * mmxreg1op[32,16]);
+    mmxreg1op[48,16] = (zext(psignsrc[48,16] s< 0) * (0 - mmxreg1op[48,16])) | (zext(psignsrc[48,16] s> 0) * mmxreg1op[48,16]);
+}
 :PSIGNW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x09; XmmReg ... & m128              { XmmReg=psignw(XmmReg,m128); }
 :PSIGNW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x09; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=psignw(XmmReg1,XmmReg2); }
 
 define pcodeop psignd;
-:PSIGND         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0a; mmxregop ... & m64                          { mmxregop=psignd(mmxregop,m64); }
-:PSIGND         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0a; mmxmod = 3 & mmxreg1op & mmxreg2op            { mmxreg1op=psignd(mmxreg1op,mmxreg2op); }
+:PSIGND         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0a; mmxregop ... & m64                          {
+    local psignsrc:8 = m64;
+    mmxregop[0,32] = (zext(psignsrc[0,32] s< 0) * (0 - mmxregop[0,32])) | (zext(psignsrc[0,32] s> 0) * mmxregop[0,32]);
+    mmxregop[32,32] = (zext(psignsrc[32,32] s< 0) * (0 - mmxregop[32,32])) | (zext(psignsrc[32,32] s> 0) * mmxregop[32,32]);
+}
+:PSIGND         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x0a; mmxmod = 3 & mmxreg1op & mmxreg2op            {
+    local psignsrc:8 = mmxreg2op;
+    mmxreg1op[0,32] = (zext(psignsrc[0,32] s< 0) * (0 - mmxreg1op[0,32])) | (zext(psignsrc[0,32] s> 0) * mmxreg1op[0,32]);
+    mmxreg1op[32,32] = (zext(psignsrc[32,32] s< 0) * (0 - mmxreg1op[32,32])) | (zext(psignsrc[32,32] s> 0) * mmxreg1op[32,32]);
+}
 :PSIGND         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0a; XmmReg ... & m128              { XmmReg=psignd(XmmReg,m128); }
 :PSIGND         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0a; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1=psignd(XmmReg1,XmmReg2); }
 
