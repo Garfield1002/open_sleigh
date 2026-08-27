@@ -2826,6 +2826,23 @@ macro fpu_stack_underflow_out(index, faulted) {
     fpu_refresh_error_summary();
 }
 
+# A masked stack underflow delivers the indefinite QNaN in place of the result
+# and leaves the destination reading as occupied. `slot` is the byte address of
+# the destination register in the x87 space.
+macro fpu_underflow_indefinite(faulted, slot) {
+    local keep:8 = zext(!faulted);
+    local take:8 = zext(faulted);
+    *[x87]:8 (slot) = (*[x87]:8 (slot) * keep) | (0xc000000000000000 * take);
+    local keep2:2 = zext(!faulted);
+    local take2:2 = zext(faulted);
+    *[x87]:2 (slot + 8) = (*[x87]:2 (slot + 8) * keep2) | (0xffff * take2);
+    # Mark the slot special rather than empty; the abridged tag only records
+    # occupancy, which is what a save reports.
+    local shift:2 = (slot / 10) * 2;
+    local cleared:2 = FPUTagWord & ~(3 << shift);
+    FPUTagWord = (FPUTagWord * zext(!faulted)) | ((cleared | (2 << shift)) * zext(faulted));
+}
+
 macro fpu_stack_underflow(index) {
     local top:2 = (FPUStatusWord >> 11) & 7;
     local shift0:2 = (top & 7) * 2;
@@ -5756,7 +5773,16 @@ define pcodeop f2xm1;
 :FABS           is vexMode=0 & byte=0xD9; byte=0xE1 
 { 
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = abs(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    # FABS only clears the sign bit, so it rewrites the top word and leaves
+    # the significand untouched. Writing that word directly avoids a bit-range
+    # assignment into 80-bit storage, which the lifter cannot mask.
+    local absslotfaulted:1;
+    fpu_stack_underflow_out(0:2, absslotfaulted);
+    local absslot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    *[x87]:2 (absslot + 8) = *[x87]:2 (absslot + 8) & 0x7fff;
+    # An underflow aborts the operation, so the indefinite result is
+    # delivered after it rather than being modified by it.
+    fpu_underflow_indefinite(absslotfaulted, absslot);
     # C1 is defined clear; the other condition codes are left untouched.
     FPUStatusWord = FPUStatusWord & 0xfdff;
 }
@@ -5834,7 +5860,14 @@ define pcodeop to_bcd;
 :FCHS           is vexMode=0 & byte=0xD9; byte=0xE0                 
 { 
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    # FCHS inverts the sign bit and leaves everything else alone.
+    local chsslotfaulted:1;
+    fpu_stack_underflow_out(0:2, chsslotfaulted);
+    local chsslot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    *[x87]:2 (chsslot + 8) = *[x87]:2 (chsslot + 8) ^ 0x8000;
+    # An underflow aborts the operation, so the indefinite result is
+    # delivered after it rather than being modified by it.
+    fpu_underflow_indefinite(chsslotfaulted, chsslot);
     # C1 is defined clear; the other condition codes are left untouched.
     FPUStatusWord = FPUStatusWord & 0xfdff;
 }
