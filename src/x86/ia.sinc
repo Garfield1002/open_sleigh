@@ -12020,14 +12020,74 @@ define pcodeop movntdqa;
 ####  SSE4.2 instructions
 ####
 
-define pcodeop crc32;
-:CRC32 Reg32, rm8  is vexMode=0 &            $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF0; Reg32 ... & check_Reg32_dest ... & rm8  { Reg32 = crc32(Reg32, rm8);  build check_Reg32_dest; }
-:CRC32 Reg32, rm16 is vexMode=0 & opsize=0 & $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF1; Reg32 ... & check_Reg32_dest ... & rm16 { Reg32 = crc32(Reg32, rm16); build check_Reg32_dest; }
-:CRC32 Reg32, rm32 is vexMode=0 & opsize=1 & $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF1; Reg32 ... & check_Reg32_dest ... & rm32 { Reg32 = crc32(Reg32, rm32); build check_Reg32_dest; }
+# CRC-32C (Castagnoli). The instruction bit-reflects its input and output,
+# which composes to the ordinary reflected algorithm: exclusive-or the byte in
+# at the bottom and shift down, feeding back the reversed polynomial
+# 0x1EDC6F41 -> 0x82F63B78 whenever the bit shifted out is set. Multiplying by
+# that bit selects the polynomial branchlessly.
+macro crc32_byte(crc, value) {
+    crc = crc ^ zext(value);
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+    crc = (crc >> 1) ^ (0x82F63B78:4 * (crc & 1:4));
+}
+
+:CRC32 Reg32, rm8  is vexMode=0 &            $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF0; Reg32 ... & check_Reg32_dest ... & rm8  {
+    local crc:4 = Reg32;
+    crc32_byte(crc, rm8);
+    Reg32 = crc;
+    build check_Reg32_dest;
+}
+:CRC32 Reg32, rm16 is vexMode=0 & opsize=0 & $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF1; Reg32 ... & check_Reg32_dest ... & rm16 {
+    local crc:4 = Reg32;
+    local value:2 = rm16;
+    crc32_byte(crc, value[0,8]);
+    crc32_byte(crc, value[8,8]);
+    Reg32 = crc;
+    build check_Reg32_dest;
+}
+:CRC32 Reg32, rm32 is vexMode=0 & opsize=1 & $(PRE_F2) &            byte=0x0F; byte=0x38; byte=0xF1; Reg32 ... & check_Reg32_dest ... & rm32 {
+    local crc:4 = Reg32;
+    local value:4 = rm32;
+    crc32_byte(crc, value[0,8]);
+    crc32_byte(crc, value[8,8]);
+    crc32_byte(crc, value[16,8]);
+    crc32_byte(crc, value[24,8]);
+    Reg32 = crc;
+    build check_Reg32_dest;
+}
 @ifdef IA64
-:CRC32 Reg32, rm8  is vexMode=0 & opsize=1 & $(PRE_F2) & $(REX)   & byte=0x0F; byte=0x38; byte=0xF0; Reg32 ... & check_Reg32_dest ... & rm8  { Reg32 = crc32(Reg32, rm8);  build check_Reg32_dest; }
-:CRC32 Reg64, rm8  is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & $(REX_W) & byte=0x0F; byte=0x38; byte=0xF0; Reg64 ... & rm8  { Reg64 = crc32(Reg64, rm8); }
-:CRC32 Reg64, rm64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & $(REX_W) & byte=0x0F; byte=0x38; byte=0xF1; Reg64 ... & rm64 { Reg64 = crc32(Reg64, rm64); }
+:CRC32 Reg32, rm8  is vexMode=0 & opsize=1 & $(PRE_F2) & $(REX)   & byte=0x0F; byte=0x38; byte=0xF0; Reg32 ... & check_Reg32_dest ... & rm8  {
+    local crc:4 = Reg32;
+    crc32_byte(crc, rm8);
+    Reg32 = crc;
+    build check_Reg32_dest;
+}
+# The 64-bit forms keep the CRC in the low half and clear the high half, which
+# the zero-extending assignment to Reg64 does.
+:CRC32 Reg64, rm8  is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & $(REX_W) & byte=0x0F; byte=0x38; byte=0xF0; Reg64 ... & rm8  {
+    local crc:4 = Reg64:4;
+    crc32_byte(crc, rm8);
+    Reg64 = zext(crc);
+}
+:CRC32 Reg64, rm64 is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & $(REX_W) & byte=0x0F; byte=0x38; byte=0xF1; Reg64 ... & rm64 {
+    local crc:4 = Reg64:4;
+    local value:8 = rm64;
+    crc32_byte(crc, value[0,8]);
+    crc32_byte(crc, value[8,8]);
+    crc32_byte(crc, value[16,8]);
+    crc32_byte(crc, value[24,8]);
+    crc32_byte(crc, value[32,8]);
+    crc32_byte(crc, value[40,8]);
+    crc32_byte(crc, value[48,8]);
+    crc32_byte(crc, value[56,8]);
+    Reg64 = zext(crc);
+}
 @endif
 
 define pcodeop pcmpestri;
