@@ -10415,8 +10415,23 @@ define pcodeop pshufhw;
 define pcodeop pshuflw;
 :PSHUFLW        XmmReg1, XmmReg2_m128, imm8     is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x70; XmmReg2_m128 & XmmReg1 ...; imm8 { XmmReg1 = pshuflw(XmmReg1, XmmReg2_m128, imm8:8); }
 
-define pcodeop pshufw;
-:PSHUFW         mmxreg1op, mmxreg2op_m64, imm8       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x70; mmxreg2op_m64 & mmxreg1op ...; imm8 { mmxreg1op = pshufw(mmxreg1op, mmxreg2op_m64, imm8:8); }
+# Each destination word selects a source word through a two-bit field of imm8.
+# The selector is not a literal, so the lane cannot be a bit-range index: shift
+# the source down by `selector * 16` and take the low word instead. The source
+# is copied first because the destination may alias it (`pshufw mm0, mm0, i`).
+:PSHUFW         mmxreg1op, mmxreg2op_m64, imm8       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x70; mmxreg2op_m64 & mmxreg1op ...; imm8
+{
+    local src:8 = mmxreg2op_m64;
+    local sel:8 = zext(imm8:1);
+    local w0:8 = src >> ((sel & 3) * 16);
+    local w1:8 = src >> (((sel >> 2) & 3) * 16);
+    local w2:8 = src >> (((sel >> 4) & 3) * 16);
+    local w3:8 = src >> (((sel >> 6) & 3) * 16);
+    mmxreg1op[0,16] = w0[0,16];
+    mmxreg1op[16,16] = w1[0,16];
+    mmxreg1op[32,16] = w2[0,16];
+    mmxreg1op[48,16] = w3[0,16];
+}
 
 define pcodeop psignb;
 :PSIGNB         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x38; byte=0x08; mmxregop ... & m64                          {
