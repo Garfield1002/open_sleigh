@@ -5897,59 +5897,103 @@ define pcodeop to_bcd;
     FPUStatusWord[15,1] = 0; 
 } 
 
-:FCMOVB st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=0 & fregop & st0
-{ 
-   FPUInstructionPointer = inst_start;
-   if ( !CF ) goto inst_next; 
-   *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+# FCMOV references ST(0) and ST(i) whether or not it moves, so an empty
+# operand is a stack fault either way: the fault is detected before the
+# condition is tested, and the indefinite it delivers overwrites whatever the
+# move left behind.
+:FCMOVB st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=0 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !CF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }   
 
-:FCMOVE st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=1 & fregop & st0
-{ 
+:FCMOVE st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=1 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( !ZF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }   
 
-:FCMOVBE st0, fregop  is vexMode=0 & byte=0xDA; frow=13 & fpage=0 & fregop & st0
-{ 
+:FCMOVBE st0, fregop   is vexMode=0 & byte=0xDA; frow=13 & fpage=0 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( !CF & !ZF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !CF & !ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 } 
 
-:FCMOVU  st0, fregop  is vexMode=0 & byte=0xDA; frow=13 & fpage=1 & fregop & st0
-{ 
+:FCMOVU st0, fregop   is vexMode=0 & byte=0xDA; frow=13 & fpage=1 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( !PF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !PF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }   
 
-:FCMOVNB st0, fregop  is vexMode=0 & byte=0xDB; frow=12 & fpage=0 & fregop & st0
-{ 
+:FCMOVNB st0, fregop   is vexMode=0 & byte=0xDB; frow=12 & fpage=0 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( CF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( CF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }    
 
-:FCMOVNE st0, fregop  is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & fregop & st0
-{ 
+:FCMOVNE st0, fregop   is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( ZF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }    
 
-:FCMOVNBE st0, fregop is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & fregop & st0
-{ 
+:FCMOVNBE st0, fregop   is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( CF & ZF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( CF || ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }   
-:FCMOVNU  st0, fregop is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & fregop & st0
-{ 
+:FCMOVNU st0, fregop   is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & fregop & fregidx & st0
+{
     FPUInstructionPointer = inst_start;
-    if ( PF ) goto inst_next; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( PF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
 }    
                                                                  
 :FCOM m32fp       is vexMode=0 & byte=0xD8; reg_opcode=2 ... & m32fp            
