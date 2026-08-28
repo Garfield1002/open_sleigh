@@ -1,3 +1,4 @@
+#@family base
 define pcodeop clwb;
 :CLWB m8      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0xAE; m8 & reg_opcode=6 ... {
 	clwb(m8);

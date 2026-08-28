@@ -1,3 +1,4 @@
+#@family bmi
 macro tzcntflags(input, output) {
  ZF = (output == 0);
  CF = (input == 0);

@@ -1,3 +1,4 @@
+#@family base
 # The LOCK prefix is only valid for certain instructions, otherwise, from the
 # Intel instruction manual:
 #     An undefined opcode exception will also be generated if the LOCK prefix

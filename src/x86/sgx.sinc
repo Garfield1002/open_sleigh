@@ -1,3 +1,4 @@
+#@family sgx
 define pcodeop encls_ecreate;
 define pcodeop encls_eadd;
 define pcodeop encls_einit;

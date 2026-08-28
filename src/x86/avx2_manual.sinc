@@ -1,3 +1,4 @@
+#@family avx2
 # VINSERTI128/VINSERTI32x4/VINSERTI64x2/VINSERTI32x8/VINSERTI64x4 5-314 PAGE 2138 LINE 109785
 define pcodeop vinserti128 ;
 :VINSERTI128 YmmReg1, vexVVVV_YmmReg, XmmReg2_m128, imm8 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x38; YmmReg1 ... & XmmReg2_m128; imm8 & imm8_0 {

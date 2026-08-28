@@ -1,3 +1,4 @@
+#@family crypto
 # Due to limitations on variable length matching that preclude opcode matching afterwards, all memory addressing forms of PCLMULQDQ are decoded to PCLMULQDQ, not the macro names.
 # Display is non-standard, but semantics, and de-compilation should be correct.
 

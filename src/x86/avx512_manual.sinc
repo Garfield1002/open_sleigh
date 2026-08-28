@@ -1,3 +1,4 @@
+#@family avx512
 
 # KADDW/KADDB/KADDQ/KADDD 3-496 PAGE 1066 LINE 55984
 :KADDW KReg_reg, vex1VVV_KReg, KReg_rm is $(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_W0) & vex1VVV_KReg; byte=0x4A; KReg_reg & KReg_rm

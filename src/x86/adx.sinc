@@ -1,3 +1,4 @@
+#@family adx
 :ADCX Reg32, rm32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0xF6; rm32 & Reg32 ... & check_Reg32_dest ... {
 	tmp:5 = zext(Reg32) + zext(rm32) + zext(CF);
 	tmpCF:1 = tmp(4); # just the carry byte 
