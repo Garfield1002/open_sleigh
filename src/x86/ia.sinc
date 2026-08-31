@@ -2960,6 +2960,27 @@ macro fpu_signal_denormal2(a, b) {
     fpu_signal_denormal_if((da || db) && !invalid);
 }
 
+# The exceptions this instruction raised that its own mask leaves unmasked.
+# An unmasked exception aborts the instruction: hardware leaves x87 state as it
+# found it, so the destination and TOP must not be committed.
+#
+# The exception flags are sticky, so this compares against `before` rather than
+# reading the whole status word. Testing the accumulated word would let a single
+# unmasked flag left by an earlier instruction abort every x87 instruction after
+# it. Operand exceptions (IE, DE) have to be signalled and tested before the
+# operation runs, or the operation's own result exceptions are recorded on the
+# way past; the result is held in a local and tested again after it, so a
+# commit only happens once no aborting exception has fired.
+#
+# Only IE, DE and ZE abort. The other three unmasked exceptions still write a
+# destination before trapping, so treating them as aborts would suppress a
+# store hardware performs: #P delivers the rounded result and then traps, and
+# #O/#U deliver an exponent-scaled result. Masking them out here keeps the
+# guard to the cases where hardware leaves x87 state untouched.
+macro fpu_raised_unmasked(before, raised) {
+    raised = FPUStatusWord & ~before & ~FPUControlWord & 0x07;
+}
+
 # Raise the invalid-operation exception when `cond` holds, and refresh ES to
 # reflect whether any unmasked exception is now pending. Branch-free so it is
 # safe to expand more than once in a constructor.
@@ -6834,18 +6855,42 @@ define pcodeop fldenv;
 }         
 
 :FMULP fregop     is vexMode=0 & byte=0xDE; frow=12 & fpage=1 & fregop & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* fregop;
-    fpop(); 
+    local st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local before:2 = FPUStatusWord;
+    local raised:2;
+    fpu_signal_denormal2(st0, fregop);
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    local product:10 = st0 f* fregop;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    fregop = product;
+    fpop();
+<abort>
+    # FOP is recorded for the faulting instruction too, so it stays outside
+    # the guard.
     fpu_record_opcode((0x6c8:2 | zext(fregidx)));
 }     
 
 :FMULP          is vexMode=0 & byte=0xDE; byte=0xC9                         
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    fpop(); 
+    local slot1:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
+    local st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local st1:10 = *[x87]:10 (slot1);
+    local before:2 = FPUStatusWord;
+    local raised:2;
+    fpu_signal_denormal2(st0, st1);
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    local product:10 = st0 f* st1;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (slot1) = product;
+    fpop();
+<abort>
     fpu_record_opcode(0x6c9:2);
 }       
 
@@ -6916,10 +6961,20 @@ define pcodeop fptan;
 }
 
 :FRNDINT        is vexMode=0 & byte=0xD9; byte=0xFC                 
-{ 
+{
     FPUInstructionPointer = inst_start;
-    local tmp = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = tmp;
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local src:10 = *[x87]:10 (slot);
+    local before:2 = FPUStatusWord;
+    local raised:2;
+    fpu_signal_denormal1(src);
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    local tmp:10 = round(src);
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (slot) = tmp;
+<abort>
     fpu_record_opcode(0x1fc:2);
 }
 
