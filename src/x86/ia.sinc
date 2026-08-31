@@ -7451,6 +7451,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=1 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(1:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7460,6 +7463,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=2 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(2:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7469,6 +7475,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=3 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(3:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7478,6 +7487,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=4 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(4:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7487,6 +7499,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=5 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(5:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7496,6 +7511,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=6 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(6:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
@@ -7505,6 +7523,9 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=7 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
+    # FXCH references ST(0) and ST(i), so an empty either side is a stack
+    # fault. The exchange itself still happens under a masked underflow.
+    fpu_stack_underflow(7:2);
     local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
     fregop = tmp;
