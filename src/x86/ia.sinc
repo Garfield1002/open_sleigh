@@ -2906,6 +2906,19 @@ macro fpu_underflow_indefinite(faulted, slot) {
     FPUTagWord = (FPUTagWord * zext(!faulted)) | ((cleared | (2 << shift)) * zext(faulted));
 }
 
+# As `fpu_stack_underflow_out`, but checks the named register alone. FLD ST(i)
+# reads only its source: the destination does not exist until the push, so
+# faulting on an empty ST(0) would report an underflow the instruction never
+# had.
+macro fpu_stack_underflow_src(index, faulted) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + index) & 7) * 2;
+    faulted = ((FPUTagWord >> shift) & 3) == 3;
+    local fault:2 = zext(faulted);
+    FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
+    fpu_refresh_error_summary();
+}
+
 macro fpu_stack_underflow(index) {
     local top:2 = (FPUStatusWord >> 11) & 7;
     local shift0:2 = (top & 7) * 2;
@@ -6676,7 +6689,19 @@ define pcodeop fcos;
 }                      
 
 # Be careful that you don't clobber fregop during fpushv, need a tmp to hold the value
-:FLD fregop       is vexMode=0 & byte=0xD9; frow=12 & fpage=0 & fregop          { FPUInstructionPointer = inst_start; tmp:10 = fregop; fpushv(tmp); }
+# Loading an empty ST(i) is a stack underflow: the push still happens and the
+# indefinite lands in the new ST(0), so the fault is applied after `fpushv`
+# has moved TOP.
+:FLD fregop       is vexMode=0 & byte=0xD9; frow=12 & fpage=0 & fregop & fregidx
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_src(fregidx, faulted);
+    tmp:10 = fregop;
+    fpushv(tmp);
+    local slot:2 = ((FPUStatusWord >> 11) & 7) * 10;
+    fpu_underflow_indefinite(faulted, slot);
+}
                                                                       
 :FLD1           is vexMode=0 & byte=0xD9; byte=0xE8  
 { 
