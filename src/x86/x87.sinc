@@ -547,6 +547,131 @@ macro fpu_clear_c1() {
     C1 = 0;
 }
 
+# An unmasked exception aborts the instruction on hardware: it produces no
+# result, records no rounding, and does not pop. `raised` is non-zero exactly
+# when the operand check or the operation itself signalled one, and the guard
+# then skips the commit.
+#
+# The abort label cannot be split across two macros - SLEIGH scopes a label to
+# a single expansion, so a begin/end pair fails to link - which is why each
+# guard owns the whole operation. Two consequences: the operator cannot be a
+# parameter, so there is one macro per operation, and the pop is baked in
+# rather than passed as a flag, so that a non-popping form emits no dead
+# tag/TOP update. The reverse forms (FSUBR, FDIVR) swap `a` and `b` at the
+# call site instead of getting macros of their own.
+#
+# `dst` is a byte offset into the x87 space.
+
+macro fpu_guarded_add(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f+ b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+<abort>
+}
+
+macro fpu_guarded_add_pop(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f+ b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+    fpop();
+<abort>
+}
+
+macro fpu_guarded_sub(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f- b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+<abort>
+}
+
+macro fpu_guarded_sub_pop(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f- b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+    fpop();
+<abort>
+}
+
+macro fpu_guarded_mul(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f* b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+<abort>
+}
+
+macro fpu_guarded_mul_pop(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f* b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+    fpop();
+<abort>
+}
+
+# FDIV reports a denormal operand only when the divisor does not by
+# itself decide the result, so it uses the division-specific check.
+macro fpu_guarded_div(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2_div(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f/ b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+<abort>
+}
+
+macro fpu_guarded_div_pop(dst, a, b) {
+    fpu_clear_c1();
+    local before:2;
+    local raised:2;
+    fpu_operand_check2_div(a, b, before, raised);
+    if (raised != 0) goto <abort>;
+    local result:10 = a f/ b;
+    fpu_raised_unmasked(before, raised);
+    if (raised != 0) goto <abort>;
+    *[x87]:10 (dst) = result;
+    fpop();
+<abort>
+}
+
 # The unordered EFLAGS compare: like fcomi, but a quiet NaN is not invalid.
 macro fucomi_faulted(val, faulted) {
     fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
@@ -700,108 +825,85 @@ define pcodeop f2xm1;
 }
     
 :FADD m32fp      is vexMode=0 & byte=0xD8; reg_opcode=0 ... & m32fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ float2float(m32fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m32fp);
+    fpu_guarded_add(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
  
 :FADD m64fp      is vexMode=0 & byte=0xDC; reg_opcode=0 ... & m64fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ float2float(m64fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m64fp);
+    fpu_guarded_add(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-} 
+}
 
 :FADD st0, fregop     is vexMode=0 & byte=0xD8; frow=12 & fpage=0 & fregop & st0 & fregidx
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = fregop;
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f+ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_add(dst, a, b);
     fpu_record_opcode((0x0c0:2 | zext(fregidx)));
 }
              
 :FADD fregop, st0     is vexMode=0 & byte=0xDC; frow=12 & fpage=0 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = fregop f+ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_add(dst, a, b);
     fpu_record_opcode((0x4c0:2 | zext(fregidx)));
-}        
+}
 
 :FADDP              is vexMode=0 & byte=0xDE; byte=0xC1
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
     local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f+ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = result;
-    fpop();
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_add_pop(dst, a, b);
     fpu_record_opcode(0x6c1:2);
 }      
 
 :FADDP fregop, st0    is vexMode=0 & byte=0xDE; frow=12 & fpage=0 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ fregop;
-    fpop();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_add_pop(dst, a, b);
     fpu_record_opcode((0x6c0:2 | zext(fregidx)));
-}    
+}
 
 :FIADD m32     is vexMode=0 & byte=0xDA; reg_opcode=0 ... & m32 & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f+ int2float(m32);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = int2float(m32);
+    fpu_guarded_add(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}   
+}
 
 :FIADD m16     is vexMode=0 & byte=0xDE; reg_opcode=0 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = int2float(m16);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f+ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_add(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }   
@@ -1118,191 +1220,169 @@ define pcodeop fcos;
 :FNENI              is vexMode=0 & byte=0xDB; byte=0xE0            {}
 
 :FDIV m32fp      is vexMode=0 & byte=0xD8; reg_opcode=6 ... & m32fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ float2float(m32fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m32fp);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}    
+}
 
 :FDIV m64fp      is vexMode=0 & byte=0xDC; reg_opcode=6 ... & m64fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ float2float(m64fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m64fp);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}    
+}
 
 :FDIV st0,fregop      is vexMode=0 & byte=0xD8; frow=15 & fpage=0 & fregop & st0 & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = fregop;
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_div(dst, a, b);
     fpu_record_opcode((0x0f0:2 | zext(fregidx)));
 }            
 
 :FDIV fregop,st0      is vexMode=0 & byte=0xDC; frow=15 & fpage=1 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = fregop f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_div(dst, a, b);
     fpu_record_opcode((0x4f8:2 | zext(fregidx)));
-}           
+}
 
 :FDIVP fregop,st0     is vexMode=0 & byte=0xDE; frow=15 & fpage=1 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = fregop f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    fpop();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_div_pop(dst, a, b);
     fpu_record_opcode((0x6f8:2 | zext(fregidx)));
-}       
+}
 
 :FDIVP              is vexMode=0 & byte=0xDE; byte=0xF9
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = result;
-    fpop();
-<abort>
+    fpu_guarded_div_pop(dst, a, b);
     fpu_record_opcode(0x6f9:2);
 }         
 
 :FIDIV m32     is vexMode=0 & byte=0xDA; reg_opcode=6 ... & m32 & modidx & regidx & rmidx & Mem
-{ 
-    FPUInstructionPointer = inst_start; 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ int2float(m32);
+{
+    FPUInstructionPointer = inst_start;
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = int2float(m32);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}      
+}
 
 :FIDIV m16     is vexMode=0 & byte=0xDE; reg_opcode=6 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = int2float(m16);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }      
                                                               
 :FDIVR m32fp     is vexMode=0 & byte=0xD8; reg_opcode=7 ... & m32fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m32fp) f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = float2float(m32fp);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}    
+}
 
 :FDIVR m64fp     is vexMode=0 & byte=0xDC; reg_opcode=7 ... & m64fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m64fp) f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = float2float(m64fp);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}    
+}
 
 :FDIVR st0,fregop     is vexMode=0 & byte=0xD8; frow=15 & fpage=1 & fregop & st0 & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
     local a:10 = fregop;
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div(dst, a, b);
     fpu_record_opcode((0x0f8:2 | zext(fregidx)));
 }            
 
 :FDIVR fregop,st0     is vexMode=0 & byte=0xDC; frow=15 & fpage=0 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ fregop;
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_div(dst, a, b);
     fpu_record_opcode((0x4f0:2 | zext(fregidx)));
-}           
+}
 
 :FDIVRP fregop,st0    is vexMode=0 & byte=0xDE; frow=15 & fpage=0 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f/ fregop;
-    fpop();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_div_pop(dst, a, b);
     fpu_record_opcode((0x6f0:2 | zext(fregidx)));
-}       
+}
 
 :FDIVRP             is vexMode=0 & byte=0xDE; byte=0xF1
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
     local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = result;
-    fpop();
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div_pop(dst, a, b);
     fpu_record_opcode(0x6f1:2);
 }         
 
 :FIDIVR m32    is vexMode=0 & byte=0xDA; reg_opcode=7 ... & m32 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = int2float(m32) f/ *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = int2float(m32);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}      
+}
 
 :FIDIVR m16    is vexMode=0 & byte=0xDE; reg_opcode=7 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
     local a:10 = int2float(m16);
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2_div(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f/ b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_div(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }      
@@ -1743,61 +1823,54 @@ define pcodeop fldenv;
 }
 
 :FMUL m32fp       is vexMode=0 & byte=0xD8; reg_opcode=1 ... & m32fp & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* float2float(m32fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m32fp);
+    fpu_guarded_mul(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}  
+}
 
 :FMUL m64fp       is vexMode=0 & byte=0xDC; reg_opcode=1 ... & m64fp & modidx & regidx & rmidx & Mem
-{ 
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* float2float(m64fp);
+{
     FPUInstructionPointer = inst_start;
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m64fp);
+    fpu_guarded_mul(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}  
+}
 
 :FMUL fregop      is vexMode=0 & byte=0xD8; frow=12 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = fregop;
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f* b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_mul(dst, a, b);
     fpu_record_opcode((0x0c8:2 | zext(fregidx)));
 }          
 
 :FMUL fregop      is vexMode=0 & byte=0xDC; frow=12 & fpage=1 & fregop & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = fregop f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_mul(dst, a, b);
     fpu_record_opcode((0x4c8:2 | zext(fregidx)));
-}         
+}
 
 :FMULP fregop     is vexMode=0 & byte=0xDE; frow=12 & fpage=1 & fregop & fregidx
 {
     FPUInstructionPointer = inst_start;
-    local st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2 = FPUStatusWord;
-    local raised:2;
-    fpu_signal_denormal2(st0, fregop);
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    local product:10 = st0 f* fregop;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    fregop = product;
-    fpop();
-<abort>
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_mul_pop(dst, a, b);
     # FOP is recorded for the faulting instruction too, so it stays outside
     # the guard.
     fpu_record_opcode((0x6c8:2 | zext(fregidx)));
@@ -1806,46 +1879,31 @@ define pcodeop fldenv;
 :FMULP          is vexMode=0 & byte=0xDE; byte=0xC9                         
 {
     FPUInstructionPointer = inst_start;
-    local slot1:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
-    local st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local st1:10 = *[x87]:10 (slot1);
-    local before:2 = FPUStatusWord;
-    local raised:2;
-    fpu_signal_denormal2(st0, st1);
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    local product:10 = st0 f* st1;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (slot1) = product;
-    fpop();
-<abort>
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_mul_pop(dst, a, b);
     fpu_record_opcode(0x6c9:2);
 }       
 
 :FIMUL m32      is vexMode=0 & byte=0xDA; reg_opcode=1 ... & m32 & modidx & regidx & rmidx & Mem
-{ 
+{
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* int2float(m32);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = int2float(m32);
+    fpu_guarded_mul(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}    
+}
 
 :FIMUL m16      is vexMode=0 & byte=0xDE; reg_opcode=1 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = int2float(m16);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f* b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_mul(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }    
@@ -2186,106 +2244,83 @@ define pcodeop fsin;
 :FSUB m32fp  is vexMode=0 & byte=0xD8; reg_opcode=4 ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- float2float(m32fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m32fp);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}          
+}
 
 :FSUB m64fp  is vexMode=0 & byte=0xDC; reg_opcode=4 ... & m64fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- float2float(m64fp);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = float2float(m64fp);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}          
+}
 
 :FSUB st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = fregop;
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_sub(dst, a, b);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                  
 
 :FSUB fregop,st0  is vexMode=0 & byte=0xDC; frow=14 & fpage=1 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = fregop f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_opcode((0x4e8:2 | zext(fregidx)));
-}                 
+}
 
 :FSUBP          is vexMode=0 & byte=0xDE; byte=0xE9
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = result;
-    fpop();
-<abort>
+    fpu_guarded_sub_pop(dst, a, b);
     fpu_record_opcode(0x6e9:2);
 }               
 
-:FSUBP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx
+:FSUBP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fregop = fregop f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    fpop(); 
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = fregop;
+    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    fpu_guarded_sub_pop(dst, a, b);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}             
+}
 
 :FISUB m32 is vexMode=0 & byte=0xDA; (mod != 0b11 & reg_opcode=4) ... & m32 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- int2float(m32);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
+    local b:10 = int2float(m32);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}            
+}
 
 :FISUB m16 is vexMode=0 & byte=0xDE; reg_opcode=4 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
-    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = *[x87]:10 (dst);
     local b:10 = int2float(m16);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }            
@@ -2293,105 +2328,83 @@ define pcodeop fsin;
 :FSUBR m32fp  is vexMode=0 & byte=0xD8; reg_opcode=5 ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m32fp) f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = float2float(m32fp);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}          
+}
 
 :FSUBR m64fp  is vexMode=0 & byte=0xDC; reg_opcode=5 ... & m64fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = float2float(m64fp) f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = float2float(m64fp);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}          
+}
 
 :FSUBR st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
     local a:10 = fregop;
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                  
 
 :FSUBR fregop,st0  is vexMode=0 & byte=0xDC; frow=14 & fpage=0 & fregop & st0 & fregidx
-{ 
+{
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- fregop;
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_sub(dst, a, b);
     fpu_record_opcode((0x4e0:2 | zext(fregidx)));
-}                 
+}
 
 :FSUBRP          is vexMode=0 & byte=0xDE; byte=0xE1
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10;
     local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = result;
-    fpop();
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub_pop(dst, a, b);
     fpu_record_opcode(0x6e1:2);
 }               
 
-:FSUBRP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx
+:FSUBRP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
-    fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f- fregop; fpop();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + fregidx) & 7) * 10;
+    local a:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local b:10 = fregop;
+    fpu_guarded_sub_pop(dst, a, b);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}             
+}
 
 :FISUBR m32 is vexMode=0 & byte=0xDA; reg_opcode=5 ... & m32 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = int2float(m32) f- *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    local a:10 = int2float(m32);
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
-}            
+}
 
 :FISUBR m16 is vexMode=0 & byte=0xDE; reg_opcode=5 ... & m16 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    # C1 is the rounding indicator, set by the operation when an inexact
-    # result rounds away from zero. Clear it first: an instruction that
-    # aborts reports no rounding, and clearing after the operation would
-    # discard what it reported.
-    fpu_clear_c1();
+    local dst:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
     local a:10 = int2float(m16);
-    local b:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local before:2;
-    local raised:2;
-    fpu_operand_check2(a, b, before, raised);
-    if (raised != 0) goto <abort>;
-    local result:10 = a f- b;
-    fpu_raised_unmasked(before, raised);
-    if (raised != 0) goto <abort>;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
-<abort>
+    local b:10 = *[x87]:10 (dst);
+    fpu_guarded_sub(dst, a, b);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }            
