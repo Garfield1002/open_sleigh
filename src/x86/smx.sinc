@@ -1,3 +1,4 @@
+#@family smx
 define pcodeop getsec_capabilities;
 define pcodeop getsec_enteraccs;
 define pcodeop getsec_exitac;

@@ -1,3 +1,4 @@
+#@family base
 define pcodeop rdrand;
 define pcodeop rdrandIsValid;
 

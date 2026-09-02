@@ -1,3 +1,4 @@
+#@family avx
 # MOVAPD 4-45 PAGE 1165 LINE 60844
 :VMOVAPD XmmReg1, XmmReg2_m128 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x28; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128
 {
