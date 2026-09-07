@@ -2917,6 +2917,94 @@ macro fpu_stack_underflow(index) {
     fpu_refresh_error_summary();
 }
 
+# Register transfers do not perform floating-point arithmetic. Inspect tags,
+# not payloads: an empty slot can contain an otherwise valid old value.
+macro fpu_store_register(index, pop) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = top * 10;
+    local target:2 = ((top + index) & 7) * 10;
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    C1 = 0;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local value:10 = *[x87]:10 source;
+    local faultmask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    value = (value & ~faultmask) | (indefinite & faultmask);
+    *[x87]:10 target = (value & mask) | (*[x87]:10 target & ~mask);
+    local tag:2 = (FPUTagWord >> (top * 2)) & 3;
+    tag = (tag * zext(!faulted)) | (2 * zext(faulted));
+    local shift:2 = (target / 10) * 2;
+    local tags:2 = (FPUTagWord & ~(3 << shift)) | (tag << shift);
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+    local popped:2 = zext(commit) * pop;
+    FPUTagWord = FPUTagWord | ((3 * popped) << (top * 2));
+    FPUStatusWord = (FPUStatusWord & 0xc7ff) | (((top + popped) & 7) << 11);
+    fpu_record_opcode(0x5d0:2 | index | (pop << 3));
+}
+
+macro fpu_exchange_register(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = top * 10;
+    local target:2 = ((top + index) & 7) * 10;
+    local shift0:2 = top * 2;
+    local shift1:2 = (target / 10) * 2;
+    local tag0:2 = (FPUTagWord >> shift0) & 3;
+    local tag1:2 = (FPUTagWord >> shift1) & 3;
+    local empty0:1 = tag0 == 3;
+    local empty1:1 = tag1 == 3;
+    local faulted:1;
+    fpu_stack_underflow_out(index, faulted);
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    C1 = 0;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local mask0:10 = 0 - zext(empty0);
+    local mask1:10 = 0 - zext(empty1);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local old0:10 = *[x87]:10 source;
+    local old1:10 = *[x87]:10 target;
+    local value0:10 = (old0 & ~mask0) | (indefinite & mask0);
+    local value1:10 = (old1 & ~mask1) | (indefinite & mask1);
+    *[x87]:10 source = (value1 & mask) | (old0 & ~mask);
+    *[x87]:10 target = (value0 & mask) | (old1 & ~mask);
+    tag0 = (tag0 * zext(!empty0)) | (2 * zext(empty0));
+    tag1 = (tag1 * zext(!empty1)) | (2 * zext(empty1));
+    local tags:2 = (FPUTagWord & ~((3 << shift0) | (3 << shift1))) |
+                   (tag1 << shift0) | (tag0 << shift1);
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+}
+
+macro fpu_load_register(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = ((top + index) & 7) * 10;
+    local next:2 = (top - 1) & 7;
+    local target:2 = next * 10;
+    local tag:2 = (FPUTagWord >> ((source / 10) * 2)) & 3;
+    local overflow:1 = ((FPUTagWord >> (next * 2)) & 3) != 3;
+    local faulted:1 = (tag == 3) || overflow;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local faultmask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 source & ~faultmask) | (indefinite & faultmask);
+    *[x87]:10 target = (value & mask) | (*[x87]:10 target & ~mask);
+    tag = (tag * zext(!faulted)) | (2 * zext(faulted));
+    local tags:2 = (FPUTagWord & ~(3 << (next * 2))) | (tag << (next * 2));
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+    top = (top * zext(!commit)) | (next * zext(commit));
+    FPUStatusWord = (FPUStatusWord & 0xc5ff) | (top << 11) |
+                    (zext(faulted) * 0x41) | (zext(overflow) << 9);
+    C1 = overflow;
+    fpu_refresh_error_summary();
+    fpu_record_opcode(0x1c0:2 | index);
+}
+
 # True when an f80 holds a denormal: a zero exponent with a non-zero
 # significand. An unnormal - a non-zero exponent with the explicit integer bit
 # clear - is an invalid encoding rather than a denormal, and raises IE instead.
@@ -5934,8 +6022,18 @@ define pcodeop to_bcd;
 :FBSTP m80     is vexMode=0 & byte=0xDF; reg_opcode=6 ... & m80 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m80 = to_bcd(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    fpop(); 
+    fpu_clear_c1();
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
+    local converted:10 = to_bcd(value);
+    # Unlike invalid, an unmasked precision exception still stores and pops.
+    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
+    m80 = converted;
+    fpop();
+    <done>
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
@@ -6358,52 +6456,62 @@ define pcodeop fcos;
 # FFREE marks one TOP-mapped logical x87 stack entry empty. `fregop` exports
 # a dynamic x87-RAM lvalue, so the constructors retain the ModR/M low-bit
 # selection and use the corresponding TOP-indexed physical full-tag pair.
+# FFREE's condition codes are architecturally undefined. Choose the C1=0
+# behavior observed on the hardware oracle, consistently for all ST(i).
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=0 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty0();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=1 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty1();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=2 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty2();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=3 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty3();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=4 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty4();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=5 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty5();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=6 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty6();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=7 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
     tagempty7();
+    fpu_clear_c1();
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 
@@ -6412,6 +6520,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty0();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=1 & modidx & regidx & rmidx
@@ -6419,6 +6528,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty1();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=2 & modidx & regidx & rmidx
@@ -6426,6 +6536,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty2();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=3 & modidx & regidx & rmidx
@@ -6433,6 +6544,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty3();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=4 & modidx & regidx & rmidx
@@ -6440,6 +6552,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty4();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=5 & modidx & regidx & rmidx
@@ -6447,6 +6560,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty5();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=6 & modidx & regidx & rmidx
@@ -6454,6 +6568,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty6();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=7 & modidx & regidx & rmidx
@@ -6461,6 +6576,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     tagempty7();
     fpop();
+    fpu_clear_c1();
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
                                                                   
@@ -6622,11 +6738,28 @@ define pcodeop fcos;
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                
 
+# A stack-underflow operand is the indefinite value, not the stale payload
+# in an empty slot. Stage conversion before committing memory or popping so
+# an unmasked invalid exception leaves both destinations alone. Precision
+# exceptions (even unmasked) still commit the rounded result and pop.
+macro fpu_store_truncated_integer(destination) {
+    fpu_clear_c1();
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
+    local converted = trunc(value);
+    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
+    destination = converted;
+    fpop();
+    <done>
+}
+
 :FISTTP m16     is vexMode=0 & byte=0xDF; reg_opcode=1 ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m16 = trunc(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    fpop();
+    fpu_store_truncated_integer(m16);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                 
@@ -6634,8 +6767,7 @@ define pcodeop fcos;
 :FISTTP m32     is vexMode=0 & byte=0xDB; reg_opcode=1 ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m32 = trunc(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    fpop(); 
+    fpu_store_truncated_integer(m32);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
@@ -6643,8 +6775,7 @@ define pcodeop fcos;
 :FISTTP m64     is vexMode=0 & byte=0xDD; reg_opcode=1 ... & m64 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m64 = trunc(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    fpop(); 
+    fpu_store_truncated_integer(m64);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                 
@@ -6675,8 +6806,8 @@ define pcodeop fcos;
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                      
 
-# Be careful that you don't clobber fregop during fpushv, need a tmp to hold the value
-:FLD fregop       is vexMode=0 & byte=0xD9; frow=12 & fpage=0 & fregop          { FPUInstructionPointer = inst_start; tmp:10 = fregop; fpushv(tmp); }
+:FLD fregop       is vexMode=0 & byte=0xD9; frow=12 & fpage=0 & fregop & fregidx
+{ FPUInstructionPointer = inst_start; fpu_load_register(fregidx); }
                                                                       
 :FLD1           is vexMode=0 & byte=0xD9; byte=0xE8  
 { 
@@ -7036,21 +7167,21 @@ define pcodeop fsin;
 }     
 
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=0
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to0(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(0:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=1
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to1(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(1:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=2
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to2(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(2:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=3
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to3(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(3:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=4
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to4(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(4:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=5
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to5(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(5:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=6
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to6(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(6:2, 0:2); }
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=7
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to7(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(7:2, 0:2); }
 
 :FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx
 {
@@ -7078,21 +7209,21 @@ define pcodeop fsin;
 }             
 
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=0 & fregidx
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to0(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(0:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=1
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to1(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(1:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=2
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to2(); fpop(); fpu_clear_c1(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(2:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=3
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to3(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(3:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=4
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to4(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(4:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=5
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to5(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(5:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=6
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to6(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(6:2, 1:2); }
 :FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=7
-{ FPUInstructionPointer = inst_start; fregop = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10); tagcopy0to7(); fpop(); }
+{ FPUInstructionPointer = inst_start; fpu_store_register(7:2, 1:2); }
 
 :FSTCW m16      is vexMode=0 & byte=0x9B; byte=0xD9; (mod != 0b11 & reg_opcode=7) ... & m16 & modidx & regidx & rmidx
 {
@@ -7365,80 +7496,56 @@ define pcodeop fsin;
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=0 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    FPUStatusWord = FPUStatusWord & 0xfdff;
+    fpu_exchange_register(0:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=1 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap1();
+    fpu_exchange_register(1:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=2 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap2();
+    fpu_exchange_register(2:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=3 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap3();
+    fpu_exchange_register(3:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=4 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap4();
+    fpu_exchange_register(4:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=5 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap5();
+    fpu_exchange_register(5:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=6 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap6();
+    fpu_exchange_register(6:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 :FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=7 & modidx & regidx & rmidx
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fregop;
-    fregop = tmp;
-    tagswap7();
+    fpu_exchange_register(7:2);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 
 :FXCH           is vexMode=0 & byte=0xD9; byte=0xC9
 {
     FPUInstructionPointer = inst_start;
-    local tmp = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = tmp;
-    tagswap1();
+    fpu_exchange_register(1:2);
     fpu_record_opcode(0x1c9:2);
 }
 
