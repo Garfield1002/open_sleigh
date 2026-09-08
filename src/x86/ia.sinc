@@ -3147,13 +3147,6 @@ macro fpu_suppress_unmasked_narrowing_precision() {
 
 # Evaluate first so QCode records sticky status, then let each constructor
 # decide whether an unmasked IE/DE/ZE permits its architectural commit.
-# IEEE-754 status queries are deliberately separate from x87 policy. They
-# return IE/ZE/OE/UE/PE in their architectural low-bit positions; constructors
-# map those facts through x87 masks, priority, and commit rules themselves.
-define pcodeop float_add_flags;
-define pcodeop float_sub_flags;
-define pcodeop float_mul_flags;
-define pcodeop float_div_flags;
 
 macro fpu_arithmetic_result(expression, result, commit) {
     result = expression;
