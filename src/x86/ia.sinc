@@ -6169,7 +6169,8 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m16), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7257,7 +7258,8 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m16), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7689,7 +7691,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m16), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7791,7 +7794,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(int2float(m16), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = int2float(m16);
+    fpu_ieee_sub_result(arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
