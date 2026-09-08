@@ -788,6 +788,18 @@ define pcodeop float_narrow_flags;
 define pcodeop float_to_int;
 define pcodeop float_to_int_flags;
 
+# Unary IEEE operations, taking the rounding mode as their last operand and
+# reporting only IEEE facts. `float_scalb` is IEEE scaleB: it multiplies by two
+# raised to the integral power given as its second operand.
+define pcodeop float_sqrt;
+define pcodeop float_sqrt_flags;
+define pcodeop float_round_to_integral;
+define pcodeop float_round_to_integral_flags;
+define pcodeop float_log2;
+define pcodeop float_log2_flags;
+define pcodeop float_scalb;
+define pcodeop float_scalb_flags;
+
 # IN/OUT are not p-code operations: they load from and store to the `io`
 # address space defined above, which states which registers carry the port
 # and the datum instead of hiding them inside an opaque call.
@@ -3569,6 +3581,102 @@ macro fpu_ieee_div_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) 
     fpu_ieee_fault_deliver(faulted, dest, commit);
 }
 
+
+# The unary counterparts of the arithmetic families. `fpu_ieee_invalid_result`
+# and `fpu_ieee_arithmetic_status` take the single operand twice: their NaN
+# choice then resolves to that operand, and their denormal and NaN tests to
+# its own class, which is exactly the one-operand rule.
+macro fpu_ieee_sqrt_result(a, result, commit) {
+    local faulted:1;
+    local source:10;
+    local unused:10;
+    fpu_ieee_fault_operands(0:2, a, a, source, unused, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1 = float_sqrt_flags(source, round);
+    result = float_sqrt(source, round);
+    local precision_flags:1;
+    fpu_precision_control(result, round, result, precision_flags);
+    flags = flags | precision_flags;
+    fpu_ieee_invalid_result(source, source, flags, result);
+    local toward_zero:10 = float_sqrt(source, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source, source, 0:1, flags, result, toward_zero, 0:1, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
+
+macro fpu_ieee_round_result(a, result, commit) {
+    local faulted:1;
+    local source:10;
+    local unused:10;
+    fpu_ieee_fault_operands(0:2, a, a, source, unused, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1 = float_round_to_integral_flags(source, round);
+    result = float_round_to_integral(source, round);
+    fpu_ieee_invalid_result(source, source, flags, result);
+    local toward_zero:10 = float_round_to_integral(source, 3:2);
+    fpu_ieee_arithmetic_status(source, source, 0:1, flags, result, toward_zero, 0:1, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
+
+# FSCALE scales ST(0) by the truncated integer value of ST(1). The scaling is
+# IEEE scaleB; the infinite and zero combinations follow Intel's FSCALE table,
+# which is architectural and lives here.
+macro fpu_ieee_scale_result(a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(1:2, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+
+    local a_zero:1 = (source_a[64,15] == 0) && (source_a[0,64] == 0);
+    local a_inf:1 = (source_a[64,15] == 0x7fff) && (source_a[63,1] == 1) &&
+                    (source_a[0,63] == 0);
+    local b_inf:1 = (source_b[64,15] == 0x7fff) && (source_b[63,1] == 1) &&
+                    (source_b[0,63] == 0);
+    local b_negative:1 = source_b[79,1];
+
+    # The exponent range is far narrower than any count a 64-bit conversion
+    # can lose, so an out-of-range scale saturates by its sign.
+    local steps:8 = float_to_int(source_b, 8:2, 3:2);
+    local steps_flags:1 = float_to_int_flags(source_b, 8:2, 3:2);
+    local saturate:1 = (steps_flags & 1) != 0;
+    steps = (steps * zext(!saturate)) | (0x20000 * zext(saturate && !b_negative)) |
+            ((0 - 0x20000) * zext(saturate && b_negative));
+
+    local flags:1 = float_scalb_flags(source_a, steps, round);
+    result = float_scalb(source_a, steps, round);
+    # scaleB has no opinion about a signalling NaN; x87 does.
+    local signalling:1 = (nan(source_a) && (source_a[62,1] == 0)) ||
+                         (nan(source_b) && (source_b[62,1] == 0));
+
+    # Zero scaled by +INF, and an infinity scaled by -INF, are indeterminate.
+    local indeterminate:1 = (a_zero && b_inf && !b_negative) ||
+                            (a_inf && b_inf && b_negative);
+    local infinite_result:1 = b_inf && !b_negative && !a_zero;
+    local zero_result:1 = b_inf && b_negative && !a_inf;
+    local saturated:1 = infinite_result || zero_result;
+    # A saturated result is exact by definition: the range and precision facts
+    # the clamped scale produced describe an operation that never happened.
+    flags = flags * zext(!(saturated || indeterminate ||
+                           nan(source_a) || nan(source_b)));
+    flags = flags | zext(indeterminate) | zext(signalling);
+    local sign:10 = zext(source_a[79,1]) << 79;
+    local infinity:10 = (zext(0x7fff:2) << 64) | zext(0x8000000000000000:8);
+    result = (result * zext(!saturated)) |
+             ((sign | (infinity * zext(infinite_result))) * zext(saturated));
+
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_scalb(source_a, steps, 3:2);
+    # A scaled result is delivered even when the range exception is unmasked,
+    # so it keeps its rounding indication and its inexactness.
+    local under:1;
+    local over:1;
+    local wrapped:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    fpu_ieee_arithmetic_status(source_a, source_b, 0:1, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
 
 # A register-only form has no narrow memory source, so it reports neither a
 # memory denormal nor a memory signalling NaN.
@@ -6558,11 +6666,32 @@ define pcodeop f2xm1;
     fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }   
 
-define pcodeop from_bcd;
 :FBLD  m80     is vexMode=0 & byte=0xDF; reg_opcode=4 ... & m80 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local value:10 = from_bcd(m80);
+    # Packed BCD is an integer format, not a floating one: eighteen decimal
+    # digits and a sign byte whose top bit applies even to zero.
+    local accumulator:8 = 0;
+    accumulator = (accumulator * 10) + zext(m80[68,4]);
+    accumulator = (accumulator * 10) + zext(m80[64,4]);
+    accumulator = (accumulator * 10) + zext(m80[60,4]);
+    accumulator = (accumulator * 10) + zext(m80[56,4]);
+    accumulator = (accumulator * 10) + zext(m80[52,4]);
+    accumulator = (accumulator * 10) + zext(m80[48,4]);
+    accumulator = (accumulator * 10) + zext(m80[44,4]);
+    accumulator = (accumulator * 10) + zext(m80[40,4]);
+    accumulator = (accumulator * 10) + zext(m80[36,4]);
+    accumulator = (accumulator * 10) + zext(m80[32,4]);
+    accumulator = (accumulator * 10) + zext(m80[28,4]);
+    accumulator = (accumulator * 10) + zext(m80[24,4]);
+    accumulator = (accumulator * 10) + zext(m80[20,4]);
+    accumulator = (accumulator * 10) + zext(m80[16,4]);
+    accumulator = (accumulator * 10) + zext(m80[12,4]);
+    accumulator = (accumulator * 10) + zext(m80[8,4]);
+    accumulator = (accumulator * 10) + zext(m80[4,4]);
+    accumulator = (accumulator * 10) + zext(m80[0,4]);
+    local magnitude:10 = int2float(accumulator);
+    local value:10 = magnitude | (zext(m80[79,1]) << 79);
     fpushv(value);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
@@ -7727,7 +7856,35 @@ define pcodeop fprem1;
     # results: the quotient's low three bits in C0/C3/C1, and C2 for an
     # incomplete reduction. Computing it as x - trunc(x/y)*y reported
     # none of them.
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fprem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local result:10 = fprem(dividend, divisor);
+    # A NaN operand is propagated with x87's own choice of payload,
+    # and an unnormal encoding delivers the indefinite.
+    # An infinite dividend or a zero divisor has no remainder, and a
+    # signalling NaN operand always raises invalid; a quiet NaN is merely
+    # propagated.
+    local dividend_nan:1 = nan(dividend);
+    local divisor_nan:1 = nan(divisor);
+    local signalling:1 = (dividend_nan && (dividend[62,1] == 0)) ||
+                         (divisor_nan && (divisor[62,1] == 0));
+    local dividend_infinite:1 = (dividend[64,15] == 0x7fff) && (dividend[63,1] == 1) &&
+                                (dividend[0,63] == 0);
+    local divisor_zero:1 = (divisor[64,15] == 0) && (divisor[0,64] == 0);
+    local flags:1 = zext(signalling ||
+                         ((dividend_infinite || divisor_zero) &&
+                          !dividend_nan && !divisor_nan));
+    fpu_signal_invalid_if((flags & 1) != 0);
+    fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # DE is reported only when the reduction actually uses the denormal:
+    # an invalid or NaN operand decides the result on its own.
+    local dividend_denormal:1;
+    fpu_is_denormal(dividend, dividend_denormal);
+    local divisor_denormal:1;
+    fpu_is_denormal(divisor, divisor_denormal);
+    local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
+    fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
     fpu_record_opcode(0x1f8:2);
 }
 
@@ -7738,7 +7895,35 @@ define pcodeop fprem1;
     # results: the quotient's low three bits in C0/C3/C1, and C2 for an
     # incomplete reduction. Computing it as x - trunc(x/y)*y reported
     # none of them.
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fprem1(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local result:10 = fprem1(dividend, divisor);
+    # A NaN operand is propagated with x87's own choice of payload,
+    # and an unnormal encoding delivers the indefinite.
+    # An infinite dividend or a zero divisor has no remainder, and a
+    # signalling NaN operand always raises invalid; a quiet NaN is merely
+    # propagated.
+    local dividend_nan:1 = nan(dividend);
+    local divisor_nan:1 = nan(divisor);
+    local signalling:1 = (dividend_nan && (dividend[62,1] == 0)) ||
+                         (divisor_nan && (divisor[62,1] == 0));
+    local dividend_infinite:1 = (dividend[64,15] == 0x7fff) && (dividend[63,1] == 1) &&
+                                (dividend[0,63] == 0);
+    local divisor_zero:1 = (divisor[64,15] == 0) && (divisor[0,64] == 0);
+    local flags:1 = zext(signalling ||
+                         ((dividend_infinite || divisor_zero) &&
+                          !dividend_nan && !divisor_nan));
+    fpu_signal_invalid_if((flags & 1) != 0);
+    fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # DE is reported only when the reduction actually uses the denormal:
+    # an invalid or NaN operand decides the result on its own.
+    local dividend_denormal:1;
+    fpu_is_denormal(dividend, dividend_denormal);
+    local divisor_denormal:1;
+    fpu_is_denormal(divisor, divisor_denormal);
+    local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
+    fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
     fpu_record_opcode(0x1f5:2);
 }
 
@@ -7756,8 +7941,12 @@ define pcodeop fptan;
 :FRNDINT        is vexMode=0 & byte=0xD9; byte=0xFC                 
 { 
     FPUInstructionPointer = inst_start;
-    local tmp = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = tmp;
+    local result:10;
+    local commit:1;
+    fpu_ieee_round_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
     fpu_record_opcode(0x1fc:2);
 }
 
@@ -7847,10 +8036,12 @@ define pcodeop fscale;
 :FSCALE		    is vexMode=0 & byte=0xD9; byte=0xFD			
 { 
     FPUInstructionPointer = inst_start;
-    # C1 is FSCALE's rounding indicator, cleared unless the result rounds
-    # up. Clear it before the operation so the scale can set it.
-    FPUStatusWord = FPUStatusWord & 0xfdff;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fscale(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10));
+    local result:10;
+    local commit:1;
+    fpu_ieee_scale_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
     fpu_record_opcode(0x1fd:2);
 }
 
@@ -7874,11 +8065,12 @@ define pcodeop fsin;
 :FSQRT          is vexMode=0 & byte=0xD9; byte=0xFA                 
 { 
     FPUInstructionPointer = inst_start;
-    # C1 is FSQRT's rounding indicator, cleared unless the result rounds
-    # up. Clear it before the operation so a rounding-aware sqrt can set
-    # it; the current f80 sqrt never rounds up.
-    FPUStatusWord = FPUStatusWord & 0xfdff;
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = sqrt(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local result:10;
+    local commit:1;
+    fpu_ieee_sqrt_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
     fpu_record_opcode(0x1fa:2);
 }
 
@@ -8633,9 +8825,36 @@ define pcodeop extract_exponent;
     local shift:2 = (((top - 1) & 7)) * 2;
     local full:1 = ((FPUTagWord >> shift) & 3) != 3;
     if (full) goto <overflow>;
-    significand:10 = extract_significand(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    exponent:10 = extract_exponent(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    # `extract_significand` and `extract_exponent` are the IEEE parts - a
+    # logB and a scaleB in disguise. Classifying the operand is x87's: a
+    # signalling NaN or an unnormal raises invalid and both results become
+    # that NaN quieted or the indefinite, a zero raises divide-by-zero and a
+    # denormal reports a denormal operand.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) | (qnan_indefinite & fault_mask);
+    local significand:10 = extract_significand(source);
+    local exponent:10 = extract_exponent(source);
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    local signalling:1 = nan(source) && (source[62,1] == 0) && !unsupported;
+    local is_zero:1 = (source[64,15] == 0) && (source[0,64] == 0);
+    local denormal:1;
+    fpu_is_denormal(source, denormal);
+    fpu_signal_invalid_if(signalling || unsupported);
+    fpu_signal_denormal_if(denormal);
+    FPUStatusWord = FPUStatusWord | (zext(is_zero) << 2);
+    fpu_refresh_error_summary();
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local quieted:10 = source | (zext(1:1) << 62);
+    local replaced:10 = (quieted * zext(signalling)) | (indefinite * zext(unsupported));
+    local replace:1 = signalling || unsupported;
+    significand = (significand * zext(!replace)) | replaced;
+    exponent = (exponent * zext(!replace)) | replaced;
+    fpu_clear_c1();
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = exponent;
+    fpu_underflow_indefinite(faulted, (((FPUStatusWord >> 11) & 7) * 10));
     fpushv(significand);
     goto <done>;
 <overflow>
@@ -8650,10 +8869,41 @@ define pcodeop extract_exponent;
 :FYL2X          is vexMode=0 & byte=0xD9; byte=0xF1                 
 { 
     FPUInstructionPointer = inst_start;
-    local log2st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local log_round:2 = (FPUControlWord >> 10) & 3;
+    local log_flags:1 = float_log2_flags(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), log_round);
+    local log2st0:10 = float_log2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), log_round);
+    # A negative operand has no logarithm: raise invalid here and hand the
+    # multiplication the indefinite, which it then propagates.
+    local log_invalid:1 = (log_flags & 1) != 0;
+    local log_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    log2st0 = (log2st0 * zext(!log_invalid)) | (log_indefinite * zext(log_invalid));
+    fpu_signal_invalid_if(log_invalid);
+    local prior_denormal:2 = FPUStatusWord & 2;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    # Invalid takes precedence over the logarithm's divide-by-zero: an
+    # indeterminate product reports IE alone. An unmasked divide-by-zero that
+    # does survive aborts the store and the pop.
+    local invalid:1 = (FPUStatusWord & 1) != 0;
+    # An infinite multiplier settles the result on its own, so the pole in the
+    # logarithm goes unreported, just as an indeterminate product does.
+    local multiplier:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local multiplier_infinite:1 = (multiplier[64,15] == 0x7fff) && (multiplier[63,1] == 1) &&
+                                  (multiplier[0,63] == 0);
+    local zero_divide:1 = ((log_flags & 4) != 0) && !nan(arithmetic_result) &&
+                          !multiplier_infinite;
+    FPUStatusWord = FPUStatusWord | (zext(zero_divide) << 2);
+    # A divide-by-zero decides the result on its own; the multiplication's
+    # denormal operand goes unreported, exactly as for an invalid one.
+    FPUStatusWord = (FPUStatusWord & ~(zext(zero_divide) * 2)) | prior_denormal;
+    # A zero product is exact however inexact the logarithm was.
+    local product_zero:1 = (arithmetic_result[64,15] == 0) &&
+                           (arithmetic_result[0,64] == 0);
+    FPUStatusWord = FPUStatusWord |
+                    (zext(((log_flags & 0x20) != 0) && !product_zero) << 5);
+    fpu_refresh_error_summary();
+    arithmetic_commit = arithmetic_commit && !(zero_divide && ((FPUControlWord & 4) == 0));
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -8669,10 +8919,48 @@ define pcodeop extract_exponent;
     # take the value from the explicit IEEE operation and drop its facts.
     local incremented_flags:1;
     log2st0:10 = 0;
-    ieee_add(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), tmp, (FPUControlWord >> 10) & 3, log2st0, incremented_flags);
+    local incremented:10 = 0;
+    ieee_add(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), tmp, (FPUControlWord >> 10) & 3, incremented, incremented_flags);
+    local log_round:2 = (FPUControlWord >> 10) & 3;
+    local log_flags:1 = float_log2_flags(incremented, log_round);
+    log2st0 = float_log2(incremented, log_round);
+    # log2(1+x) keeps the sign of a zero x. Forming the sum first loses it,
+    # so restore it on the zero logarithm the sum produces.
+    local log_zero:1 = (log2st0[64,15] == 0) && (log2st0[0,64] == 0);
+    local operand_negative:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    log2st0 = log2st0 | (zext(log_zero && (operand_negative[79,1] == 1)) << 79);
+    # A negative operand has no logarithm: raise invalid here and hand the
+    # multiplication the indefinite, which it then propagates.
+    local log_invalid:1 = (log_flags & 1) != 0;
+    local log_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    log2st0 = (log2st0 * zext(!log_invalid)) | (log_indefinite * zext(log_invalid));
+    fpu_signal_invalid_if(log_invalid);
+    local prior_denormal:2 = FPUStatusWord & 2;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    # Invalid takes precedence over the logarithm's divide-by-zero: an
+    # indeterminate product reports IE alone. An unmasked divide-by-zero that
+    # does survive aborts the store and the pop.
+    local invalid:1 = (FPUStatusWord & 1) != 0;
+    # An infinite multiplier settles the result on its own, so the pole in the
+    # logarithm goes unreported, just as an indeterminate product does.
+    local multiplier:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local multiplier_infinite:1 = (multiplier[64,15] == 0x7fff) && (multiplier[63,1] == 1) &&
+                                  (multiplier[0,63] == 0);
+    local zero_divide:1 = ((log_flags & 4) != 0) && !nan(arithmetic_result) &&
+                          !multiplier_infinite;
+    FPUStatusWord = FPUStatusWord | (zext(zero_divide) << 2);
+    # A divide-by-zero decides the result on its own; the multiplication's
+    # denormal operand goes unreported, exactly as for an invalid one.
+    FPUStatusWord = (FPUStatusWord & ~(zext(zero_divide) * 2)) | prior_denormal;
+    # A zero product is exact however inexact the logarithm was.
+    local product_zero:1 = (arithmetic_result[64,15] == 0) &&
+                           (arithmetic_result[0,64] == 0);
+    FPUStatusWord = FPUStatusWord |
+                    (zext(((log_flags & 0x20) != 0) && !product_zero) << 5);
+    fpu_refresh_error_summary();
+    arithmetic_commit = arithmetic_commit && !(zero_divide && ((FPUControlWord & 4) == 0));
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
