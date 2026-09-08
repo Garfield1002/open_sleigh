@@ -7581,24 +7581,37 @@ macro fxrstor_tag(Mem) {
 
 # fxsave and fxrstor
 macro _fxsave(Mem) {
-  # Not saved with the same spacing as the actual processor.
   *:2  (Mem)      = FPUControlWord;
   *:2  (Mem +  2) = FPUStatusWord;
   fxsave_tag(Mem);
+  # Byte 5 and each 16-byte ST/MM slot's tail are reserved. FXSAVE writes
+  # them as zero rather than retaining the old memory contents.
+  *:1  (Mem +  5) = 0:1;
   *:2  (Mem +  6) = FPULastInstructionOpcode;
   *:8  (Mem +  8) = FPUInstructionPointer;
   *:8  (Mem + 16) = FPUDataPointer;
   *:4  (Mem + 24) = MXCSR;
+  # This model implements the architectural low sixteen MXCSR control/status
+  # bits; report that supported-bit mask rather than retaining old memory.
+  *:4  (Mem + 28) = 0xffff:4;
 
-  # Save the FPU ST registers to the ST/MM area of the structure.
+  # Save logical ST registers in 16-byte FXSAVE slots and clear their padding.
   *:10 (Mem +  32) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+  *:6  (Mem +  42) = 0:6;
   *:10 (Mem +  48) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+  *:6  (Mem +  58) = 0:6;
   *:10 (Mem +  64) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10);
+  *:6  (Mem +  74) = 0:6;
   *:10 (Mem +  80) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10);
+  *:6  (Mem +  90) = 0:6;
   *:10 (Mem +  96) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10);
+  *:6  (Mem + 106) = 0:6;
   *:10 (Mem + 112) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10);
+  *:6  (Mem + 122) = 0:6;
   *:10 (Mem + 128) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10);
+  *:6  (Mem + 138) = 0:6;
   *:10 (Mem + 144) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10);
+  *:6  (Mem + 154) = 0:6;
 
   *:16 (Mem + 160) = XMM0;
   *:16 (Mem + 176) = XMM1;
@@ -7682,7 +7695,7 @@ define pcodeop _fxrstor64;
 
 :FXSAVE64 Mem    is $(LONGMODE_ON) & vexMode=0 & $(REX_W) & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=0 ) ... & Mem
 {
-  _fxsave64(Mem);
+  _fxsave(Mem);
 }
 
 :FXRSTOR Mem   is $(LONGMODE_ON) & vexMode=0 & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=1 ) ... & Mem
@@ -7692,7 +7705,7 @@ define pcodeop _fxrstor64;
 
 :FXRSTOR64 Mem   is $(LONGMODE_ON) & vexMode=0 & $(REX_W) & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=1 ) ... & Mem
 {
-  _fxrstor64(Mem);
+  _fxrstor(Mem);
 }
 @endif
 
