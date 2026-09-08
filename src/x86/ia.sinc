@@ -773,6 +773,13 @@ define pcodeop float_mul_flags;
 define pcodeop float_div;
 define pcodeop float_div_flags;
 
+# Round a floating value to a narrower significand precision while keeping its
+# own exponent range.  The precision is an explicit operand (significand bits,
+# including the integer bit), so this stays an IEEE operation rather than an
+# x87 precision-control policy.
+define pcodeop float_round_to_precision;
+define pcodeop float_round_to_precision_flags;
+
 # IN/OUT are not p-code operations: they load from and store to the `io`
 # address space defined above, which states which registers carry the port
 # and the datum instead of hiding them inside an opaque call.
@@ -3198,12 +3205,33 @@ macro fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit) {
     fpu_refresh_error_summary();
 }
 
+# x87 precision control (PC) narrows the significand of an extended result to
+# 24 or 53 bits while keeping the extended exponent range.  The PC encoding and
+# the reserved 01 value (treated as extended here) are architectural, so the
+# mapping lives in the specification; the rounding itself is the generic IEEE
+# operation.
+macro fpu_precision_control(value, round, result, flags) {
+    local pc:2 = (FPUControlWord >> 8) & 3;
+    local single:1 = pc == 0;
+    local double:1 = pc == 2;
+    local precision:2 = 64 - (zext(single) * 40) - (zext(double) * 11);
+    ieee_round_to_precision(value, precision, round, result, flags);
+}
+
 macro fpu_ieee_add_result(a, b, result, commit) {
     local round:2 = (FPUControlWord >> 10) & 3;
     local flags:1;
     ieee_add(a, b, round, result, flags);
+    # Precision control applies before the invalid substitution; special values
+    # are untouched by it, so the two are order-independent in practice.
+    local precision_flags:1;
+    fpu_precision_control(result, round, result, precision_flags);
+    flags = flags | precision_flags;
     fpu_ieee_invalid_result(a, b, flags, result);
     local toward_zero:10 = float_add(a, b, 3:2);
+    # The C1 comparison must be made at the same precision as the result.
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
     fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit);
 }
 
@@ -3211,8 +3239,16 @@ macro fpu_ieee_sub_result(a, b, result, commit) {
     local round:2 = (FPUControlWord >> 10) & 3;
     local flags:1;
     ieee_sub(a, b, round, result, flags);
+    # Precision control applies before the invalid substitution; special values
+    # are untouched by it, so the two are order-independent in practice.
+    local precision_flags:1;
+    fpu_precision_control(result, round, result, precision_flags);
+    flags = flags | precision_flags;
     fpu_ieee_invalid_result(a, b, flags, result);
     local toward_zero:10 = float_sub(a, b, 3:2);
+    # The C1 comparison must be made at the same precision as the result.
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
     fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit);
 }
 
@@ -3220,8 +3256,16 @@ macro fpu_ieee_mul_result(a, b, result, commit) {
     local round:2 = (FPUControlWord >> 10) & 3;
     local flags:1;
     ieee_mul(a, b, round, result, flags);
+    # Precision control applies before the invalid substitution; special values
+    # are untouched by it, so the two are order-independent in practice.
+    local precision_flags:1;
+    fpu_precision_control(result, round, result, precision_flags);
+    flags = flags | precision_flags;
     fpu_ieee_invalid_result(a, b, flags, result);
     local toward_zero:10 = float_mul(a, b, 3:2);
+    # The C1 comparison must be made at the same precision as the result.
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
     fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit);
 }
 

@@ -23,3 +23,11 @@ macro ieee_div(a, b, round, result, flags) {
     result = float_div(a, b, round);
     flags = float_div_flags(a, b, round);
 }
+
+# `precision` counts significand bits including the integer bit; 64 is the
+# identity.  The source is read before the result is written so a caller may
+# pass the same varnode for `value` and `result`.
+macro ieee_round_to_precision(value, precision, round, result, flags) {
+    flags = float_round_to_precision_flags(value, precision, round);
+    result = float_round_to_precision(value, precision, round);
+}
