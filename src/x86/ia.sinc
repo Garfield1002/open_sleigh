@@ -7183,11 +7183,12 @@ define pcodeop fsin;
 :FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=7
 { FPUInstructionPointer = inst_start; fpu_store_register(7:2, 0:2); }
 
-:FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx
+:FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
     m32fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
     fpop();
+    fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 } 
 
