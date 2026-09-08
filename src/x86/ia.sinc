@@ -3162,7 +3162,17 @@ macro fpu_ieee_invalid_result(a, b, flags, result) {
     local invalid:1 = (flags & 1) != 0;
     local a_nan:1 = nan(a);
     local b_nan:1 = nan(b);
-    local a_wins:1 = !unsupported && a_nan && (!b_nan || (a[0,64] >= b[0,64]));
+    # A NaN operand is propagated, quieted, with its own sign and payload.
+    # Two NaNs are resolved by the larger significand; hardware breaks a tie
+    # between equal payloads in favour of the positive one.
+    local a_sign:1 = a[79,1];
+    local b_sign:1 = b[79,1];
+    local a_significand:8 = a[0,64];
+    local b_significand:8 = b[0,64];
+    local a_preferred:1 = (a_significand > b_significand) ||
+                          ((a_significand == b_significand) &&
+                           (!a_sign || b_sign));
+    local a_wins:1 = !unsupported && a_nan && (!b_nan || a_preferred);
     local b_wins:1 = !unsupported && b_nan && !a_wins;
     local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
     local selected:10 = (a * zext(a_wins)) | (b * zext(b_wins)) |
@@ -3176,7 +3186,12 @@ macro fpu_ieee_invalid_result(a, b, flags, result) {
 # p-code operation.  Their exception-bit layout deliberately matches x87's
 # IE/ZE/OE/UE/PE bits; DE is determined from the source encodings here.
 macro fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, wrapped, commit) {
-    fpu_signal_denormal2(a, b);
+    # Invalid and divide-by-zero both take precedence over the denormal
+    # report: a denormal dividend over a zero divisor raises ZE alone.
+    local da:1; fpu_is_denormal(a, da);
+    local db:1; fpu_is_denormal(b, db);
+    local de_suppressed:1 = nan(a) || nan(b) || ((flags & 5) != 0);
+    fpu_signal_denormal_if((da || db) && !de_suppressed);
     FPUStatusWord = FPUStatusWord | zext(flags);
 
     # C1 reports that the rounded magnitude is farther from zero than the
@@ -3222,88 +3237,184 @@ macro fpu_precision_control(value, round, result, flags) {
     ieee_round_to_precision(value, precision, round, result, flags);
 }
 
-macro fpu_ieee_add_result(a, b, result, commit) {
-    local round:2 = (FPUControlWord >> 10) & 3;
-    local flags:1;
-    ieee_add(a, b, round, result, flags);
-    # Precision control applies before the invalid substitution; special values
-    # are untouched by it, so the two are order-independent in practice.
-    local precision_flags:1;
-    fpu_precision_control(result, round, result, precision_flags);
-    flags = flags | precision_flags;
-    fpu_ieee_invalid_result(a, b, flags, result);
-    local toward_zero:10 = float_add(a, b, 3:2);
-    # The C1 comparison must be made at the same precision as the result.
-    local toward_zero_flags:1;
-    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, 0:1, commit);
+# Reading an empty register is a stack fault. It is reported before the
+# operation looks at its sources, and the operation then behaves as though
+# both sources were the indefinite QNaN: it raises invalid, delivers the
+# indefinite, and reports nothing else.
+macro fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted) {
+    fpu_stack_underflow_out(index, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    source_a = (a & ~fault_mask) | (indefinite & fault_mask);
+    source_b = (b & ~fault_mask) | (indefinite & fault_mask);
 }
 
-macro fpu_ieee_sub_result(a, b, result, commit) {
-    local round:2 = (FPUControlWord >> 10) & 3;
-    local flags:1;
-    ieee_sub(a, b, round, result, flags);
-    # Precision control applies before the invalid substitution; special values
-    # are untouched by it, so the two are order-independent in practice.
-    local precision_flags:1;
-    fpu_precision_control(result, round, result, precision_flags);
-    flags = flags | precision_flags;
-    fpu_ieee_invalid_result(a, b, flags, result);
-    local toward_zero:10 = float_sub(a, b, 3:2);
-    # The C1 comparison must be made at the same precision as the result.
-    local toward_zero_flags:1;
-    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, 0:1, commit);
-}
-
-macro fpu_ieee_mul_result(a, b, result, commit) {
-    local round:2 = (FPUControlWord >> 10) & 3;
-    local flags:1;
-    ieee_mul(a, b, round, result, flags);
-    # Precision control applies before the invalid substitution; special values
-    # are untouched by it, so the two are order-independent in practice.
-    local precision_flags:1;
-    fpu_precision_control(result, round, result, precision_flags);
-    flags = flags | precision_flags;
-    fpu_ieee_invalid_result(a, b, flags, result);
-    local toward_zero:10 = float_mul(a, b, 3:2);
-    # The C1 comparison must be made at the same precision as the result.
-    local toward_zero_flags:1;
-    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, 0:1, commit);
+# A masked stack fault leaves the destination holding the indefinite and
+# reading as occupied. `dest` is the logical ST(i) written by the operation.
+macro fpu_ieee_fault_deliver(faulted, dest, commit) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local slot:2 = ((top + dest) & 7) * 10;
+    local deliver:1 = faulted && commit;
+    fpu_underflow_indefinite(deliver, slot);
 }
 
 # x87 delivers an exponent-wrapped result for an unmasked overflow or
 # underflow: the true exponent is biased by -24576 or +24576 so a result that
 # the format cannot hold is still handed to the handler, together with its
-# real rounding and inexactness. Rescaling one operand by that same factor and
-# dividing again reproduces it exactly; whichever operand has the exponent
-# room carries the adjustment. With no unmasked range exception the operands
-# are unchanged, so the same evaluation serves the ordinary case.
-macro fpu_ieee_div_scaled(a, b, flags, scaled_a, scaled_b, wrapped) {
-    local unmasked:2 = zext(flags) & ~FPUControlWord;
-    local up:1 = (unmasked & 0x10) != 0;
-    local down:1 = (unmasked & 8) != 0;
-    wrapped = up || down;
-    local a_word:2 = a[64,16];
-    local b_word:2 = b[64,16];
-    local a_exp:2 = a_word & 0x7fff;
-    local b_exp:2 = b_word & 0x7fff;
-    local a_up:1 = up && (a_exp != 0) && (a_exp < 0x1fff);
-    local a_down:1 = down && (a_exp > 0x6000);
-    local b_down:1 = up && !a_up && (b_exp > 0x6000);
-    local b_up:1 = down && !a_down && (b_exp != 0) && (b_exp < 0x1fff);
-    local a_scaled:2 = (a_word + (zext(a_up) * 0x6000)) - (zext(a_down) * 0x6000);
-    local b_scaled:2 = (b_word + (zext(b_up) * 0x6000)) - (zext(b_down) * 0x6000);
-    scaled_a = zext(a[0,64]) | (zext(a_scaled) << 64);
-    scaled_b = zext(b[0,64]) | (zext(b_scaled) << 64);
+# real rounding and inexactness. Rescaling the operands by that same factor
+# and repeating the operation reproduces it exactly. With no unmasked range
+# exception the operands are unchanged, so one evaluation serves both cases.
+macro fpu_ieee_scale_operand(value, up, down, result, scaled) {
+    local word:2 = value[64,16];
+    local exponent:2 = word & 0x7fff;
+    local can_up:1 = up && (exponent != 0) && (exponent < 0x1fff);
+    local can_down:1 = down && (exponent > 0x6000) && (exponent != 0x7fff);
+    scaled = can_up || can_down;
+    local scaled_word:2 = (word + (zext(can_up) * 0x6000)) -
+                          (zext(can_down) * 0x6000);
+    result = zext(value[0,64]) | (zext(scaled_word) << 64);
 }
 
-macro fpu_ieee_div_result(a, b, result, commit) {
+macro fpu_ieee_unmasked_range(flags, under, over, wrapped) {
+    local unmasked:2 = zext(flags) & ~FPUControlWord;
+    under = (unmasked & 0x10) != 0;
+    over = (unmasked & 8) != 0;
+    wrapped = under || over;
+}
+
+# For a product or a quotient the whole adjustment goes on a single operand;
+# whichever has the exponent room carries it. `b_inverse` marks the operand
+# that divides, whose adjustment runs the other way.
+macro fpu_ieee_scale_factors(a, b, flags, b_inverse, scaled_a, scaled_b, wrapped) {
+    local under:1; local over:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    local a_scaled:1;
+    fpu_ieee_scale_operand(a, under, over, scaled_a, a_scaled);
+    local b_up:1 = !a_scaled && ((!b_inverse && under) || (b_inverse && over));
+    local b_down:1 = !a_scaled && ((!b_inverse && over) || (b_inverse && under));
+    local b_scaled:1;
+    fpu_ieee_scale_operand(b, b_up, b_down, scaled_b, b_scaled);
+}
+
+# A sum keeps its value only if both terms move by the same factor, so both
+# must have the exponent room. A zero term needs no adjustment.
+macro fpu_ieee_scale_terms(a, b, flags, scaled_a, scaled_b, wrapped) {
+    local under:1; local over:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    local a_zero:1 = (a[64,15] == 0) && (a[0,64] == 0);
+    local b_zero:1 = (b[64,15] == 0) && (b[0,64] == 0);
+    local a_scaled:1; local b_scaled:1;
+    local shifted_a:10; local shifted_b:10;
+    fpu_ieee_scale_operand(a, under, over, shifted_a, a_scaled);
+    fpu_ieee_scale_operand(b, under, over, shifted_b, b_scaled);
+    local usable:1 = (a_scaled || a_zero) && (b_scaled || b_zero);
+    local mask:10 = 0 - zext(usable);
+    scaled_a = (shifted_a & mask) | (a & ~mask);
+    scaled_b = (shifted_b & mask) | (b & ~mask);
+}
+
+macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
     local round:2 = (FPUControlWord >> 10) & 3;
     local flags:1;
     local unwrapped:10;
-    ieee_div(a, b, round, unwrapped, flags);
+    ieee_add(source_a, source_b, round, unwrapped, flags);
+    # Precision control applies before the invalid substitution; special values
+    # are untouched by it, so the two are order-independent in practice.
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_terms(source_a, source_b, flags, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_add(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_add(scaled_a, scaled_b, 3:2);
+    # The C1 comparison must be made at the same precision as the result.
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_sub(source_a, source_b, round, unwrapped, flags);
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_terms(source_a, source_b, flags, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_sub(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_sub(scaled_a, scaled_b, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_mul(source_a, source_b, round, unwrapped, flags);
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_factors(source_a, source_b, flags, 0:1, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_mul(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_mul(scaled_a, scaled_b, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_div(source_a, source_b, round, unwrapped, flags);
     local precision_flags:1;
     fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
     flags = flags | precision_flags;
@@ -3314,7 +3425,7 @@ macro fpu_ieee_div_result(a, b, result, commit) {
     local scaled_a:10;
     local scaled_b:10;
     local wrapped:1;
-    fpu_ieee_div_scaled(a, b, flags, scaled_a, scaled_b, wrapped);
+    fpu_ieee_scale_factors(source_a, source_b, flags, 1:1, scaled_a, scaled_b, wrapped);
     local scaled_flags:1;
     ieee_div(scaled_a, scaled_b, round, result, scaled_flags);
     local scaled_precision:1;
@@ -3322,12 +3433,14 @@ macro fpu_ieee_div_result(a, b, result, commit) {
     scaled_flags = scaled_flags | scaled_precision;
     flags = (flags & ~0x20) | (scaled_flags & 0x20);
 
-    fpu_ieee_invalid_result(a, b, flags, result);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
     local toward_zero:10 = float_div(scaled_a, scaled_b, 3:2);
     local toward_zero_flags:1;
     fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
 }
+
 
 # Legacy generic f+ constructors still rely on QCode's contextual x87 path.
 macro fpu_arithmetic_result(expression, result, commit) {
@@ -6180,7 +6293,8 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m32fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6193,7 +6307,8 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m64fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6210,7 +6325,7 @@ define pcodeop f2xm1;
     fpu_clear_c1();
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_add_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6222,7 +6337,7 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_add_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -6234,7 +6349,7 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_add_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -6247,7 +6362,7 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_add_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -6260,7 +6375,8 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m32), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6274,7 +6390,7 @@ define pcodeop f2xm1;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     local arithmetic_rhs:10 = int2float(m16);
-    fpu_ieee_add_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6608,8 +6724,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m32fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6622,8 +6738,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m64fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6636,8 +6752,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6649,8 +6764,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -6662,8 +6776,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -6676,8 +6789,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(1:2);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -6690,9 +6802,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start; 
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
     local arithmetic_rhs:10 = int2float(m32);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6705,9 +6816,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
     local arithmetic_rhs:10 = int2float(m16);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6720,8 +6830,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
-    fpu_ieee_div_result(float2float(m32fp), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = float2float(m32fp);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6734,8 +6844,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
-    fpu_ieee_div_result(float2float(m64fp), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = float2float(m64fp);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6748,8 +6858,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, 0:2, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6761,8 +6870,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -6774,8 +6882,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(fregidx);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -6788,8 +6895,7 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(1:2);
-    fpu_ieee_div_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -6802,9 +6908,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
     local arithmetic_lhs:10 = int2float(m32);
-    fpu_ieee_div_result(arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6817,9 +6922,8 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_stack_underflow(0:2);
     local arithmetic_lhs:10 = int2float(m16);
-    fpu_ieee_div_result(arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7293,7 +7397,8 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m32fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7305,7 +7410,8 @@ define pcodeop fldenv;
 { 
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m64fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7319,7 +7425,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7331,7 +7437,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -7343,7 +7449,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -7356,7 +7462,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -7369,7 +7475,8 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m32), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7383,7 +7490,7 @@ define pcodeop fldenv;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     local arithmetic_rhs:10 = int2float(m16);
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7726,7 +7833,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m32fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7739,7 +7847,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m64fp), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7752,7 +7861,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7764,7 +7873,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -7776,7 +7885,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -7789,7 +7898,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -7802,7 +7911,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m32), arithmetic_result, arithmetic_commit);
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7816,7 +7926,7 @@ define pcodeop fsin;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     local arithmetic_rhs:10 = int2float(m16);
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7829,7 +7939,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(float2float(m32fp), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = float2float(m32fp);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7842,7 +7953,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(float2float(m64fp), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = float2float(m64fp);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7855,7 +7967,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, 0:2, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7867,7 +7979,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -7879,7 +7991,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -7892,7 +8004,7 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -7905,7 +8017,8 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_sub_result(int2float(m32), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    local arithmetic_lhs:10 = int2float(m32);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7919,7 +8032,7 @@ define pcodeop fsin;
     local arithmetic_result:10;
     local arithmetic_commit:1;
     local arithmetic_lhs:10 = int2float(m16);
-    fpu_ieee_sub_result(arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -8262,7 +8375,7 @@ define pcodeop extract_exponent;
     local log2st0:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -8281,7 +8394,7 @@ define pcodeop extract_exponent;
     ieee_add(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), tmp, (FPUControlWord >> 10) & 3, log2st0, incremented_flags);
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
