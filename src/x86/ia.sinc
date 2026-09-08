@@ -3216,6 +3216,15 @@ macro fpu_ieee_sub_result(a, b, result, commit) {
     fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit);
 }
 
+macro fpu_ieee_mul_result(a, b, result, commit) {
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    ieee_mul(a, b, round, result, flags);
+    fpu_ieee_invalid_result(a, b, flags, result);
+    local toward_zero:10 = float_mul(a, b, 3:2);
+    fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, commit);
+}
+
 # Legacy generic f+ constructors still rely on QCode's contextual x87 path.
 macro fpu_arithmetic_result(expression, result, commit) {
     result = expression;
@@ -7159,7 +7168,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* float2float(m32fp), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m32fp), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7171,7 +7180,7 @@ define pcodeop fldenv;
 { 
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* float2float(m64fp), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), float2float(m64fp), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7185,7 +7194,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7197,7 +7206,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(fregop f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
 <arithmetic_done>
@@ -7209,7 +7218,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* fregop, arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     fregop = arithmetic_result;
     fpop();
@@ -7222,7 +7231,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
     fpop();
@@ -7235,7 +7244,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* int2float(m32), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m32), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7248,7 +7257,7 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
-    fpu_arithmetic_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f* int2float(m16), arithmetic_result, arithmetic_commit);
+    fpu_ieee_mul_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), int2float(m16), arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
