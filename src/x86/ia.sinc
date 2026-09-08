@@ -484,8 +484,6 @@ define context contextreg
 @define PRE_F3		"prefix_f3=1"
 @define PRE_F2		"prefix_f2=1"
 
-
-
 # Define special registers for debugger
 @ifdef IA64
 define register offset=0x2200 size=4   [ IDTR_Limit ];
@@ -779,6 +777,16 @@ define pcodeop float_div_flags;
 # x87 precision-control policy.
 define pcodeop float_round_to_precision;
 define pcodeop float_round_to_precision_flags;
+
+# Convert an extended value to a narrower IEEE format, or to a two's-complement
+# integer, of the byte width given as the second operand and under the explicit
+# rounding mode given as the third.  Both are pure conversions: the value the
+# architecture substitutes for an invalid conversion, and whether the store
+# happens at all, are decided by the constructor.
+define pcodeop float_narrow;
+define pcodeop float_narrow_flags;
+define pcodeop float_to_int;
+define pcodeop float_to_int_flags;
 
 # IN/OUT are not p-code operations: they load from and store to the `io`
 # address space defined above, which states which registers carry the port
@@ -3147,24 +3155,95 @@ macro fpu_clear_c1() {
     C1 = 0;
 }
 
-# FIST/FISTP use round() only to apply RC before the integer conversion.
-# Unlike FRNDINT, that preparatory rounding must not report DE for a denormal
-# source. Preserve an older sticky DE while discarding one raised by round().
-macro fpu_round_for_integer(value, result) {
-    local prior_de:2 = FPUStatusWord & 2;
-    result = round(value);
-    FPUStatusWord = (FPUStatusWord & ~2) | prior_de;
+
+# x87 narrows an extended register when it stores to a single- or
+# double-precision destination. The conversion is a generic IEEE narrowing;
+# the destination format's indefinite, the C1 rounding indication, the mask
+# handling and the suppression of the store are x87's.
+macro fpu_narrow_store(source, size, indefinite, converted, commit) {
+    local round:2 = (FPUControlWord >> 10) & 3;
+    converted = float_narrow(source, size, round);
+    local flags:1 = float_narrow_flags(source, size, round);
+    # An unnormal is not an IEEE encoding at all; x87 rejects it as invalid.
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    # A masked invalid conversion stores the destination's indefinite QNaN.
+    # A signalling NaN is the exception: it is quieted and keeps its payload,
+    # which the conversion has already produced.
+    local snan:1 = (source[64,15] == 0x7fff) && (source[62,1] == 0) &&
+                   (source[0,62] != 0) && !unsupported;
+    local substitute:1 = ((flags & 1) != 0) && !snan;
+    converted = (converted * zext(!substitute)) | (indefinite * zext(substitute));
+
+    # Sized by copy: a macro parameter's width is not a literal here.
+    local toward_zero = converted;
+    toward_zero = float_narrow(source, size, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    # Compare magnitudes: shifting the sign bit out leaves the exponent and
+    # significand in place, and a larger magnitude rounded away from zero.
+    local rounded_up:1 = (converted << 1) > (toward_zero << 1);
+    FPUStatusWord = FPUStatusWord | zext(flags);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !substitute) << 9);
+
+    # An unmasked invalid, overflow or underflow aborts the store and any pop:
+    # unlike an arithmetic result, a narrowed one cannot be delivered at all,
+    # so hardware leaves the destination and the stack untouched. Such a fault
+    # also has no rounding indication and no precision report.
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 0x19) == 0;
+    local clear:2 = (zext(unmasked != 0) * 0x200) |
+                    (zext((unmasked & 0x18) != 0) * 0x20);
+    FPUStatusWord = FPUStatusWord & ~clear;
     fpu_refresh_error_summary();
 }
 
-# For a narrowing FST/FSTP, unmasked underflow or overflow takes priority
-# over inexact. The conversion has already raised PE and its C1 rounding
-# indication; hardware reports neither while the higher-priority fault wins.
-macro fpu_suppress_unmasked_narrowing_precision() {
-    local unmasked_range:2 = zext((FPUStatusWord & ~FPUControlWord & 0x18) != 0);
-    local clear:2 = unmasked_range * 0x220;
-    FPUStatusWord = FPUStatusWord & ~clear;
+# FIST/FISTP/FISTTP convert ST(0) to an integer. Only invalid and precision
+# are architecturally possible: the integer indefinite delivered for a masked
+# invalid, C1, and the suppression of the store and the pop on an unmasked
+# invalid are x87's; the conversion itself is the generic IEEE operation.
+macro fpu_integer_store(source, size, indefinite, round, converted, commit) {
+    converted = float_to_int(source, size, round);
+    local flags:1 = float_to_int_flags(source, size, round);
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    local invalid:1 = (flags & 1) != 0;
+    converted = (converted * zext(!invalid)) | (indefinite * zext(invalid));
+
+    # Sized by copy: a macro parameter's width is not a literal here.
+    local toward_zero = converted;
+    toward_zero = float_to_int(source, size, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    local negative:1 = source[79,1];
+    local rounded_up:1 = (!negative && (converted s> toward_zero)) ||
+                         (negative && (converted s< toward_zero));
+    FPUStatusWord = FPUStatusWord | zext(flags & 0x21);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !invalid) << 9);
+
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 1) == 0;
+    FPUStatusWord = FPUStatusWord & ~(zext(unmasked != 0) * 0x200);
     fpu_refresh_error_summary();
+}
+
+# A stack-underflow operand is the indefinite value, not the stale payload
+# in an empty slot. Stage the conversion before committing memory or popping
+# so an unmasked invalid exception leaves both destinations alone. A precision
+# exception, even unmasked, still commits the rounded result and pops.
+macro fpu_store_integer_st0(destination, size, indefinite_integer, round, pop, converted) {
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
+    local store:1;
+    fpu_integer_store(value, size, indefinite_integer, round, converted, store);
+    if (store == 0) goto <store_done>;
+    destination = converted;
+    if (pop == 0) goto <store_done>;
+    fpop();
+<store_done>
 }
 
 # A single- or double-precision memory source is widened to the extended
@@ -3595,8 +3674,6 @@ macro fucompe(val1, val2) {
 
 # Specification is "REX.W"
 @define REX_W      "longMode=1 & rexprefix=1 & rexWprefix=1"
-
-
 
 # TODO I don't think the following line can really happen because the 66 67 prefix must come before REX prefix
 :^instruction is $(LONGMODE_ON) & instrPhase=0 & over=0x66 & opsize=2; instruction   [ opsize=0; mandover=mandover $xor 1; ] {} # Operand size override
@@ -4802,8 +4879,6 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
         RSP = RSP - imm16;
 }
 @endif
-
-
 
 # Informs the 80287 coprocessor of the switch to protected mode, treated as NOP for 80387 and later.
 # We used to have a pseudo-op, but as this is a legacy instruction which is now explicitly treated
@@ -7292,9 +7367,9 @@ define pcodeop fcos;
 :FIST m16       is vexMode=0 & byte=0xDF; (mod != 0b11 & reg_opcode=2) ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local tmp:10; fpu_round_for_integer(source, tmp);
-    m16 = trunc(tmp); 
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, round, 0:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                    
@@ -7302,9 +7377,9 @@ define pcodeop fcos;
 :FIST m32       is vexMode=0 & byte=0xDB; (mod != 0b11 & reg_opcode=2) ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local tmp:10; fpu_round_for_integer(source, tmp);
-    m32 = trunc(tmp); 
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, round, 0:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }            
@@ -7312,10 +7387,9 @@ define pcodeop fcos;
 :FISTP m16      is vexMode=0 & byte=0xDF; reg_opcode=3 ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local tmp:10; fpu_round_for_integer(source, tmp);
-    fpop(); 
-    m16 = trunc(tmp); 
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, round, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                
@@ -7323,10 +7397,9 @@ define pcodeop fcos;
 :FISTP m32      is vexMode=0 & byte=0xDB; reg_opcode=3 ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local tmp:10; fpu_round_for_integer(source, tmp);
-    fpop();
-    m32 = trunc(tmp); 
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, round, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                
@@ -7334,36 +7407,19 @@ define pcodeop fcos;
 :FISTP m64      is vexMode=0 & byte=0xDF; reg_opcode=7 ... & m64 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
-    local tmp:10; fpu_round_for_integer(source, tmp);
-    fpop(); 
-    m64 = trunc(tmp); 
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:8;
+    fpu_store_integer_st0(m64, 8:2, 0x8000000000000000:8, round, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                
 
-# A stack-underflow operand is the indefinite value, not the stale payload
-# in an empty slot. Stage conversion before committing memory or popping so
-# an unmasked invalid exception leaves both destinations alone. Precision
-# exceptions (even unmasked) still commit the rounded result and pop.
-macro fpu_store_truncated_integer(destination) {
-    fpu_clear_c1();
-    local faulted:1;
-    fpu_stack_underflow_out(0:2, faulted);
-    local mask:10 = 0 - zext(faulted);
-    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
-    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
-    local converted = trunc(value);
-    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
-    destination = converted;
-    fpop();
-    <done>
-}
 
 :FISTTP m16     is vexMode=0 & byte=0xDF; reg_opcode=1 ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    fpu_store_truncated_integer(m16);
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, 3:2, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                 
@@ -7371,7 +7427,8 @@ macro fpu_store_truncated_integer(destination) {
 :FISTTP m32     is vexMode=0 & byte=0xDB; reg_opcode=1 ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    fpu_store_truncated_integer(m32);
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, 3:2, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
@@ -7379,7 +7436,8 @@ macro fpu_store_truncated_integer(destination) {
 :FISTTP m64     is vexMode=0 & byte=0xDD; reg_opcode=1 ... & m64 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    fpu_store_truncated_integer(m64);
+    local converted:8;
+    fpu_store_integer_st0(m64, 8:2, 0x8000000000000000:8, 3:2, 1:1, converted);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }                 
@@ -7827,11 +7885,20 @@ define pcodeop fsin;
 :FST m32fp   is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=2) ... & m32fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local converted:4 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:4;
+    local store:1;
+    fpu_narrow_store(source, 4:2, 0xffc00000:4, converted, store);
+    if (store == 0) goto <done>;
     m32fp = converted;
 <done>
-    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }     
@@ -7839,11 +7906,20 @@ define pcodeop fsin;
 :FST m64fp   is vexMode=0 & byte=0xDD; reg_opcode=2 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local converted:8 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:8;
+    local store:1;
+    fpu_narrow_store(source, 8:2, 0xfff8000000000000:8, converted, store);
+    if (store == 0) goto <done>;
     m64fp = converted;
 <done>
-    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }     
@@ -7868,12 +7944,21 @@ define pcodeop fsin;
 :FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    local converted:4 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:4;
+    local store:1;
+    fpu_narrow_store(source, 4:2, 0xffc00000:4, converted, store);
+    if (store == 0) goto <done>;
     m32fp = converted;
     fpop();
 <done>
-    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 } 
@@ -7881,12 +7966,21 @@ define pcodeop fsin;
 :FSTP m64fp  is vexMode=0 & byte=0xDD; reg_opcode=3 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local converted:8 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
-    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:8;
+    local store:1;
+    fpu_narrow_store(source, 8:2, 0xfff8000000000000:8, converted, store);
+    if (store == 0) goto <done>;
     m64fp = converted;
     fpop();
 <done>
-    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 } 
@@ -7894,7 +7988,20 @@ define pcodeop fsin;
 :FSTP m80fp  is vexMode=0 & byte=0xDB; reg_opcode=7 ... & m80fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    fpopv(m80fp); 
+    # A store that does not round has no rounding indication: C1 is clear
+    # unless the pop itself faults.
+    fpu_clear_c1();
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~fault_mask) |
+                     (qnan_indefinite & fault_mask);
+    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
+    m80fp = value;
+    fpop();
+<done>
+
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }             
@@ -13492,8 +13599,6 @@ define pcodeop aeskeygenassist;
 	XmmReg1 = aeskeygenassist(XmmReg2_m128, imm8:1);
 	YmmReg1 = zext(XmmReg1);
 }
-
-
 
 ####
 #### Deprecated 3DNow! instructions
