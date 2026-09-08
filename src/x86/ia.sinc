@@ -760,6 +760,19 @@ attach variables [ bnd1_ub bnd2_ub ] [ BND0_UB BND1_UB BND2_UB BND3_UB _ _ _ _ ]
 define pcodeop segment;    # Define special pcodeop that calculates the RAM address
                            # given the segment selector and offset as input
 
+# Generic IEEE-754 arithmetic.  The final operand is an IEEE rounding-mode
+# value.  The matching *_flags operation reports only IEEE facts (invalid,
+# divide-by-zero, overflow, underflow, inexact, and rounded-up); architecture
+# exception policy remains in the constructors that consume those facts.
+define pcodeop float_add;
+define pcodeop float_add_flags;
+define pcodeop float_sub;
+define pcodeop float_sub_flags;
+define pcodeop float_mul;
+define pcodeop float_mul_flags;
+define pcodeop float_div;
+define pcodeop float_div_flags;
+
 # IN/OUT are not p-code operations: they load from and store to the `io`
 # address space defined above, which states which registers carry the port
 # and the datum instead of hiding them inside an opaque call.

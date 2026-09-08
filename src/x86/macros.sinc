@@ -1,3 +1,25 @@
 macro conditionalAssign(dest, cond, trueVal, falseVal) {
     dest = zext(cond) * trueVal | zext(!cond) * falseVal;	
 }
+
+# Keep IEEE evaluation and exception facts paired.  `round` is an IEEE
+# rounding-mode value; `flags` is intentionally architecture-neutral.
+macro ieee_add(a, b, round, result, flags) {
+    result = float_add(a, b, round);
+    flags = float_add_flags(a, b, round);
+}
+
+macro ieee_sub(a, b, round, result, flags) {
+    result = float_sub(a, b, round);
+    flags = float_sub_flags(a, b, round);
+}
+
+macro ieee_mul(a, b, round, result, flags) {
+    result = float_mul(a, b, round);
+    flags = float_mul_flags(a, b, round);
+}
+
+macro ieee_div(a, b, round, result, flags) {
+    result = float_div(a, b, round);
+    flags = float_div_flags(a, b, round);
+}
