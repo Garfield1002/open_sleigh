@@ -3137,12 +3137,14 @@ macro fpu_suppress_unmasked_narrowing_precision() {
 macro fpu_arithmetic_result(expression, result, commit) {
     result = expression;
     commit = (FPUStatusWord & ~FPUControlWord & 7) == 0;
-    # An aborted operation has no C1 rounding result. For DE/ZE, hardware
-    # also discards result-derived OE/UE/PE; an invalid operation retains PE
-    # when the operation was inexact before it detected invalid.
-    local aborted:2 = zext(commit == 0);
-    local abort_de_ze:2 = zext((FPUStatusWord & ~FPUControlWord & 6) != 0);
-    local clear:2 = (aborted * 0x200) | (abort_de_ze * 0x38);
+    # Unmasked exceptions have no C1 rounding result. DE discards all
+    # result-derived range/precision flags; unmasked OE/UE retain their range
+    # bit but discard PE. IE and ZE retain PE when the operation was inexact.
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    local clear_c1:2 = zext(unmasked != 0) * 0x200;
+    local unmasked_de:2 = zext((unmasked & 2) != 0);
+    local unmasked_range:2 = zext((unmasked & 0x18) != 0);
+    local clear:2 = clear_c1 | (unmasked_de * 0x38) | (unmasked_range * 0x20);
     FPUStatusWord = FPUStatusWord & ~clear;
     fpu_refresh_error_summary();
 }
