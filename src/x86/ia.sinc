@@ -3179,7 +3179,11 @@ macro fpu_ieee_invalid_result(a, b, flags, result) {
                         (indefinite * zext(!a_wins && !b_wins));
     # Quiet a selected signalling NaN without changing its sign or payload.
     selected = selected | (zext(a_wins || b_wins) << 62);
-    result = (result * zext(!invalid)) | (selected * zext(invalid));
+    # A quiet NaN operand raises no invalid exception, yet x87 still chooses
+    # the propagated NaN by its own rule rather than the generic operation's,
+    # so the substitution applies whenever any operand is a NaN.
+    local substitute:1 = invalid || a_nan || b_nan;
+    result = (result * zext(!substitute)) | (selected * zext(substitute));
 }
 
 # Apply the architecture-neutral IEEE facts returned by an explicit arithmetic
@@ -7856,7 +7860,7 @@ define pcodeop fsin;
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }          
 
-:FSUB st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx
+:FSUB st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
@@ -7893,7 +7897,7 @@ define pcodeop fsin;
     fpu_record_opcode(0x6e9:2);
 }               
 
-:FSUBP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx
+:FSUBP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
@@ -7962,7 +7966,7 @@ define pcodeop fsin;
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }          
 
-:FSUBR st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx
+:FSUBR st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
@@ -7999,7 +8003,7 @@ define pcodeop fsin;
     fpu_record_opcode(0x6e1:2);
 }               
 
-:FSUBRP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx
+:FSUBRP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx & fregidx
 {
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
