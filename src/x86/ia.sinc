@@ -3112,6 +3112,26 @@ macro fpu_clear_c1() {
     C1 = 0;
 }
 
+# FIST/FISTP use round() only to apply RC before the integer conversion.
+# Unlike FRNDINT, that preparatory rounding must not report DE for a denormal
+# source. Preserve an older sticky DE while discarding one raised by round().
+macro fpu_round_for_integer(value, result) {
+    local prior_de:2 = FPUStatusWord & 2;
+    result = round(value);
+    FPUStatusWord = (FPUStatusWord & ~2) | prior_de;
+    fpu_refresh_error_summary();
+}
+
+# For a narrowing FST/FSTP, unmasked underflow or overflow takes priority
+# over inexact. The conversion has already raised PE and its C1 rounding
+# indication; hardware reports neither while the higher-priority fault wins.
+macro fpu_suppress_unmasked_narrowing_precision() {
+    local unmasked_range:2 = zext((FPUStatusWord & ~FPUControlWord & 0x18) != 0);
+    local clear:2 = unmasked_range * 0x220;
+    FPUStatusWord = FPUStatusWord & ~clear;
+    fpu_refresh_error_summary();
+}
+
 # The unordered EFLAGS compare: like fcomi, but a quiet NaN is not invalid.
 macro fucomi_faulted(val, faulted) {
     fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
@@ -6693,7 +6713,8 @@ define pcodeop fcos;
 :FIST m16       is vexMode=0 & byte=0xDF; (mod != 0b11 & reg_opcode=2) ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    tmp:10 = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local tmp:10; fpu_round_for_integer(source, tmp);
     m16 = trunc(tmp); 
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
@@ -6702,7 +6723,8 @@ define pcodeop fcos;
 :FIST m32       is vexMode=0 & byte=0xDB; (mod != 0b11 & reg_opcode=2) ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    tmp:10 = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local tmp:10; fpu_round_for_integer(source, tmp);
     m32 = trunc(tmp); 
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
@@ -6711,7 +6733,8 @@ define pcodeop fcos;
 :FISTP m16      is vexMode=0 & byte=0xDF; reg_opcode=3 ... & m16 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    tmp:10 = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local tmp:10; fpu_round_for_integer(source, tmp);
     fpop(); 
     m16 = trunc(tmp); 
     fpu_record_data_pointer(Mem);
@@ -6721,7 +6744,8 @@ define pcodeop fcos;
 :FISTP m32      is vexMode=0 & byte=0xDB; reg_opcode=3 ... & m32 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    tmp:10 = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local tmp:10; fpu_round_for_integer(source, tmp);
     fpop();
     m32 = trunc(tmp); 
     fpu_record_data_pointer(Mem);
@@ -6731,7 +6755,8 @@ define pcodeop fcos;
 :FISTP m64      is vexMode=0 & byte=0xDF; reg_opcode=7 ... & m64 & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    tmp:10 = round(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local source:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local tmp:10; fpu_round_for_integer(source, tmp);
     fpop(); 
     m64 = trunc(tmp); 
     fpu_record_data_pointer(Mem);
@@ -7153,7 +7178,11 @@ define pcodeop fsin;
 :FST m32fp   is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=2) ... & m32fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m32fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local converted:4 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    m32fp = converted;
+<done>
+    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }     
@@ -7161,7 +7190,11 @@ define pcodeop fsin;
 :FST m64fp   is vexMode=0 & byte=0xDD; reg_opcode=2 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m64fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local converted:8 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    m64fp = converted;
+<done>
+    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }     
@@ -7186,8 +7219,12 @@ define pcodeop fsin;
 :FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
-    m32fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local converted:4 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    m32fp = converted;
     fpop();
+<done>
+    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
 } 
@@ -7195,8 +7232,12 @@ define pcodeop fsin;
 :FSTP m64fp  is vexMode=0 & byte=0xDD; reg_opcode=3 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    m64fp = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    local converted:8 = float2float(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    if ((FPUStatusWord & ~FPUControlWord & 0x11) != 0) goto <done>;
+    m64fp = converted;
     fpop();
+<done>
+    fpu_suppress_unmasked_narrowing_precision();
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
 } 
