@@ -3046,13 +3046,19 @@ macro fpu_signal_denormal1(a) {
     fpu_signal_denormal_if(da);
 }
 
-macro fpu_signal_denormal2(a, b) {
+
+# `mem_de` reports a denormal single- or double-precision memory source, whose
+# widened f80 is a normal number and so cannot be recognised from `b`.
+macro fpu_signal_denormal2_mem(a, b, mem_de) {
     local da:1; fpu_is_denormal(a, da);
     local db:1; fpu_is_denormal(b, db);
     # Invalid takes precedence: when an operand is a NaN the operation reports
     # IE and leaves DE alone.
     local invalid:1 = nan(a) || nan(b);
-    fpu_signal_denormal_if((da || db) && !invalid);
+    fpu_signal_denormal_if((da || db || mem_de) && !invalid);
+}
+macro fpu_signal_denormal2(a, b) {
+    fpu_signal_denormal2_mem(a, b, 0:1);
 }
 
 # Raise the invalid-operation exception when `cond` holds, and refresh ES to
@@ -3065,25 +3071,34 @@ macro fpu_signal_invalid_if(cond) {
 
 # The unordered compare. Only a signalling NaN raises invalid, which the
 # concrete interpreter already applies to the f80 comparison itself.
-macro fucom_faulted(val, faulted) {
-    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+
+macro fucom_faulted_mem(val, faulted, mem_de) {
+    fpu_signal_denormal2_mem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val, mem_de && !faulted);
     # An underflowed compare reports unordered: C0, C2 and C3 all set.
     local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
 }
+macro fucom_faulted(val, faulted) {
+    fucom_faulted_mem(val, faulted, 0:1);
+}
 
 # The ordered compare. It raises invalid for a quiet NaN too, which is the only
 # thing separating it from FUCOM: both produce identical p-code otherwise.
-macro fcom_faulted(val, faulted) {
-    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+
+macro fcom_faulted_mem(val, faulted, mem_de) {
+    # An empty ST(0) is read as the indefinite QNaN, which suppresses DE.
+    fpu_signal_denormal2_mem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val, mem_de && !faulted);
     # An underflowed compare reports unordered: C0, C2 and C3 all set.
     local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
     fpu_signal_invalid_if(c2);
+}
+macro fcom_faulted(val, faulted) {
+    fcom_faulted_mem(val, faulted, 0:1);
 }
 
 # Produce the architectural full tag associated with an occupied f80 slot.
@@ -3152,6 +3167,24 @@ macro fpu_suppress_unmasked_narrowing_precision() {
     fpu_refresh_error_summary();
 }
 
+# A single- or double-precision memory source is widened to the extended
+# format before the operation uses it. The widened value is a normal f80 and a
+# widened signalling NaN has been quieted, so the denormal-operand and
+# signalling-NaN facts must be read from the original encoding.
+macro fpu_f32_source_flags(bits, denormal, snan) {
+    local exponent:1 = bits[23,8];
+    local fraction:3 = bits[0,23];
+    denormal = (exponent == 0) && (fraction != 0);
+    snan = (exponent == 0xff) && (fraction != 0) && (bits[22,1] == 0);
+}
+
+macro fpu_f64_source_flags(bits, denormal, snan) {
+    local exponent:2 = bits[52,11];
+    local fraction:7 = bits[0,52];
+    denormal = (exponent == 0) && (fraction != 0);
+    snan = (exponent == 0x7ff) && (fraction != 0) && (bits[51,1] == 0);
+}
+
 # x87 rejects unnormal f80 encodings and selects NaN payloads differently from
 # generic IEEE arithmetic. Keep that architecture-specific result policy here.
 macro fpu_ieee_invalid_result(a, b, flags, result) {
@@ -3189,13 +3222,13 @@ macro fpu_ieee_invalid_result(a, b, flags, result) {
 # Apply the architecture-neutral IEEE facts returned by an explicit arithmetic
 # p-code operation.  Their exception-bit layout deliberately matches x87's
 # IE/ZE/OE/UE/PE bits; DE is determined from the source encodings here.
-macro fpu_ieee_arithmetic_status(a, b, flags, result, toward_zero, wrapped, commit) {
+macro fpu_ieee_arithmetic_status(a, b, mem_de, flags, result, toward_zero, wrapped, commit) {
     # Invalid and divide-by-zero both take precedence over the denormal
     # report: a denormal dividend over a zero divisor raises ZE alone.
     local da:1; fpu_is_denormal(a, da);
     local db:1; fpu_is_denormal(b, db);
     local de_suppressed:1 = nan(a) || nan(b) || ((flags & 5) != 0);
-    fpu_signal_denormal_if((da || db) && !de_suppressed);
+    fpu_signal_denormal_if((da || db || mem_de) && !de_suppressed);
     FPUStatusWord = FPUStatusWord | zext(flags);
 
     # C1 reports that the rounded magnitude is farther from zero than the
@@ -3317,7 +3350,7 @@ macro fpu_ieee_scale_terms(a, b, flags, scaled_a, scaled_b, wrapped) {
     scaled_b = (shifted_b & mask) | (b & ~mask);
 }
 
-macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
+macro fpu_ieee_add_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
     local faulted:1;
     local source_a:10;
     local source_b:10;
@@ -3331,6 +3364,9 @@ macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
     local precision_flags:1;
     fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
     flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
     local scaled_a:10;
     local scaled_b:10;
     local wrapped:1;
@@ -3346,11 +3382,11 @@ macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
     # The C1 comparison must be made at the same precision as the result.
     local toward_zero_flags:1;
     fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
     fpu_ieee_fault_deliver(faulted, dest, commit);
 }
 
-macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
+macro fpu_ieee_sub_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
     local faulted:1;
     local source_a:10;
     local source_b:10;
@@ -3362,6 +3398,9 @@ macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
     local precision_flags:1;
     fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
     flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
     local scaled_a:10;
     local scaled_b:10;
     local wrapped:1;
@@ -3376,11 +3415,11 @@ macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
     local toward_zero:10 = float_sub(scaled_a, scaled_b, 3:2);
     local toward_zero_flags:1;
     fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
     fpu_ieee_fault_deliver(faulted, dest, commit);
 }
 
-macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
+macro fpu_ieee_mul_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
     local faulted:1;
     local source_a:10;
     local source_b:10;
@@ -3392,6 +3431,9 @@ macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
     local precision_flags:1;
     fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
     flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
     local scaled_a:10;
     local scaled_b:10;
     local wrapped:1;
@@ -3406,11 +3448,11 @@ macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
     local toward_zero:10 = float_mul(scaled_a, scaled_b, 3:2);
     local toward_zero_flags:1;
     fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
     fpu_ieee_fault_deliver(faulted, dest, commit);
 }
 
-macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
+macro fpu_ieee_div_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
     local faulted:1;
     local source_a:10;
     local source_b:10;
@@ -3422,6 +3464,9 @@ macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
     local precision_flags:1;
     fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
     flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
 
     # The range exceptions and their masks decide whether a wrapped result is
     # delivered; the scaled evaluation then supplies the result itself and its
@@ -3441,10 +3486,34 @@ macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
     local toward_zero:10 = float_div(scaled_a, scaled_b, 3:2);
     local toward_zero_flags:1;
     fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
-    fpu_ieee_arithmetic_status(source_a, source_b, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
     fpu_ieee_fault_deliver(faulted, dest, commit);
 }
 
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
+    fpu_ieee_add_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
+    fpu_ieee_sub_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
+    fpu_ieee_mul_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
+    fpu_ieee_div_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
 
 # Legacy generic f+ constructors still rely on QCode's contextual x87 path.
 macro fpu_arithmetic_result(expression, result, commit) {
@@ -6297,8 +6366,14 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m32fp);
-    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_add_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6311,8 +6386,14 @@ define pcodeop f2xm1;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m64fp);
-    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_add_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6570,10 +6651,13 @@ define pcodeop to_bcd;
 :FCOM m32fp       is vexMode=0 & byte=0xD8; reg_opcode=2 ... & m32fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start; 
-    local tmp=float2float(m32fp); 
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local tmp=float2float(m32fp);
     local faulted:1;
     fpu_stack_underflow_out(0:2, faulted);
-    fcom_faulted(tmp, faulted); 
+    fcom_faulted_mem(tmp, faulted, mem_de);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }         
@@ -6581,10 +6665,13 @@ define pcodeop to_bcd;
 :FCOM m64fp       is vexMode=0 & byte=0xDC; reg_opcode=2 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local tmp=float2float(m64fp); 
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local tmp=float2float(m64fp);
     local faulted:1;
     fpu_stack_underflow_out(0:2, faulted);
-    fcom_faulted(tmp, faulted); 
+    fcom_faulted_mem(tmp, faulted, mem_de);
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }         
@@ -6610,10 +6697,13 @@ define pcodeop to_bcd;
 :FCOMP m32fp      is vexMode=0 & byte=0xD8; reg_opcode=3 ... & m32fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local tmp=float2float(m32fp); 
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local tmp=float2float(m32fp);
     local faulted:1;
     fpu_stack_underflow_out(0:2, faulted);
-    fcom_faulted(tmp, faulted); 
+    fcom_faulted_mem(tmp, faulted, mem_de);
     fpop(); 
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
@@ -6622,10 +6712,13 @@ define pcodeop to_bcd;
 :FCOMP m64fp      is vexMode=0 & byte=0xDC; reg_opcode=3 ... & m64fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
-    local tmp=float2float(m64fp); 
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local tmp=float2float(m64fp);
     local faulted:1;
     fpu_stack_underflow_out(0:2, faulted);
-    fcom_faulted(tmp, faulted); 
+    fcom_faulted_mem(tmp, faulted, mem_de);
     fpop(); 
     fpu_record_data_pointer(Mem);
     fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
@@ -6728,8 +6821,14 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m32fp);
-    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6742,8 +6841,14 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m64fp);
-    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6834,8 +6939,14 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_lhs:10 = float2float(m32fp);
-    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -6848,8 +6959,14 @@ define pcodeop fcos;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_lhs:10 = float2float(m64fp);
-    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7270,6 +7387,13 @@ macro fpu_store_truncated_integer(destination) {
 :FLD m32fp        is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=0) ... & m32fp & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
+    # A narrow memory source reports its own denormal-operand and
+    # signalling-NaN facts: the widened extended value is normal and quiet.
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    fpu_signal_invalid_if(mem_snan);
+    fpu_signal_denormal_if(mem_de);
     local value:10 = float2float(m32fp);
     fpushv(value);
     fpu_record_data_pointer(Mem);
@@ -7279,6 +7403,13 @@ macro fpu_store_truncated_integer(destination) {
 :FLD m64fp        is vexMode=0 & byte=0xDD; reg_opcode=0 ... & m64fp & modidx & regidx & rmidx & Mem
 {
     FPUInstructionPointer = inst_start;
+    # A narrow memory source reports its own denormal-operand and
+    # signalling-NaN facts: the widened extended value is normal and quiet.
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    fpu_signal_invalid_if(mem_snan);
+    fpu_signal_denormal_if(mem_de);
     local value:10 = float2float(m64fp);
     fpushv(value);
     fpu_record_data_pointer(Mem);
@@ -7401,8 +7532,14 @@ define pcodeop fldenv;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m32fp);
-    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_mul_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7414,8 +7551,14 @@ define pcodeop fldenv;
 { 
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m64fp);
-    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_mul_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7837,8 +7980,14 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m32fp);
-    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7851,8 +8000,14 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_rhs:10 = float2float(m64fp);
-    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7943,8 +8098,14 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
     local arithmetic_lhs:10 = float2float(m32fp);
-    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
@@ -7957,8 +8118,14 @@ define pcodeop fsin;
     FPUInstructionPointer = inst_start;
     local arithmetic_result:10;
     local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
     local arithmetic_lhs:10 = float2float(m64fp);
-    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
     if (arithmetic_commit == 0) goto <arithmetic_done>;
     *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
 <arithmetic_done>
