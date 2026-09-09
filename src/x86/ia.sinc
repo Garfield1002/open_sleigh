@@ -6143,13 +6143,29 @@ CMPSS_OPERAND: ", "^imm8 is imm8   { }
 }
 @endif
 
-define pcodeop divpd;
-:DIVPD        XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x5E; XmmReg ... & m128 { XmmReg = divpd(XmmReg, m128); }
-:DIVPD        XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = divpd(XmmReg1, XmmReg2); }
+# The packed float operations are lifted lane by lane in p-code. MXCSR
+# rounding and exception flags are deliberately not modelled.
+macro divpd128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    dst[  0,64] = a[  0,64] f/ b[  0,64];
+    dst[ 64,64] = a[ 64,64] f/ b[ 64,64];
+}
 
-define pcodeop divps;
-:DIVPS        XmmReg, m128     is vexMode=0 & mandover=0 & byte=0x0F; byte=0x5E; XmmReg ... & m128 { XmmReg = divps(XmmReg, m128); }
-:DIVPS        XmmReg1, XmmReg2 is vexMode=0 & mandover=0 & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = divps(XmmReg1, XmmReg2); }
+macro divps128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    dst[  0,32] = a[  0,32] f/ b[  0,32];
+    dst[ 32,32] = a[ 32,32] f/ b[ 32,32];
+    dst[ 64,32] = a[ 64,32] f/ b[ 64,32];
+    dst[ 96,32] = a[ 96,32] f/ b[ 96,32];
+}
+
+:DIVPD        XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x5E; XmmReg ... & m128 { divpd128(XmmReg, m128); }
+:DIVPD        XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2 { divpd128(XmmReg1, XmmReg2); }
+
+:DIVPS        XmmReg, m128     is vexMode=0 & mandover=0 & byte=0x0F; byte=0x5E; XmmReg ... & m128 { divps128(XmmReg, m128); }
+:DIVPS        XmmReg1, XmmReg2 is vexMode=0 & mandover=0 & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2 { divps128(XmmReg1, XmmReg2); }
                 
 :DIVSD        XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5E; m64 & XmmReg ...
 {
@@ -6286,13 +6302,38 @@ macro maskmov_byte(value, selected, address, offset) {
     maskmov_byte(data[120,8], mask[127,1], address, 15);
 }
 
-define pcodeop maxpd;
-:MAXPD        XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5F; XmmReg ... & m128 { XmmReg = maxpd(XmmReg, m128); }
-:MAXPD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = maxpd(XmmReg1, XmmReg2); }
+# SSE MIN returns its second operand whenever either operand is a NaN or both
+# operands are zero of either sign, and the smaller operand otherwise; MAX is
+# symmetric. An ordered `f<` is false in exactly the return-the-second-operand
+# cases, so one comparison per lane selects the source, and the lane is moved
+# bit-for-bit so that a NaN payload survives unchanged.
+macro maxpd128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    local pick0:8 = 0 - zext(b[  0,64] f< a[  0,64]);
+    dst[  0,64] = (a[  0,64] & pick0) | (b[  0,64] & (~pick0));
+    local pick1:8 = 0 - zext(b[ 64,64] f< a[ 64,64]);
+    dst[ 64,64] = (a[ 64,64] & pick1) | (b[ 64,64] & (~pick1));
+}
 
-define pcodeop maxps;
-:MAXPS        XmmReg, m128        is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5F; XmmReg ... & m128 { XmmReg = maxps(XmmReg, m128); }
-:MAXPS        XmmReg1, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = maxps(XmmReg1, XmmReg2); }
+macro maxps128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    local pick0:4 = 0 - zext(b[  0,32] f< a[  0,32]);
+    dst[  0,32] = (a[  0,32] & pick0) | (b[  0,32] & (~pick0));
+    local pick1:4 = 0 - zext(b[ 32,32] f< a[ 32,32]);
+    dst[ 32,32] = (a[ 32,32] & pick1) | (b[ 32,32] & (~pick1));
+    local pick2:4 = 0 - zext(b[ 64,32] f< a[ 64,32]);
+    dst[ 64,32] = (a[ 64,32] & pick2) | (b[ 64,32] & (~pick2));
+    local pick3:4 = 0 - zext(b[ 96,32] f< a[ 96,32]);
+    dst[ 96,32] = (a[ 96,32] & pick3) | (b[ 96,32] & (~pick3));
+}
+
+:MAXPD        XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5F; XmmReg ... & m128 { maxpd128(XmmReg, m128); }
+:MAXPD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2 { maxpd128(XmmReg1, XmmReg2); }
+
+:MAXPS        XmmReg, m128        is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5F; XmmReg ... & m128 { maxps128(XmmReg, m128); }
+:MAXPS        XmmReg1, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2 { maxps128(XmmReg1, XmmReg2); }
 
 :MAXSD        XmmReg, m64         is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5F; XmmReg ... & m64
 {
@@ -6320,13 +6361,33 @@ define pcodeop maxps;
     XmmReg1[0,32] = XmmReg2[0,32];
 }
 
-define pcodeop minpd;
-:MINPD        XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5D; XmmReg ... & m128 { XmmReg = minpd(XmmReg, m128); }
-:MINPD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = minpd(XmmReg1, XmmReg2); }
+macro minpd128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    local pick0:8 = 0 - zext(a[  0,64] f< b[  0,64]);
+    dst[  0,64] = (a[  0,64] & pick0) | (b[  0,64] & (~pick0));
+    local pick1:8 = 0 - zext(a[ 64,64] f< b[ 64,64]);
+    dst[ 64,64] = (a[ 64,64] & pick1) | (b[ 64,64] & (~pick1));
+}
 
-define pcodeop minps;
-:MINPS        XmmReg, m128        is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5D; XmmReg ... & m128 { XmmReg = minps(XmmReg, m128); }
-:MINPS        XmmReg1, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = minps(XmmReg1, XmmReg2); }
+macro minps128(dst, src) {
+    local a:16 = dst;
+    local b:16 = src;
+    local pick0:4 = 0 - zext(a[  0,32] f< b[  0,32]);
+    dst[  0,32] = (a[  0,32] & pick0) | (b[  0,32] & (~pick0));
+    local pick1:4 = 0 - zext(a[ 32,32] f< b[ 32,32]);
+    dst[ 32,32] = (a[ 32,32] & pick1) | (b[ 32,32] & (~pick1));
+    local pick2:4 = 0 - zext(a[ 64,32] f< b[ 64,32]);
+    dst[ 64,32] = (a[ 64,32] & pick2) | (b[ 64,32] & (~pick2));
+    local pick3:4 = 0 - zext(a[ 96,32] f< b[ 96,32]);
+    dst[ 96,32] = (a[ 96,32] & pick3) | (b[ 96,32] & (~pick3));
+}
+
+:MINPD        XmmReg, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5D; XmmReg ... & m128 { minpd128(XmmReg, m128); }
+:MINPD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2 { minpd128(XmmReg1, XmmReg2); }
+
+:MINPS        XmmReg, m128        is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5D; XmmReg ... & m128 { minps128(XmmReg, m128); }
+:MINPS        XmmReg1, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2 { minps128(XmmReg1, XmmReg2); }
 
 :MINSD        XmmReg, m64         is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5D; XmmReg ... & m64
 {
@@ -9539,13 +9600,25 @@ define pcodeop rsqrtss;
     shuffle_4(XmmReg1[96,32],Order3,xmmreg2_m128_c0,xmmreg2_m128_c1,xmmreg2_m128_c2,xmmreg2_m128_c3);
 }
 
-define pcodeop sqrtpd;
-:SQRTPD          XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x51; XmmReg ... & m128 { XmmReg = sqrtpd(XmmReg, m128); }
-:SQRTPD          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = sqrtpd(XmmReg1, XmmReg2); }
+macro sqrtpd128(dst, src) {
+    local b:16 = src;
+    dst[  0,64] = sqrt(b[  0,64]);
+    dst[ 64,64] = sqrt(b[ 64,64]);
+}
 
-define pcodeop sqrtps;
-:SQRTPS          XmmReg, m128     is vexMode=0 & mandover=0 & byte=0x0F; byte=0x51; XmmReg ... & m128 { XmmReg = sqrtps(XmmReg, m128); }
-:SQRTPS          XmmReg1, XmmReg2  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = sqrtps(XmmReg1, XmmReg2); }
+macro sqrtps128(dst, src) {
+    local b:16 = src;
+    dst[  0,32] = sqrt(b[  0,32]);
+    dst[ 32,32] = sqrt(b[ 32,32]);
+    dst[ 64,32] = sqrt(b[ 64,32]);
+    dst[ 96,32] = sqrt(b[ 96,32]);
+}
+
+:SQRTPD          XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x51; XmmReg ... & m128 { sqrtpd128(XmmReg, m128); }
+:SQRTPD          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { sqrtpd128(XmmReg1, XmmReg2); }
+
+:SQRTPS          XmmReg, m128     is vexMode=0 & mandover=0 & byte=0x0F; byte=0x51; XmmReg ... & m128 { sqrtps128(XmmReg, m128); }
+:SQRTPS          XmmReg1, XmmReg2  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { sqrtps128(XmmReg1, XmmReg2); }
 
 :SQRTSD          XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; XmmReg ... & m64 { XmmReg[0,64] = sqrt(m64); }
 :SQRTSD          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,64] = sqrt(XmmReg2[0,64]); }
