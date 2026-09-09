@@ -788,6 +788,12 @@ define pcodeop float_narrow_flags;
 define pcodeop float_to_int;
 define pcodeop float_to_int_flags;
 
+# Convert a two's-complement integer of the source operand's own width to an
+# IEEE value of the byte width given as the second operand, under the explicit
+# rounding mode given as the third. Only inexact is possible.
+define pcodeop float_from_int;
+define pcodeop float_from_int_flags;
+
 # Unary IEEE operations, taking the rounding mode as their last operand and
 # reporting only IEEE facts. `float_scalb` is IEEE scaleB: it multiplies by two
 # raised to the integral power given as its second operand.

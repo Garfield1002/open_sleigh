@@ -518,6 +518,153 @@ XmmCmpOrdered:           is imm8=0 | imm8=3 | imm8=4 | imm8=7 { export 0:1; }
 XmmCmpOrdered: ", "^imm8 is imm8                              { export 0:1; }
 
 
+# --- SSE conversions --------------------------------------------------------
+# Every conversion reads a source operand, so DAZ and the denormal report apply
+# to it exactly as they do to arithmetic. The conversions themselves are the
+# generic IEEE operations; the integer indefinite an invalid conversion stores,
+# and the QNaN indefinite a narrowing stores, are x86's.
+
+# Widening a single to a double is exact, so only the source facts are
+# reported: DE for a denormal, IE for a signalling NaN, which the conversion
+# quiets.
+macro sse_widen32(dest, source) {
+    local a:4 = source;
+    local de:1; sse_daz32(a, de);
+    local a_nan:1 = (a[23,8] == 0xff) && (a[0,23] != 0);
+    local flags:1 = zext(a_nan && (a[22,1] == 0));
+    sse_report(flags, de && !a_nan);
+    dest = float2float(a);
+}
+
+# Narrowing a double to a single can round, overflow or go tiny. A NaN source
+# is quieted and keeps its payload; any other invalid stores the single
+# precision indefinite.
+macro sse_narrow64(dest, source) {
+    local a:8 = source;
+    local de:1; sse_daz64(a, de);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_narrow(a, 4:1, rc);
+    local flags:1 = float_narrow_flags(a, 4:1, rc);
+    local a_nan:1 = (a[52,11] == 0x7ff) && (a[0,52] != 0);
+    local substitute:4 = 0 - zext(((flags & 1) != 0) && !a_nan);
+    result = (0xffc00000 & substitute) | (result & ~substitute);
+    sse_ftz32(result, flags);
+    sse_report(flags, de && !a_nan);
+    dest = result;
+}
+
+# A NaN, an infinity or a value outside the destination's range is invalid and
+# stores the integer indefinite. The rounding mode is the caller's: MXCSR's for
+# the CVT forms, toward zero for the CVTT ones.
+macro sse_f32_to_i4(dest, source, rc) {
+    local a:4 = source;
+    local de:1; sse_daz32(a, de);
+    local result:4 = float_to_int(a, 4:1, rc);
+    local flags:1 = float_to_int_flags(a, 4:1, rc);
+    local invalid:4 = 0 - zext((flags & 1) != 0);
+    result = (0x80000000 & invalid) | (result & ~invalid);
+    # A conversion to an integer reports invalid and precision alone: a
+    # denormal source raises no DE, it simply converts inexactly to zero, so
+    # only DAZ's flushing of the source survives here.
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# A NaN, an infinity or a value outside the destination's range is invalid and
+# stores the integer indefinite. The rounding mode is the caller's: MXCSR's for
+# the CVT forms, toward zero for the CVTT ones.
+macro sse_f32_to_i8(dest, source, rc) {
+    local a:4 = source;
+    local de:1; sse_daz32(a, de);
+    local result:8 = float_to_int(a, 8:1, rc);
+    local flags:1 = float_to_int_flags(a, 8:1, rc);
+    local invalid:8 = 0 - zext((flags & 1) != 0);
+    result = (0x8000000000000000 & invalid) | (result & ~invalid);
+    # A conversion to an integer reports invalid and precision alone: a
+    # denormal source raises no DE, it simply converts inexactly to zero, so
+    # only DAZ's flushing of the source survives here.
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# A NaN, an infinity or a value outside the destination's range is invalid and
+# stores the integer indefinite. The rounding mode is the caller's: MXCSR's for
+# the CVT forms, toward zero for the CVTT ones.
+macro sse_f64_to_i4(dest, source, rc) {
+    local a:8 = source;
+    local de:1; sse_daz64(a, de);
+    local result:4 = float_to_int(a, 4:1, rc);
+    local flags:1 = float_to_int_flags(a, 4:1, rc);
+    local invalid:4 = 0 - zext((flags & 1) != 0);
+    result = (0x80000000 & invalid) | (result & ~invalid);
+    # A conversion to an integer reports invalid and precision alone: a
+    # denormal source raises no DE, it simply converts inexactly to zero, so
+    # only DAZ's flushing of the source survives here.
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# A NaN, an infinity or a value outside the destination's range is invalid and
+# stores the integer indefinite. The rounding mode is the caller's: MXCSR's for
+# the CVT forms, toward zero for the CVTT ones.
+macro sse_f64_to_i8(dest, source, rc) {
+    local a:8 = source;
+    local de:1; sse_daz64(a, de);
+    local result:8 = float_to_int(a, 8:1, rc);
+    local flags:1 = float_to_int_flags(a, 8:1, rc);
+    local invalid:8 = 0 - zext((flags & 1) != 0);
+    result = (0x8000000000000000 & invalid) | (result & ~invalid);
+    # A conversion to an integer reports invalid and precision alone: a
+    # denormal source raises no DE, it simply converts inexactly to zero, so
+    # only DAZ's flushing of the source survives here.
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# An integer to float conversion can only be inexact, and needs the rounding
+# mode for that.
+macro sse_i4_to_f32(dest, source) {
+    local a:4 = source;
+    local rc:1; sse_rc(rc);
+    local result:4 = float_from_int(a, 4:1, rc);
+    local flags:1 = float_from_int_flags(a, 4:1, rc);
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# An integer to float conversion can only be inexact, and needs the rounding
+# mode for that.
+macro sse_i4_to_f64(dest, source) {
+    local a:4 = source;
+    local rc:1; sse_rc(rc);
+    local result:8 = float_from_int(a, 8:1, rc);
+    local flags:1 = float_from_int_flags(a, 8:1, rc);
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# An integer to float conversion can only be inexact, and needs the rounding
+# mode for that.
+macro sse_i8_to_f32(dest, source) {
+    local a:8 = source;
+    local rc:1; sse_rc(rc);
+    local result:4 = float_from_int(a, 4:1, rc);
+    local flags:1 = float_from_int_flags(a, 4:1, rc);
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
+# An integer to float conversion can only be inexact, and needs the rounding
+# mode for that.
+macro sse_i8_to_f64(dest, source) {
+    local a:8 = source;
+    local rc:1; sse_rc(rc);
+    local result:8 = float_from_int(a, 8:1, rc);
+    local flags:1 = float_from_int_flags(a, 8:1, rc);
+    sse_report(flags, 0:1);
+    dest = result;
+}
+
 # The packed float operations are lifted lane by lane in p-code.
 macro divpd128(dst, src) {
     local a:16 = dst;
@@ -1260,31 +1407,32 @@ with : lockprefx=0 {
 :CVTDQ2PD     XmmReg, m64       is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0xE6; m64 & XmmReg ...
 {
     local m:8 = m64;
-    XmmReg[0,64] = int2float( m[0,32] );
-    XmmReg[64,64] = int2float( m[32,32] );
+    sse_i4_to_f64(XmmReg[0,64], m[0,32]);
+    sse_i4_to_f64(XmmReg[64,64], m[32,32]);
 }
 
 :CVTDQ2PD     XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0xE6; xmmmod=3 & XmmReg1 & XmmReg2
 {
     local tmp:8 = XmmReg2[0,64];
-    XmmReg1[0,64] = int2float( tmp[0,32] );
-    XmmReg1[64,64] = int2float( tmp[32,32] );
+    sse_i4_to_f64(XmmReg1[0,64], tmp[0,32]);
+    sse_i4_to_f64(XmmReg1[64,64], tmp[32,32]);
 }
 
 :CVTDQ2PS          XmmReg1, XmmReg2_m128  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5B; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = int2float( m[0,32] );
-    XmmReg1[32,32] = int2float( m[32,32] );
-    XmmReg1[64,32] = int2float( m[64,32] );
-    XmmReg1[96,32] = int2float( m[96,32] );
+    sse_i4_to_f32(XmmReg1[0,32], m[0,32]);
+    sse_i4_to_f32(XmmReg1[32,32], m[32,32]);
+    sse_i4_to_f32(XmmReg1[64,32], m[64,32]);
+    sse_i4_to_f32(XmmReg1[96,32], m[96,32]);
 }
 
 :CVTPD2DQ          XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xE6; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = trunc( m[0,64] );
-    XmmReg1[32,32] = trunc( m[64,64] );
+    local rc:1; sse_rc(rc);
+    sse_f64_to_i4(XmmReg1[0,32], m[0,64], rc);
+    sse_f64_to_i4(XmmReg1[32,32], m[64,64], rc);
     XmmReg1[64,32] = 0;
     XmmReg1[96,32] = 0;
 }
@@ -1292,21 +1440,23 @@ with : lockprefx=0 {
 :CVTPD2PI     mmxregop, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2D; mmxregop ... & m128
 {
     local m:16 = m128;
-    mmxregop[0,32] = trunc( m[0,64] );
-    mmxregop[32,32] = trunc( m[64,64] );
+    local rc:1; sse_rc(rc);
+    sse_f64_to_i4(mmxregop[0,32], m[0,64], rc);
+    sse_f64_to_i4(mmxregop[32,32], m[64,64], rc);
 }
 
 :CVTPD2PI     mmxreg1op, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2D; xmmmod=3 & mmxreg1op & XmmReg2
 {
-    mmxreg1op[0,32] = trunc( XmmReg2[0,64] );
-    mmxreg1op[32,32] = trunc( XmmReg2[64,64] );
+    local rc:1; sse_rc(rc);
+    sse_f64_to_i4(mmxreg1op[0,32], XmmReg2[0,64], rc);
+    sse_f64_to_i4(mmxreg1op[32,32], XmmReg2[64,64], rc);
 }
 
 :CVTPD2PS          XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5A; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = float2float( m[0,64] );
-    XmmReg1[32,32] = float2float( m[64,64] );
+    sse_narrow64(XmmReg1[0,32], m[0,64]);
+    sse_narrow64(XmmReg1[32,32], m[64,64]);
     XmmReg1[64,32] = 0;
     XmmReg1[96,32] = 0;
 }
@@ -1314,171 +1464,181 @@ with : lockprefx=0 {
 :CVTPI2PD     XmmReg, m64       is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2A; m64 & XmmReg ...
 {
   local m:8 = m64;
-  XmmReg[0,64] =  int2float(m[0,32]);
-  XmmReg[64,64] =  int2float(m[32,32]);
+  sse_i4_to_f64(XmmReg[0,64], m[0,32]);
+  sse_i4_to_f64(XmmReg[64,64], m[32,32]);
 }
 
 :CVTPI2PD     XmmReg1, mmxreg2op  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2A; xmmmod=3 & XmmReg1 & mmxreg2op
 {
-  XmmReg1[0,64] = int2float(mmxreg2op[0,32]);
-  XmmReg1[64,64] = int2float(mmxreg2op[32,32]);
+  sse_i4_to_f64(XmmReg1[0,64], mmxreg2op[0,32]);
+  sse_i4_to_f64(XmmReg1[64,64], mmxreg2op[32,32]);
 }
 
 :CVTPI2PS     XmmReg, m64       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2A; m64 & XmmReg ...
 {
   local m:8 = m64;
-  XmmReg[0,32] = int2float(m[0,32]);
-  XmmReg[32,32] = int2float(m[32,32]);
+  sse_i4_to_f32(XmmReg[0,32], m[0,32]);
+  sse_i4_to_f32(XmmReg[32,32], m[32,32]);
 }
 
 :CVTPI2PS     XmmReg1, mmxreg2op  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2A; xmmmod=3 & XmmReg1 & mmxreg2op
 {
-  XmmReg1[0,32] = int2float(mmxreg2op[0,32]);
-  XmmReg1[32,32] = int2float(mmxreg2op[32,32]);
+  sse_i4_to_f32(XmmReg1[0,32], mmxreg2op[0,32]);
+  sse_i4_to_f32(XmmReg1[32,32], mmxreg2op[32,32]);
 }
 
 :CVTPS2DQ             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5B; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = trunc( m[0,32] );
-    XmmReg1[32,32] = trunc( m[32,32] );
-    XmmReg1[64,32] = trunc( m[64,32] );
-    XmmReg1[96,32] = trunc( m[96,32] );
+    local rc:1; sse_rc(rc);
+    sse_f32_to_i4(XmmReg1[0,32], m[0,32], rc);
+    sse_f32_to_i4(XmmReg1[32,32], m[32,32], rc);
+    sse_f32_to_i4(XmmReg1[64,32], m[64,32], rc);
+    sse_f32_to_i4(XmmReg1[96,32], m[96,32], rc);
 }
 
 :CVTPS2PD     XmmReg, m64       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5A; m64 & XmmReg ...
 {
     local m:8 = m64;
-    XmmReg[0,64] = float2float( m[0,32] );
-    XmmReg[64,64] = float2float( m[32,32] );
+    sse_widen32(XmmReg[0,64], m[0,32]);
+    sse_widen32(XmmReg[64,64], m[32,32]);
 }
 
 :CVTPS2PD     XmmReg1, XmmReg2  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x5A; xmmmod=3 & XmmReg1 & XmmReg2
 {
     local tmp:8 = XmmReg2[0,64];
-    XmmReg1[0,64] = float2float( tmp[0,32] );
-    XmmReg1[64,64] = float2float( tmp[32,32] );
+    sse_widen32(XmmReg1[0,64], tmp[0,32]);
+    sse_widen32(XmmReg1[64,64], tmp[32,32]);
 }
 
 :CVTPS2PI     mmxreg1op, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2D; xmmmod=3 & mmxreg1op & XmmReg2
 {
-  mmxreg1op[0,32] = round(XmmReg2[0,32]);
-  mmxreg1op[32,32] = round(XmmReg2[32,32]);
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i4(mmxreg1op[0,32], XmmReg2[0,32], rc);
+  sse_f32_to_i4(mmxreg1op[32,32], XmmReg2[32,32], rc);
   FPUTagWord = 0x0000;         
 }
 
 :CVTSD2SI     Reg32, m64    is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x2D; (Reg32 & check_Reg32_dest) ... & m64
 {
-  Reg32 = trunc(round(m64));
+  local rc:1; sse_rc(rc);
+  sse_f64_to_i4(Reg32, m64, rc);
   build check_Reg32_dest;
 }
 
 :CVTSD2SI     Reg32, XmmReg2 is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x2D; xmmmod=3 & Reg32 & check_Reg32_dest & XmmReg2
 {
-  Reg32 = trunc(round(XmmReg2[0,64]));
+  local rc:1; sse_rc(rc);
+  sse_f64_to_i4(Reg32, XmmReg2[0,64], rc);
   build check_Reg32_dest;
 }
 
 @ifdef IA64
 :CVTSD2SI     Reg64, m64    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & byte=0x0F; byte=0x2D; Reg64 ... & m64
 {
-  Reg64 = trunc(round(m64));
+  local rc:1; sse_rc(rc);
+  sse_f64_to_i8(Reg64, m64, rc);
 }
 
 :CVTSD2SI     Reg64, XmmReg2 is vexMode=0 & opsize=2 & $(PRE_F2) & byte=0x0F; byte=0x2D; xmmmod=3 & Reg64 & XmmReg2
 {
-  Reg64 = trunc(round(XmmReg2[0,64]));
+  local rc:1; sse_rc(rc);
+  sse_f64_to_i8(Reg64, XmmReg2[0,64], rc);
 }
 
 @endif
 :CVTSD2SS     XmmReg, m64       is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5A; m64 & XmmReg ...
 {
-  XmmReg[0,32] = float2float(m64);
+  sse_narrow64(XmmReg[0,32], m64);
 }
 
 :CVTSD2SS     XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5A; xmmmod=3 & XmmReg1 & XmmReg2
 {
-  XmmReg1[0,32] = float2float(XmmReg2[0,64]);
+  sse_narrow64(XmmReg1[0,32], XmmReg2[0,64]);
 }
 
 :CVTSI2SD     XmmReg, rm32    is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x2A; rm32 & XmmReg ...
 {
-  XmmReg[0,64] = int2float(rm32);
+  sse_i4_to_f64(XmmReg[0,64], rm32);
 }
 
 @ifdef IA64
 :CVTSI2SD     XmmReg, rm64    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & byte=0x0F; byte=0x2A; rm64 & XmmReg ...
 {
-  XmmReg[0,64] = int2float(rm64);
+  sse_i8_to_f64(XmmReg[0,64], rm64);
 }
 
 @endif
 :CVTSI2SS     XmmReg, rm32    is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x2A; rm32 & XmmReg ...
 {
-  XmmReg[0,32] = int2float(rm32);
+  sse_i4_to_f32(XmmReg[0,32], rm32);
 }
 
 @ifdef IA64
 :CVTSI2SS     XmmReg, rm64    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0F; byte=0x2A; rm64 & XmmReg ...
 {
-  XmmReg[0,32] = int2float(rm64);
+  sse_i8_to_f32(XmmReg[0,32], rm64);
 }
 
 @endif
 :CVTSS2SD     XmmReg, m32    is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5A; m32 & XmmReg ...
 {
-  XmmReg[0,64] = float2float(m32);
+  sse_widen32(XmmReg[0,64], m32);
 }
 
 :CVTSS2SD     XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5A; xmmmod=3 & XmmReg1 & XmmReg2
 {
-  XmmReg1[0,64] = float2float(XmmReg2[0,32]);
+  sse_widen32(XmmReg1[0,64], XmmReg2[0,32]);
 }
 
 :CVTSS2SI     Reg32, m32    is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x2D; (Reg32 & check_Reg32_dest) ... & m32
 {
-  Reg32 = trunc(round(m32));
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i4(Reg32, m32, rc);
   build check_Reg32_dest;
 }
 
 :CVTSS2SI     Reg32, XmmReg2 is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x2D; xmmmod=3 & Reg32 & check_Reg32_dest & XmmReg2
 {
-  Reg32 = trunc(round(XmmReg2[0,32]));
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i4(Reg32, XmmReg2[0,32], rc);
   build check_Reg32_dest;
 }
 
 @ifdef IA64
 :CVTSS2SI     Reg64, m32    is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0F; byte=0x2D; Reg64 ... & m32
 {
-  Reg64 = trunc(round(m32));
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i8(Reg64, m32, rc);
 }
 
 :CVTSS2SI     Reg64, XmmReg2 is vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0F; byte=0x2D; xmmmod=3 & Reg64 & XmmReg2
 {
-  Reg64 = trunc(round(XmmReg2[0,32]));
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i8(Reg64, XmmReg2[0,32], rc);
 }
 
 @endif
 :CVTTPD2PI    mmxregop, m128        is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2C; mmxregop ... & m128
 {
   local m:16 = m128;
-  mmxregop[0,32] = trunc(m[0,64]);
-  mmxregop[32,32] = trunc(m[64,64]);
+  sse_f64_to_i4(mmxregop[0,32], m[0,64], 3:1);
+  sse_f64_to_i4(mmxregop[32,32], m[64,64], 3:1);
   FPUTagWord = 0x0000;         
 }
 
 :CVTTPD2PI    mmxreg1op, XmmReg2    is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2C; xmmmod=3 & mmxreg1op & XmmReg2
 {
-  mmxreg1op[0,32] = trunc(XmmReg2[0,64]);
-  mmxreg1op[32,32] = trunc(XmmReg2[64,64]);
+  sse_f64_to_i4(mmxreg1op[0,32], XmmReg2[0,64], 3:1);
+  sse_f64_to_i4(mmxreg1op[32,32], XmmReg2[64,64], 3:1);
   FPUTagWord = 0x0000;         
 }
 
 :CVTTPD2DQ           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE6; XmmReg1 ... & XmmReg2_m128
 {
   local m:16 = XmmReg2_m128;
-  XmmReg1[0,32] = trunc(m[0,64]);
-  XmmReg1[32,32] = trunc(m[64,64]);
+  sse_f64_to_i4(XmmReg1[0,32], m[0,64], 3:1);
+  sse_f64_to_i4(XmmReg1[32,32], m[64,64], 3:1);
   XmmReg1[64,32] = 0;
   XmmReg1[96,32] = 0;
 }
@@ -1486,64 +1646,64 @@ with : lockprefx=0 {
 :CVTTPS2DQ           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5B; XmmReg1 ... & XmmReg2_m128
 {
   local m:16 = XmmReg2_m128;
-  XmmReg1[0,32] = trunc(m[0,32]);
-  XmmReg1[32,32] = trunc(m[32,32]);
-  XmmReg1[64,32] = trunc(m[64,32]);
-  XmmReg1[96,32] = trunc(m[96,32]);
+  sse_f32_to_i4(XmmReg1[0,32], m[0,32], 3:1);
+  sse_f32_to_i4(XmmReg1[32,32], m[32,32], 3:1);
+  sse_f32_to_i4(XmmReg1[64,32], m[64,32], 3:1);
+  sse_f32_to_i4(XmmReg1[96,32], m[96,32], 3:1);
 }
 
 :CVTTPS2PI    mmxreg1op, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2C; xmmmod=3 & mmxreg1op & XmmReg2
 {
-  mmxreg1op[0,32] = trunc(XmmReg2[0,32]);
-  mmxreg1op[32,32] = trunc(XmmReg2[32,32]);
+  sse_f32_to_i4(mmxreg1op[0,32], XmmReg2[0,32], 3:1);
+  sse_f32_to_i4(mmxreg1op[32,32], XmmReg2[32,32], 3:1);
   FPUTagWord = 0x0000;         
 }
 
 :CVTTSD2SI    Reg32, m64  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x2C; (Reg32 & check_Reg32_dest) ... & m64
 {
-  Reg32 = trunc(m64);
+  sse_f64_to_i4(Reg32, m64, 3:1);
   build check_Reg32_dest;
 }
 
 :CVTTSD2SI    Reg32, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x2C; xmmmod=3 & Reg32 & check_Reg32_dest & XmmReg2
 {
-  Reg32 = trunc(XmmReg2[0,64]);
+  sse_f64_to_i4(Reg32, XmmReg2[0,64], 3:1);
   build check_Reg32_dest;
 }
 
 @ifdef IA64
 :CVTTSD2SI    Reg64, m64  is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F2) & byte=0x0F; byte=0x2C; Reg64 ... & m64
 {
-  Reg64 = trunc(m64);
+  sse_f64_to_i8(Reg64, m64, 3:1);
 }
 
 :CVTTSD2SI    Reg64, XmmReg2  is vexMode=0 & opsize=2 & $(PRE_F2) & byte=0x0F; byte=0x2C; xmmmod=3 & Reg64 & XmmReg2
 {
-  Reg64 = trunc(XmmReg2[0,64]);
+  sse_f64_to_i8(Reg64, XmmReg2[0,64], 3:1);
 }
 
 @endif
 :CVTTSS2SI    Reg32, m32  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x2C; (Reg32 & check_Reg32_dest) ... & m32
 {
-  Reg32 = trunc(m32);
+  sse_f32_to_i4(Reg32, m32, 3:1);
   build check_Reg32_dest;
 }
 
 :CVTTSS2SI    Reg32, XmmReg2  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x2C; xmmmod=3 & Reg32 & check_Reg32_dest & XmmReg2
 {
-  Reg32 = trunc(XmmReg2[0,32]);
+  sse_f32_to_i4(Reg32, XmmReg2[0,32], 3:1);
   build check_Reg32_dest;
 }
 
 @ifdef IA64
 :CVTTSS2SI    Reg64, m32  is $(LONGMODE_ON) & vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0F; byte=0x2C; Reg64 ... & m32
 {
-  Reg64 = trunc(m32);
+  sse_f32_to_i8(Reg64, m32, 3:1);
 }
 
 :CVTTSS2SI    Reg64, XmmReg2  is vexMode=0 & opsize=2 & $(PRE_F3) & byte=0x0F; byte=0x2C; xmmmod=3 & Reg64 & XmmReg2
 {
-  Reg64 = trunc(XmmReg2[0,32]);
+  sse_f32_to_i8(Reg64, XmmReg2[0,32], 3:1);
 }
 
 @endif
