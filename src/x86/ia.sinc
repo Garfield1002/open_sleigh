@@ -800,6 +800,24 @@ define pcodeop float_log2_flags;
 define pcodeop float_scalb;
 define pcodeop float_scalb_flags;
 
+# The partial remainder. The third operand selects the quotient's rounding
+# rule - zero truncates it toward zero, non-zero rounds it to nearest even -
+# because the remainder itself is exact under either and needs no rounding
+# mode of its own. `float_rem_partial` returns that exact remainder;
+# `float_rem_quotient` returns a one-byte code describing the same reduction:
+# bits 0-2 are the low three bits of the quotient's magnitude, and bit 3 is
+# set when the reduction was only partial, in which case bits 0-2 are zero.
+define pcodeop float_rem_partial;
+define pcodeop float_rem_quotient;
+
+# Pack an extended value as eighteen signed decimal digits, rounding it to an
+# integer under the rounding mode given as the second operand. Invalid when
+# the value will not fit eighteen digits (a NaN or an infinity included) and
+# inexact when rounding discarded a fraction; what an invalid conversion
+# stores is the constructor's choice.
+define pcodeop to_bcd;
+define pcodeop to_bcd_flags;
+
 # IN/OUT are not p-code operations: they load from and store to the `io`
 # address space defined above, which states which registers carry the port
 # and the datum instead of hiding them inside an opaque call.
@@ -3054,6 +3072,22 @@ macro fpu_is_denormal(value, result) {
     result = (exponent == 0) && (significand != 0);
 }
 
+# True when an f80 holds a signalling NaN: the all-ones exponent with the
+# explicit integer bit set, the quiet bit clear and a non-zero fraction. An
+# all-ones exponent with the integer bit clear is a pseudo-NaN, an unsupported
+# encoding rather than a signalling one.
+macro fpu_is_signaling_nan(value, result) {
+    result = (value[64,15] == 0x7fff) && (value[63,1] == 1) &&
+             (value[62,1] == 0) && (value[0,62] != 0);
+}
+
+# True when an f80 holds an unsupported encoding: any non-zero exponent with
+# the explicit integer bit clear. That covers the unnormals, pseudo-NaNs and
+# pseudo-infinities, all of which raise invalid wherever a signalling NaN does.
+macro fpu_is_unsupported(value, result) {
+    result = (value[64,15] != 0) && (value[63,1] == 0);
+}
+
 # Raise the denormal-operand exception when `cond` holds.
 macro fpu_signal_denormal_if(cond) {
     FPUStatusWord = FPUStatusWord | (zext(cond) << 1);
@@ -3089,8 +3123,8 @@ macro fpu_signal_invalid_if(cond) {
     fpu_refresh_error_summary();
 }
 
-# The unordered compare. Only a signalling NaN raises invalid, which the
-# concrete interpreter already applies to the f80 comparison itself.
+# The unordered compare. Only a signalling NaN raises invalid; a quiet NaN is
+# merely unordered.
 
 macro fucom_faulted_mem(val, faulted, mem_de) {
     fpu_signal_denormal2_mem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val, mem_de && !faulted);
@@ -3099,6 +3133,15 @@ macro fucom_faulted_mem(val, faulted, mem_de) {
     local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
     local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
     fpu_set_condition_codes(c0, 0:1, c2, c3);
+    local snan_a:1;
+    fpu_is_signaling_nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), snan_a);
+    local snan_b:1;
+    fpu_is_signaling_nan(val, snan_b);
+    local unsup_a:1;
+    fpu_is_unsupported(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), unsup_a);
+    local unsup_b:1;
+    fpu_is_unsupported(val, unsup_b);
+    fpu_signal_invalid_if(snan_a || snan_b || unsup_a || unsup_b);
 }
 macro fucom_faulted(val, faulted) {
     fucom_faulted_mem(val, faulted, 0:1);
@@ -3229,6 +3272,36 @@ macro fpu_integer_store(source, size, indefinite, round, converted, commit) {
     local negative:1 = source[79,1];
     local rounded_up:1 = (!negative && (converted s> toward_zero)) ||
                          (negative && (converted s< toward_zero));
+    FPUStatusWord = FPUStatusWord | zext(flags & 0x21);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !invalid) << 9);
+
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 1) == 0;
+    FPUStatusWord = FPUStatusWord & ~(zext(unmasked != 0) * 0x200);
+    fpu_refresh_error_summary();
+}
+
+# FBSTP packs ST(0) as eighteen decimal digits. As for the integer stores,
+# only invalid and precision are architecturally possible: the conversion is
+# the generic one, while the packed-decimal indefinite delivered for a masked
+# invalid, C1, and the suppression of the store and the pop on an unmasked
+# invalid are x87's.
+macro fpu_bcd_store(source, round, converted, commit) {
+    converted = to_bcd(source, round);
+    local flags:1 = to_bcd_flags(source, round);
+    # An unnormal is not an IEEE encoding at all; x87 rejects it as invalid.
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    local invalid:1 = (flags & 1) != 0;
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    converted = (converted * zext(!invalid)) | (indefinite * zext(invalid));
+
+    # Packed decimal is positional, so the digits compare as magnitudes once
+    # the sign bit is shifted out.
+    local toward_zero:10 = to_bcd(source, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    local rounded_up:1 = (converted << 1) > (toward_zero << 1);
     FPUStatusWord = FPUStatusWord | zext(flags & 0x21);
     FPUStatusWord = (FPUStatusWord & 0xfdff) |
                     (zext(inexact && rounded_up && !invalid) << 9);
@@ -3728,6 +3801,17 @@ macro fucomi_faulted(val, faulted) {
     OF = 0;
     AF = 0;
     SF = 0;
+    # Only a signalling NaN is invalid for an unordered compare. The FCOMI
+    # family reports through ZF/PF/CF alone, so C0-C3 are left as they were.
+    local snan_a:1;
+    fpu_is_signaling_nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), snan_a);
+    local snan_b:1;
+    fpu_is_signaling_nan(val, snan_b);
+    local unsup_a:1;
+    fpu_is_unsupported(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), unsup_a);
+    local unsup_b:1;
+    fpu_is_unsupported(val, unsup_b);
+    fpu_signal_invalid_if(snan_a || snan_b || unsup_a || unsup_b);
 }
 
 macro fcomi_faulted(val, faulted) {
@@ -6697,7 +6781,6 @@ define pcodeop f2xm1;
     fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
 }
 
-define pcodeop to_bcd;
 :FBSTP m80     is vexMode=0 & byte=0xDF; reg_opcode=6 ... & m80 & modidx & regidx & rmidx & Mem
 { 
     FPUInstructionPointer = inst_start;
@@ -6707,9 +6790,12 @@ define pcodeop to_bcd;
     local mask:10 = 0 - zext(faulted);
     local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
     local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
-    local converted:10 = to_bcd(value);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:10;
+    local store:1;
+    fpu_bcd_store(value, round, converted, store);
     # Unlike invalid, an unmasked precision exception still stores and pops.
-    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
+    if (store == 0) goto <done>;
     m80 = converted;
     fpop();
     <done>
@@ -7847,8 +7933,6 @@ define pcodeop fpatan;
     fpu_record_opcode(0x1f3:2);
 }
 
-define pcodeop fprem;
-define pcodeop fprem1;
 :FPREM          is vexMode=0 & byte=0xD9; byte=0xF8                 
 { 
     FPUInstructionPointer = inst_start;
@@ -7856,9 +7940,14 @@ define pcodeop fprem1;
     # results: the quotient's low three bits in C0/C3/C1, and C2 for an
     # incomplete reduction. Computing it as x - trunc(x/y)*y reported
     # none of them.
+    # Reducing an empty ST(0) or ST(1) is a stack fault: it reports the
+    # underflow and delivers the indefinite instead of a remainder.
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
     local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    local result:10 = fprem(dividend, divisor);
+    local result:10 = float_rem_partial(dividend, divisor, 0:1);
+    local quotient:1 = float_rem_quotient(dividend, divisor, 0:1);
     # A NaN operand is propagated with x87's own choice of payload,
     # and an unnormal encoding delivers the indefinite.
     # An infinite dividend or a zero divisor has no remainder, and a
@@ -7876,6 +7965,19 @@ define pcodeop fprem1;
                           !dividend_nan && !divisor_nan));
     fpu_signal_invalid_if((flags & 1) != 0);
     fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # C2 reports a partial reduction, and then no quotient bits exist.
+    # Otherwise the quotient's low three bits land in C0, C3 and C1. A NaN
+    # result has no quotient at all: hardware then clears C1 and C2 and leaves
+    # C0 and C3 as it found them.
+    local undefined:1 = nan(result) || faulted;
+    local incomplete:1 = (quotient & 8) != 0;
+    local kept0:1 = ((FPUStatusWord >> 8) & 1) != 0;
+    local kept3:1 = ((FPUStatusWord >> 14) & 1) != 0;
+    local defined:1 = !undefined && !incomplete;
+    fpu_set_condition_codes((defined && ((quotient & 4) != 0)) || (undefined && kept0),
+                            defined && ((quotient & 1) != 0),
+                            !undefined && incomplete,
+                            (defined && ((quotient & 2) != 0)) || (undefined && kept3));
     # DE is reported only when the reduction actually uses the denormal:
     # an invalid or NaN operand decides the result on its own.
     local dividend_denormal:1;
@@ -7884,7 +7986,9 @@ define pcodeop fprem1;
     fpu_is_denormal(divisor, divisor_denormal);
     local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
     fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+    local slot:2 = (((FPUStatusWord >> 11) & 7) & 7) * 10;
+    *[x87]:10 (slot) = result;
+    fpu_underflow_indefinite(faulted, slot);
     fpu_record_opcode(0x1f8:2);
 }
 
@@ -7895,9 +7999,14 @@ define pcodeop fprem1;
     # results: the quotient's low three bits in C0/C3/C1, and C2 for an
     # incomplete reduction. Computing it as x - trunc(x/y)*y reported
     # none of them.
+    # Reducing an empty ST(0) or ST(1) is a stack fault: it reports the
+    # underflow and delivers the indefinite instead of a remainder.
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
     local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
     local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
-    local result:10 = fprem1(dividend, divisor);
+    local result:10 = float_rem_partial(dividend, divisor, 1:1);
+    local quotient:1 = float_rem_quotient(dividend, divisor, 1:1);
     # A NaN operand is propagated with x87's own choice of payload,
     # and an unnormal encoding delivers the indefinite.
     # An infinite dividend or a zero divisor has no remainder, and a
@@ -7915,6 +8024,19 @@ define pcodeop fprem1;
                           !dividend_nan && !divisor_nan));
     fpu_signal_invalid_if((flags & 1) != 0);
     fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # C2 reports a partial reduction, and then no quotient bits exist.
+    # Otherwise the quotient's low three bits land in C0, C3 and C1. A NaN
+    # result has no quotient at all: hardware then clears C1 and C2 and leaves
+    # C0 and C3 as it found them.
+    local undefined:1 = nan(result) || faulted;
+    local incomplete:1 = (quotient & 8) != 0;
+    local kept0:1 = ((FPUStatusWord >> 8) & 1) != 0;
+    local kept3:1 = ((FPUStatusWord >> 14) & 1) != 0;
+    local defined:1 = !undefined && !incomplete;
+    fpu_set_condition_codes((defined && ((quotient & 4) != 0)) || (undefined && kept0),
+                            defined && ((quotient & 1) != 0),
+                            !undefined && incomplete,
+                            (defined && ((quotient & 2) != 0)) || (undefined && kept3));
     # DE is reported only when the reduction actually uses the denormal:
     # an invalid or NaN operand decides the result on its own.
     local dividend_denormal:1;
@@ -7923,7 +8045,9 @@ define pcodeop fprem1;
     fpu_is_denormal(divisor, divisor_denormal);
     local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
     fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
-    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+    local slot:2 = (((FPUStatusWord >> 11) & 7) & 7) * 10;
+    *[x87]:10 (slot) = result;
+    fpu_underflow_indefinite(faulted, slot);
     fpu_record_opcode(0x1f5:2);
 }
 
