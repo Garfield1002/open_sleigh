@@ -1,0 +1,3810 @@
+# The x87 floating-point unit: logical ST(i) operand subtables, the stack,
+# tag and exception-delivery macros, and every x87 constructor (FXSAVE and
+# FXRSTOR included). The x87 address space, the FPU registers and the MMX
+# view of the same physical slots are defined in ia.sinc, which must be
+# included first.
+
+fregidx: is freg=0 { export *[const]:2 0; }
+fregidx: is freg=1 { export *[const]:2 1; }
+fregidx: is freg=2 { export *[const]:2 2; }
+fregidx: is freg=3 { export *[const]:2 3; }
+fregidx: is freg=4 { export *[const]:2 4; }
+fregidx: is freg=5 { export *[const]:2 5; }
+fregidx: is freg=6 { export *[const]:2 6; }
+fregidx: is freg=7 { export *[const]:2 7; }
+
+fregop: "ST0" is freg=0 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 0) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st0: "ST0" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 0) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST1" is freg=1 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 1) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st1: "ST1" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 1) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST2" is freg=2 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 2) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st2: "ST2" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 2) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST3" is freg=3 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 3) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st3: "ST3" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 3) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST4" is freg=4 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 4) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st4: "ST4" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 4) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST5" is freg=5 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 5) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st5: "ST5" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 5) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST6" is freg=6 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 6) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st6: "ST6" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 6) & 7) * 10;
+  export *[x87]:10 offset;
+}
+fregop: "ST7" is freg=7 {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 7) & 7) * 10;
+  export *[x87]:10 offset;
+}
+st7: "ST7" is epsilon {
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local offset:2 = ((top + 7) & 7) * 10;
+  export *[x87]:10 offset;
+}
+
+# `FPUStatusWord.TOP` maps logical ST(i) to a physical x87 slot. `FPUTagWord`
+# is deliberately in physical-register order.
+macro tagvalid0() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 0) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid1() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 1) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid2() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 2) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid3() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 3) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid4() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 4) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid5() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 5) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid6() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 6) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+macro tagvalid7() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 7) & 7) * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    FPUTagWord = FPUTagWord - (old_tag << shift);
+}
+
+# Copy the complete full-tag class of ST(0) to a fixed logical destination.
+# These are separate no-argument macros because raw SLEIGH fields and literal
+# macro arguments leak into the flat p-code lowering as discarded expressions.
+macro tagcopy0to0() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = top * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to1() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 1) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to2() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 2) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to3() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 3) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to4() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 4) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to5() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 5) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to6() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 6) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+macro tagcopy0to7() {
+    local top:2 = (FPUStatusWord >> 11) & 7; local source:2 = top * 2; local destination:2 = ((top + 7) & 7) * 2;
+    local tag:2 = (FPUTagWord >> source) & 3; local old:2 = (FPUTagWord >> destination) & 3;
+    FPUTagWord = (FPUTagWord - (old << destination)) | (tag << destination);
+}
+
+macro tagempty0() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 0) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty1() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 1) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty2() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 2) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty3() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 3) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty4() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 4) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty5() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 5) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty6() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 6) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+macro tagempty7() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = ((top + 7) & 7) * 2;
+    local mask:2 = 3 << shift;
+    FPUTagWord = FPUTagWord | mask;
+}
+
+# FXCH exchanges both physical payloads and their full tag classes. The
+# ModR/M-selected logical operand is specialized below, so these helpers have
+# no macro arguments and expand reliably in SLEIGH.
+macro tagswap1() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 1) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap2() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 2) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap3() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 3) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap4() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 4) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap5() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 5) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap6() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 6) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+macro tagswap7() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local s0:2 = top * 2;
+    local s1:2 = ((top + 7) & 7) * 2;
+    local t0:2 = (FPUTagWord >> s0) & 3;
+    local t1:2 = (FPUTagWord >> s1) & 3;
+    FPUTagWord = FPUTagWord - (t0 << s0) - (t1 << s1);
+    FPUTagWord = FPUTagWord | (t0 << s1) | (t1 << s0);
+}
+
+macro fdec() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    FPUStatusWord = (FPUStatusWord & 0xc7ff) | (((top - 1) & 7) << 11);
+}
+
+macro finc() {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    FPUStatusWord = (FPUStatusWord & 0xc7ff) | (((top + 1) & 7) << 11);
+}
+
+macro fpop() {
+    tagempty0();
+    finc();
+}
+
+macro fpushv(val) {
+    # Capture before changing TOP: FLD ST(i) may source an old logical view.
+    local value:10 = val;
+    fdec();
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = top * 2;
+    local old_tag:2 = (FPUTagWord >> shift) & 3;
+    local overflow:1 = old_tag != 3;
+    local overflow_mask:10 = 0 - zext(overflow);
+    local indefinite:10 = zext(0xc000000000000000:8);
+    indefinite = indefinite | (zext(0xffff:2) << 64);
+    local stored:10 = (value & ~overflow_mask) | (indefinite & overflow_mask);
+    *[x87]:10 (top * 10) = stored;
+    # A masked stack overflow writes the indefinite QNaN, marks the new slot
+    # special, sets IE/SF/C1, and still updates TOP.  A normal push is valid
+    # and clears C1.
+    local new_tag:2 = overflow * 2;
+    FPUTagWord = (FPUTagWord - (old_tag << shift)) | (new_tag << shift);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (overflow << 9) | (overflow * 0x41);
+    C1 = overflow;
+}
+
+macro fpopv(val) {
+    local value:10 = *[x87]:10 (((FPUStatusWord >> 11) & 7) * 10);
+    val = value;
+    fpop();
+}
+
+# Update only x87 condition codes.  TOP, exception/sticky status, and the
+# busy/error-summary bits are not comparison results and must survive.
+macro fpu_set_condition_codes(c0, c1, c2, c3) {
+    FPUStatusWord = (FPUStatusWord & 0xb8ff) |
+                    (zext(c0) << 8) | (zext(c1) << 9) |
+                    (zext(c2) << 10) | (zext(c3) << 14);
+}
+
+# FDP records the memory operand's address. Hardware writes it together with
+# FOP and under the same condition: only when an unmasked exception is pending.
+macro fpu_record_data_pointer(address) {
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
+    local pending:8 = zext(unmasked != 0);
+    local keep:8 = zext(unmasked == 0);
+    FPUDataPointer = (FPUDataPointer * keep) | (address * pending);
+}
+
+# Refresh ES from the sticky exception bits against their masks.
+# FOP records the instruction's 11-bit opcode: the low three bits of the first
+# opcode byte and the whole second byte. This processor writes it only when an
+# unmasked exception is pending, so the field is otherwise left alone.
+macro fpu_record_opcode(value) {
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
+    local pending:2 = zext(unmasked != 0);
+    local keep:2 = zext(unmasked == 0);
+    FPULastInstructionOpcode = (FPULastInstructionOpcode * keep) | (value * pending);
+}
+
+macro fpu_refresh_error_summary() {
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x3f;
+    local pending:2 = zext(unmasked != 0);
+    # B mirrors ES on every processor since the 387; both are recomputed from
+    # the sticky exception bits against their masks.
+    FPUStatusWord = (FPUStatusWord & 0x7f7f) | (pending << 7) | (pending << 15);
+}
+
+# Referencing an empty register is a stack fault: IE and SF are set together
+# and C1 reports the direction, cleared for an underflow. `index` is the
+# logical ST(i) of the second operand; ST(0) is always checked too.
+# As `fpu_stack_underflow`, but also reports the fault so a comparison can
+# force its unordered answer instead of comparing empty slots.
+macro fpu_stack_underflow_out(index, faulted) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift0:2 = (top & 7) * 2;
+    local shift1:2 = ((top + index) & 7) * 2;
+    local empty0:1 = ((FPUTagWord >> shift0) & 3) == 3;
+    local empty1:1 = ((FPUTagWord >> shift1) & 3) == 3;
+    faulted = empty0 || empty1;
+    local fault:2 = zext(faulted);
+    FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
+    fpu_refresh_error_summary();
+}
+
+# A masked stack underflow delivers the indefinite QNaN in place of the result
+# and leaves the destination reading as occupied. `slot` is the byte address of
+# the destination register in the x87 space.
+macro fpu_underflow_indefinite(faulted, slot) {
+    local keep:8 = zext(!faulted);
+    local take:8 = zext(faulted);
+    *[x87]:8 (slot) = (*[x87]:8 (slot) * keep) | (0xc000000000000000 * take);
+    local keep2:2 = zext(!faulted);
+    local take2:2 = zext(faulted);
+    *[x87]:2 (slot + 8) = (*[x87]:2 (slot + 8) * keep2) | (0xffff * take2);
+    # Mark the slot special rather than empty; the abridged tag only records
+    # occupancy, which is what a save reports.
+    local shift:2 = (slot / 10) * 2;
+    local cleared:2 = FPUTagWord & ~(3 << shift);
+    FPUTagWord = (FPUTagWord * zext(!faulted)) | ((cleared | (2 << shift)) * zext(faulted));
+}
+
+macro fpu_stack_underflow(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift0:2 = (top & 7) * 2;
+    local shift1:2 = ((top + index) & 7) * 2;
+    local empty0:1 = ((FPUTagWord >> shift0) & 3) == 3;
+    local empty1:1 = ((FPUTagWord >> shift1) & 3) == 3;
+    local fault:2 = zext(empty0 || empty1);
+    FPUStatusWord = (FPUStatusWord | (fault * 0x41)) & ~(fault * 0x200);
+    fpu_refresh_error_summary();
+}
+
+# Register transfers do not perform floating-point arithmetic. Inspect tags,
+# not payloads: an empty slot can contain an otherwise valid old value.
+macro fpu_store_register(index, pop) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = top * 10;
+    local target:2 = ((top + index) & 7) * 10;
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    C1 = 0;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local value:10 = *[x87]:10 source;
+    local faultmask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    value = (value & ~faultmask) | (indefinite & faultmask);
+    *[x87]:10 target = (value & mask) | (*[x87]:10 target & ~mask);
+    local tag:2 = (FPUTagWord >> (top * 2)) & 3;
+    tag = (tag * zext(!faulted)) | (2 * zext(faulted));
+    local shift:2 = (target / 10) * 2;
+    local tags:2 = (FPUTagWord & ~(3 << shift)) | (tag << shift);
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+    local popped:2 = zext(commit) * pop;
+    FPUTagWord = FPUTagWord | ((3 * popped) << (top * 2));
+    FPUStatusWord = (FPUStatusWord & 0xc7ff) | (((top + popped) & 7) << 11);
+    fpu_record_opcode(0x5d0:2 | index | (pop << 3));
+}
+
+macro fpu_exchange_register(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = top * 10;
+    local target:2 = ((top + index) & 7) * 10;
+    local shift0:2 = top * 2;
+    local shift1:2 = (target / 10) * 2;
+    local tag0:2 = (FPUTagWord >> shift0) & 3;
+    local tag1:2 = (FPUTagWord >> shift1) & 3;
+    local empty0:1 = tag0 == 3;
+    local empty1:1 = tag1 == 3;
+    local faulted:1;
+    fpu_stack_underflow_out(index, faulted);
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    C1 = 0;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local mask0:10 = 0 - zext(empty0);
+    local mask1:10 = 0 - zext(empty1);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local old0:10 = *[x87]:10 source;
+    local old1:10 = *[x87]:10 target;
+    local value0:10 = (old0 & ~mask0) | (indefinite & mask0);
+    local value1:10 = (old1 & ~mask1) | (indefinite & mask1);
+    *[x87]:10 source = (value1 & mask) | (old0 & ~mask);
+    *[x87]:10 target = (value0 & mask) | (old1 & ~mask);
+    tag0 = (tag0 * zext(!empty0)) | (2 * zext(empty0));
+    tag1 = (tag1 * zext(!empty1)) | (2 * zext(empty1));
+    local tags:2 = (FPUTagWord & ~((3 << shift0) | (3 << shift1))) |
+                   (tag1 << shift0) | (tag0 << shift1);
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+}
+
+macro fpu_load_register(index) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local source:2 = ((top + index) & 7) * 10;
+    local next:2 = (top - 1) & 7;
+    local target:2 = next * 10;
+    local tag:2 = (FPUTagWord >> ((source / 10) * 2)) & 3;
+    local overflow:1 = ((FPUTagWord >> (next * 2)) & 3) != 3;
+    local faulted:1 = (tag == 3) || overflow;
+    local commit:1 = !faulted || ((FPUControlWord & 1) != 0);
+    local mask:10 = 0 - zext(commit);
+    local faultmask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 source & ~faultmask) | (indefinite & faultmask);
+    *[x87]:10 target = (value & mask) | (*[x87]:10 target & ~mask);
+    tag = (tag * zext(!faulted)) | (2 * zext(faulted));
+    local tags:2 = (FPUTagWord & ~(3 << (next * 2))) | (tag << (next * 2));
+    local tagmask:2 = 0 - zext(commit);
+    FPUTagWord = (tags & tagmask) | (FPUTagWord & ~tagmask);
+    top = (top * zext(!commit)) | (next * zext(commit));
+    FPUStatusWord = (FPUStatusWord & 0xc5ff) | (top << 11) |
+                    (zext(faulted) * 0x41) | (zext(overflow) << 9);
+    C1 = overflow;
+    fpu_refresh_error_summary();
+    fpu_record_opcode(0x1c0:2 | index);
+}
+
+# True when an f80 holds a denormal: a zero exponent with a non-zero
+# significand. An unnormal - a non-zero exponent with the explicit integer bit
+# clear - is an invalid encoding rather than a denormal, and raises IE instead.
+macro fpu_is_denormal(value, result) {
+    local exponent:2 = value[64,15];
+    local significand:8 = value[0,64];
+    result = (exponent == 0) && (significand != 0);
+}
+
+# True when an f80 holds a signalling NaN: the all-ones exponent with the
+# explicit integer bit set, the quiet bit clear and a non-zero fraction. An
+# all-ones exponent with the integer bit clear is a pseudo-NaN, an unsupported
+# encoding rather than a signalling one.
+macro fpu_is_signaling_nan(value, result) {
+    result = (value[64,15] == 0x7fff) && (value[63,1] == 1) &&
+             (value[62,1] == 0) && (value[0,62] != 0);
+}
+
+# True when an f80 holds an unsupported encoding: any non-zero exponent with
+# the explicit integer bit clear. That covers the unnormals, pseudo-NaNs and
+# pseudo-infinities, all of which raise invalid wherever a signalling NaN does.
+macro fpu_is_unsupported(value, result) {
+    result = (value[64,15] != 0) && (value[63,1] == 0);
+}
+
+# Raise the denormal-operand exception when `cond` holds.
+macro fpu_signal_denormal_if(cond) {
+    FPUStatusWord = FPUStatusWord | (zext(cond) << 1);
+    fpu_refresh_error_summary();
+}
+
+# Report a denormal operand for a one- or two-source operation.
+macro fpu_signal_denormal1(a) {
+    local da:1; fpu_is_denormal(a, da);
+    fpu_signal_denormal_if(da);
+}
+
+
+# `mem_de` reports a denormal single- or double-precision memory source, whose
+# widened f80 is a normal number and so cannot be recognised from `b`.
+macro fpu_signal_denormal2_mem(a, b, mem_de) {
+    local da:1; fpu_is_denormal(a, da);
+    local db:1; fpu_is_denormal(b, db);
+    # Invalid takes precedence: when an operand is a NaN the operation reports
+    # IE and leaves DE alone.
+    local invalid:1 = nan(a) || nan(b);
+    fpu_signal_denormal_if((da || db || mem_de) && !invalid);
+}
+macro fpu_signal_denormal2(a, b) {
+    fpu_signal_denormal2_mem(a, b, 0:1);
+}
+
+# Raise the invalid-operation exception when `cond` holds, and refresh ES to
+# reflect whether any unmasked exception is now pending. Branch-free so it is
+# safe to expand more than once in a constructor.
+macro fpu_signal_invalid_if(cond) {
+    FPUStatusWord = FPUStatusWord | zext(cond);
+    fpu_refresh_error_summary();
+}
+
+# The unordered compare. Only a signalling NaN raises invalid; a quiet NaN is
+# merely unordered.
+
+macro fucom_faulted_mem(val, faulted, mem_de) {
+    fpu_signal_denormal2_mem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val, mem_de && !faulted);
+    # An underflowed compare reports unordered: C0, C2 and C3 all set.
+    local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+    local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
+    local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
+    fpu_set_condition_codes(c0, 0:1, c2, c3);
+    local snan_a:1;
+    fpu_is_signaling_nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), snan_a);
+    local snan_b:1;
+    fpu_is_signaling_nan(val, snan_b);
+    local unsup_a:1;
+    fpu_is_unsupported(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), unsup_a);
+    local unsup_b:1;
+    fpu_is_unsupported(val, unsup_b);
+    fpu_signal_invalid_if(snan_a || snan_b || unsup_a || unsup_b);
+}
+macro fucom_faulted(val, faulted) {
+    fucom_faulted_mem(val, faulted, 0:1);
+}
+
+# The ordered compare. It raises invalid for a quiet NaN too, which is the only
+# thing separating it from FUCOM: both produce identical p-code otherwise.
+
+macro fcom_faulted_mem(val, faulted, mem_de) {
+    # An empty ST(0) is read as the indefinite QNaN, which suppresses DE.
+    fpu_signal_denormal2_mem(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val, mem_de && !faulted);
+    # An underflowed compare reports unordered: C0, C2 and C3 all set.
+    local c2 = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+    local c0 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val);
+    local c3 = c2 | (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val);
+    fpu_set_condition_codes(c0, 0:1, c2, c3);
+    fpu_signal_invalid_if(c2);
+}
+macro fcom_faulted(val, faulted) {
+    fcom_faulted_mem(val, faulted, 0:1);
+}
+
+# Produce the architectural full tag associated with an occupied f80 slot.
+# The abridged tag transport only distinguishes occupied from empty, so saves
+# must recover zero and special classes from the physical f80 encoding.
+macro fpu_tag_class(value, old_tag, result) {
+    local exponent:2 = value[64,15];
+    local significand:8 = value[0,64];
+    local integer_bit:1 = value[63,1];
+    local is_zero:1 = (exponent == 0) && (significand == 0);
+    local is_normal:1 = (exponent != 0) && (exponent != 0x7fff) && integer_bit;
+    local occupied_class:2 = zext(is_zero) | (zext(!is_zero && !is_normal) << 1);
+    local is_empty:1 = old_tag == 3;
+    local is_occupied:1 = old_tag != 3;
+    result = (zext(is_empty) * 3) | (zext(is_occupied) * occupied_class);
+}
+
+macro fpu_synthesized_tag(result) {
+    local r0:10 = *[x87]:10 0:2;  local old0:2 = (FPUTagWord >>  0) & 3; local c0:2; fpu_tag_class(r0, old0, c0);
+    local r1:10 = *[x87]:10 10:2; local old1:2 = (FPUTagWord >>  2) & 3; local c1:2; fpu_tag_class(r1, old1, c1);
+    local r2:10 = *[x87]:10 20:2; local old2:2 = (FPUTagWord >>  4) & 3; local c2:2; fpu_tag_class(r2, old2, c2);
+    local r3:10 = *[x87]:10 30:2; local old3:2 = (FPUTagWord >>  6) & 3; local c3:2; fpu_tag_class(r3, old3, c3);
+    local r4:10 = *[x87]:10 40:2; local old4:2 = (FPUTagWord >>  8) & 3; local c4:2; fpu_tag_class(r4, old4, c4);
+    local r5:10 = *[x87]:10 50:2; local old5:2 = (FPUTagWord >> 10) & 3; local c5:2; fpu_tag_class(r5, old5, c5);
+    local r6:10 = *[x87]:10 60:2; local old6:2 = (FPUTagWord >> 12) & 3; local c6:2; fpu_tag_class(r6, old6, c6);
+    local r7:10 = *[x87]:10 70:2; local old7:2 = (FPUTagWord >> 14) & 3; local c7:2; fpu_tag_class(r7, old7, c7);
+    # Build incrementally so every shift/OR inherits the two-byte result type.
+    result = c0;
+    result = result | (c1 << 2);
+    result = result | (c2 << 4);
+    result = result | (c3 << 6);
+    result = result | (c4 << 8);
+    result = result | (c5 << 10);
+    result = result | (c6 << 12);
+    result = result | (c7 << 14);
+}
+
+macro store_synthesized_fpu_tag(Mem) {
+    local full_tag:2;
+    fpu_synthesized_tag(full_tag);
+    *:2 (Mem + 8) = full_tag;
+}
+
+macro fpu_clear_c1() {
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    C1 = 0;
+}
+
+
+# x87 narrows an extended register when it stores to a single- or
+# double-precision destination. The conversion is a generic IEEE narrowing;
+# the destination format's indefinite, the C1 rounding indication, the mask
+# handling and the suppression of the store are x87's.
+macro fpu_narrow_store(source, size, indefinite, converted, commit) {
+    local round:2 = (FPUControlWord >> 10) & 3;
+    converted = float_narrow(source, size, round);
+    local flags:1 = float_narrow_flags(source, size, round);
+    # An unnormal is not an IEEE encoding at all; x87 rejects it as invalid.
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    # A masked invalid conversion stores the destination's indefinite QNaN.
+    # A signalling NaN is the exception: it is quieted and keeps its payload,
+    # which the conversion has already produced.
+    local snan:1 = (source[64,15] == 0x7fff) && (source[62,1] == 0) &&
+                   (source[0,62] != 0) && !unsupported;
+    local substitute:1 = ((flags & 1) != 0) && !snan;
+    converted = (converted * zext(!substitute)) | (indefinite * zext(substitute));
+
+    # Sized by copy: a macro parameter's width is not a literal here.
+    local toward_zero = converted;
+    toward_zero = float_narrow(source, size, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    # Compare magnitudes: shifting the sign bit out leaves the exponent and
+    # significand in place, and a larger magnitude rounded away from zero.
+    local rounded_up:1 = (converted << 1) > (toward_zero << 1);
+    FPUStatusWord = FPUStatusWord | zext(flags);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !substitute) << 9);
+
+    # An unmasked invalid, overflow or underflow aborts the store and any pop:
+    # unlike an arithmetic result, a narrowed one cannot be delivered at all,
+    # so hardware leaves the destination and the stack untouched. Such a fault
+    # also has no rounding indication and no precision report.
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 0x19) == 0;
+    local clear:2 = (zext(unmasked != 0) * 0x200) |
+                    (zext((unmasked & 0x18) != 0) * 0x20);
+    FPUStatusWord = FPUStatusWord & ~clear;
+    fpu_refresh_error_summary();
+}
+
+# FIST/FISTP/FISTTP convert ST(0) to an integer. Only invalid and precision
+# are architecturally possible: the integer indefinite delivered for a masked
+# invalid, C1, and the suppression of the store and the pop on an unmasked
+# invalid are x87's; the conversion itself is the generic IEEE operation.
+macro fpu_integer_store(source, size, indefinite, round, converted, commit) {
+    converted = float_to_int(source, size, round);
+    local flags:1 = float_to_int_flags(source, size, round);
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    local invalid:1 = (flags & 1) != 0;
+    converted = (converted * zext(!invalid)) | (indefinite * zext(invalid));
+
+    # Sized by copy: a macro parameter's width is not a literal here.
+    local toward_zero = converted;
+    toward_zero = float_to_int(source, size, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    local negative:1 = source[79,1];
+    local rounded_up:1 = (!negative && (converted s> toward_zero)) ||
+                         (negative && (converted s< toward_zero));
+    FPUStatusWord = FPUStatusWord | zext(flags & 0x21);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !invalid) << 9);
+
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 1) == 0;
+    FPUStatusWord = FPUStatusWord & ~(zext(unmasked != 0) * 0x200);
+    fpu_refresh_error_summary();
+}
+
+# FBSTP packs ST(0) as eighteen decimal digits. As for the integer stores,
+# only invalid and precision are architecturally possible: the conversion is
+# the generic one, while the packed-decimal indefinite delivered for a masked
+# invalid, C1, and the suppression of the store and the pop on an unmasked
+# invalid are x87's.
+macro fpu_bcd_store(source, round, converted, commit) {
+    converted = to_bcd(source, round);
+    local flags:1 = to_bcd_flags(source, round);
+    # An unnormal is not an IEEE encoding at all; x87 rejects it as invalid.
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    flags = flags | zext(unsupported);
+    local invalid:1 = (flags & 1) != 0;
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    converted = (converted * zext(!invalid)) | (indefinite * zext(invalid));
+
+    # Packed decimal is positional, so the digits compare as magnitudes once
+    # the sign bit is shifted out.
+    local toward_zero:10 = to_bcd(source, 3:2);
+    local inexact:1 = (flags & 0x20) != 0;
+    local rounded_up:1 = (converted << 1) > (toward_zero << 1);
+    FPUStatusWord = FPUStatusWord | zext(flags & 0x21);
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up && !invalid) << 9);
+
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    commit = (unmasked & 1) == 0;
+    FPUStatusWord = FPUStatusWord & ~(zext(unmasked != 0) * 0x200);
+    fpu_refresh_error_summary();
+}
+
+# A stack-underflow operand is the indefinite value, not the stale payload
+# in an empty slot. Stage the conversion before committing memory or popping
+# so an unmasked invalid exception leaves both destinations alone. A precision
+# exception, even unmasked, still commits the rounded result and pops.
+macro fpu_store_integer_st0(destination, size, indefinite_integer, round, pop, converted) {
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
+    local store:1;
+    fpu_integer_store(value, size, indefinite_integer, round, converted, store);
+    if (store == 0) goto <store_done>;
+    destination = converted;
+    if (pop == 0) goto <store_done>;
+    fpop();
+<store_done>
+}
+
+# A single- or double-precision memory source is widened to the extended
+# format before the operation uses it. The widened value is a normal f80 and a
+# widened signalling NaN has been quieted, so the denormal-operand and
+# signalling-NaN facts must be read from the original encoding.
+macro fpu_f32_source_flags(bits, denormal, snan) {
+    local exponent:1 = bits[23,8];
+    local fraction:3 = bits[0,23];
+    denormal = (exponent == 0) && (fraction != 0);
+    snan = (exponent == 0xff) && (fraction != 0) && (bits[22,1] == 0);
+}
+
+macro fpu_f64_source_flags(bits, denormal, snan) {
+    local exponent:2 = bits[52,11];
+    local fraction:7 = bits[0,52];
+    denormal = (exponent == 0) && (fraction != 0);
+    snan = (exponent == 0x7ff) && (fraction != 0) && (bits[51,1] == 0);
+}
+
+# x87 rejects unnormal f80 encodings and selects NaN payloads differently from
+# generic IEEE arithmetic. Keep that architecture-specific result policy here.
+macro fpu_ieee_invalid_result(a, b, flags, result) {
+    local unsupported_a:1 = (a[64,15] != 0) && (a[63,1] == 0);
+    local unsupported_b:1 = (b[64,15] != 0) && (b[63,1] == 0);
+    local unsupported:1 = unsupported_a || unsupported_b;
+    flags = flags | zext(unsupported);
+    local invalid:1 = (flags & 1) != 0;
+    local a_nan:1 = nan(a);
+    local b_nan:1 = nan(b);
+    # A NaN operand is propagated, quieted, with its own sign and payload.
+    # Two NaNs are resolved by the larger significand; hardware breaks a tie
+    # between equal payloads in favour of the positive one.
+    local a_sign:1 = a[79,1];
+    local b_sign:1 = b[79,1];
+    local a_significand:8 = a[0,64];
+    local b_significand:8 = b[0,64];
+    local a_preferred:1 = (a_significand > b_significand) ||
+                          ((a_significand == b_significand) &&
+                           (!a_sign || b_sign));
+    local a_wins:1 = !unsupported && a_nan && (!b_nan || a_preferred);
+    local b_wins:1 = !unsupported && b_nan && !a_wins;
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local selected:10 = (a * zext(a_wins)) | (b * zext(b_wins)) |
+                        (indefinite * zext(!a_wins && !b_wins));
+    # Quiet a selected signalling NaN without changing its sign or payload.
+    selected = selected | (zext(a_wins || b_wins) << 62);
+    # A quiet NaN operand raises no invalid exception, yet x87 still chooses
+    # the propagated NaN by its own rule rather than the generic operation's,
+    # so the substitution applies whenever any operand is a NaN.
+    local substitute:1 = invalid || a_nan || b_nan;
+    result = (result * zext(!substitute)) | (selected * zext(substitute));
+}
+
+# Apply the architecture-neutral IEEE facts returned by an explicit arithmetic
+# p-code operation.  Their exception-bit layout deliberately matches x87's
+# IE/ZE/OE/UE/PE bits; DE is determined from the source encodings here.
+macro fpu_ieee_arithmetic_status(a, b, mem_de, flags, result, toward_zero, wrapped, commit) {
+    # Invalid and divide-by-zero both take precedence over the denormal
+    # report: a denormal dividend over a zero divisor raises ZE alone.
+    local da:1; fpu_is_denormal(a, da);
+    local db:1; fpu_is_denormal(b, db);
+    local de_suppressed:1 = nan(a) || nan(b) || ((flags & 5) != 0);
+    fpu_signal_denormal_if((da || db || mem_de) && !de_suppressed);
+    FPUStatusWord = FPUStatusWord | zext(flags);
+
+    # C1 reports that the rounded magnitude is farther from zero than the
+    # toward-zero result.  It is meaningful only for an inexact operation.
+    local inexact:1 = (flags & 0x20) != 0;
+    local result_exponent:2 = result[64,15];
+    local zero_exponent:2 = toward_zero[64,15];
+    local result_significand:8 = result[0,64];
+    local zero_significand:8 = toward_zero[0,64];
+    local rounded_up:1 = (result_exponent > zero_exponent) ||
+                          ((result_exponent == zero_exponent) &&
+                           (result_significand > zero_significand));
+    FPUStatusWord = (FPUStatusWord & 0xfdff) |
+                    (zext(inexact && rounded_up) << 9);
+
+    commit = (FPUStatusWord & ~FPUControlWord & 7) == 0;
+    # Unmasked exceptions have no C1 rounding result. DE discards all
+    # result-derived range/precision flags; unmasked OE/UE retain their range
+    # bit but discard PE. IE and ZE retain PE when the operation was inexact.
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    # An exponent-wrapped result is a real, delivered result: its rounding
+    # indication and inexactness are reported rather than discarded, so the
+    # range bits are excluded from the clearing rules when `wrapped` is set.
+    local range_mask:2 = 0x18 - (zext(wrapped) * 0x18);
+    local clear_c1:2 = zext((unmasked & (7 | range_mask)) != 0) * 0x200;
+    local unmasked_de:2 = zext((unmasked & 2) != 0);
+    local unmasked_range:2 = zext((unmasked & range_mask) != 0);
+    local clear:2 = clear_c1 | (unmasked_de * 0x38) | (unmasked_range * 0x20);
+    FPUStatusWord = FPUStatusWord & ~clear;
+    fpu_refresh_error_summary();
+}
+
+# x87 precision control (PC) narrows the significand of an extended result to
+# 24 or 53 bits while keeping the extended exponent range.  The PC encoding and
+# the reserved 01 value (treated as extended here) are architectural, so the
+# mapping lives in the specification; the rounding itself is the generic IEEE
+# operation.
+macro fpu_precision_control(value, round, result, flags) {
+    local pc:2 = (FPUControlWord >> 8) & 3;
+    local single:1 = pc == 0;
+    local double:1 = pc == 2;
+    local precision:2 = 64 - (zext(single) * 40) - (zext(double) * 11);
+    ieee_round_to_precision(value, precision, round, result, flags);
+}
+
+# Reading an empty register is a stack fault. It is reported before the
+# operation looks at its sources, and the operation then behaves as though
+# both sources were the indefinite QNaN: it raises invalid, delivers the
+# indefinite, and reports nothing else.
+macro fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted) {
+    fpu_stack_underflow_out(index, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    source_a = (a & ~fault_mask) | (indefinite & fault_mask);
+    source_b = (b & ~fault_mask) | (indefinite & fault_mask);
+}
+
+# A masked stack fault leaves the destination holding the indefinite and
+# reading as occupied. `dest` is the logical ST(i) written by the operation.
+macro fpu_ieee_fault_deliver(faulted, dest, commit) {
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local slot:2 = ((top + dest) & 7) * 10;
+    local deliver:1 = faulted && commit;
+    fpu_underflow_indefinite(deliver, slot);
+}
+
+# x87 delivers an exponent-wrapped result for an unmasked overflow or
+# underflow: the true exponent is biased by -24576 or +24576 so a result that
+# the format cannot hold is still handed to the handler, together with its
+# real rounding and inexactness. Rescaling the operands by that same factor
+# and repeating the operation reproduces it exactly. With no unmasked range
+# exception the operands are unchanged, so one evaluation serves both cases.
+macro fpu_ieee_scale_operand(value, up, down, result, scaled) {
+    local word:2 = value[64,16];
+    local exponent:2 = word & 0x7fff;
+    local can_up:1 = up && (exponent != 0) && (exponent < 0x1fff);
+    local can_down:1 = down && (exponent > 0x6000) && (exponent != 0x7fff);
+    scaled = can_up || can_down;
+    local scaled_word:2 = (word + (zext(can_up) * 0x6000)) -
+                          (zext(can_down) * 0x6000);
+    result = zext(value[0,64]) | (zext(scaled_word) << 64);
+}
+
+macro fpu_ieee_unmasked_range(flags, under, over, wrapped) {
+    local unmasked:2 = zext(flags) & ~FPUControlWord;
+    under = (unmasked & 0x10) != 0;
+    over = (unmasked & 8) != 0;
+    wrapped = under || over;
+}
+
+# For a product or a quotient the whole adjustment goes on a single operand;
+# whichever has the exponent room carries it. `b_inverse` marks the operand
+# that divides, whose adjustment runs the other way.
+macro fpu_ieee_scale_factors(a, b, flags, b_inverse, scaled_a, scaled_b, wrapped) {
+    local under:1; local over:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    local a_scaled:1;
+    fpu_ieee_scale_operand(a, under, over, scaled_a, a_scaled);
+    local b_up:1 = !a_scaled && ((!b_inverse && under) || (b_inverse && over));
+    local b_down:1 = !a_scaled && ((!b_inverse && over) || (b_inverse && under));
+    local b_scaled:1;
+    fpu_ieee_scale_operand(b, b_up, b_down, scaled_b, b_scaled);
+}
+
+# A sum keeps its value only if both terms move by the same factor, so both
+# must have the exponent room. A zero term needs no adjustment.
+macro fpu_ieee_scale_terms(a, b, flags, scaled_a, scaled_b, wrapped) {
+    local under:1; local over:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    local a_zero:1 = (a[64,15] == 0) && (a[0,64] == 0);
+    local b_zero:1 = (b[64,15] == 0) && (b[0,64] == 0);
+    local a_scaled:1; local b_scaled:1;
+    local shifted_a:10; local shifted_b:10;
+    fpu_ieee_scale_operand(a, under, over, shifted_a, a_scaled);
+    fpu_ieee_scale_operand(b, under, over, shifted_b, b_scaled);
+    local usable:1 = (a_scaled || a_zero) && (b_scaled || b_zero);
+    local mask:10 = 0 - zext(usable);
+    scaled_a = (shifted_a & mask) | (a & ~mask);
+    scaled_b = (shifted_b & mask) | (b & ~mask);
+}
+
+macro fpu_ieee_add_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_add(source_a, source_b, round, unwrapped, flags);
+    # Precision control applies before the invalid substitution; special values
+    # are untouched by it, so the two are order-independent in practice.
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_terms(source_a, source_b, flags, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_add(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_add(scaled_a, scaled_b, 3:2);
+    # The C1 comparison must be made at the same precision as the result.
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_sub_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_sub(source_a, source_b, round, unwrapped, flags);
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_terms(source_a, source_b, flags, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_sub(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_sub(scaled_a, scaled_b, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_mul_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_mul(source_a, source_b, round, unwrapped, flags);
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_factors(source_a, source_b, flags, 0:1, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_mul(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_mul(scaled_a, scaled_b, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+macro fpu_ieee_div_result_ex(index, dest, a, b, mem_de, mem_ie, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(index, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1;
+    local unwrapped:10;
+    ieee_div(source_a, source_b, round, unwrapped, flags);
+    local precision_flags:1;
+    fpu_precision_control(unwrapped, round, unwrapped, precision_flags);
+    flags = flags | precision_flags;
+    # A memory source narrower than the extended format carries its own
+    # signalling-NaN fact: the widening quiets it before the operation sees it.
+    flags = flags | zext(mem_ie);
+
+    # The range exceptions and their masks decide whether a wrapped result is
+    # delivered; the scaled evaluation then supplies the result itself and its
+    # precision facts.
+    local scaled_a:10;
+    local scaled_b:10;
+    local wrapped:1;
+    fpu_ieee_scale_factors(source_a, source_b, flags, 1:1, scaled_a, scaled_b, wrapped);
+    local scaled_flags:1;
+    ieee_div(scaled_a, scaled_b, round, result, scaled_flags);
+    local scaled_precision:1;
+    fpu_precision_control(result, round, result, scaled_precision);
+    scaled_flags = scaled_flags | scaled_precision;
+    flags = (flags & ~0x20) | (scaled_flags & 0x20);
+
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_div(scaled_a, scaled_b, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source_a, source_b, mem_de, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, dest, commit);
+}
+
+
+# The unary counterparts of the arithmetic families. `fpu_ieee_invalid_result`
+# and `fpu_ieee_arithmetic_status` take the single operand twice: their NaN
+# choice then resolves to that operand, and their denormal and NaN tests to
+# its own class, which is exactly the one-operand rule.
+macro fpu_ieee_sqrt_result(a, result, commit) {
+    local faulted:1;
+    local source:10;
+    local unused:10;
+    fpu_ieee_fault_operands(0:2, a, a, source, unused, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1 = float_sqrt_flags(source, round);
+    result = float_sqrt(source, round);
+    local precision_flags:1;
+    fpu_precision_control(result, round, result, precision_flags);
+    flags = flags | precision_flags;
+    fpu_ieee_invalid_result(source, source, flags, result);
+    local toward_zero:10 = float_sqrt(source, 3:2);
+    local toward_zero_flags:1;
+    fpu_precision_control(toward_zero, 3:2, toward_zero, toward_zero_flags);
+    fpu_ieee_arithmetic_status(source, source, 0:1, flags, result, toward_zero, 0:1, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
+
+macro fpu_ieee_round_result(a, result, commit) {
+    local faulted:1;
+    local source:10;
+    local unused:10;
+    fpu_ieee_fault_operands(0:2, a, a, source, unused, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local flags:1 = float_round_to_integral_flags(source, round);
+    result = float_round_to_integral(source, round);
+    fpu_ieee_invalid_result(source, source, flags, result);
+    local toward_zero:10 = float_round_to_integral(source, 3:2);
+    fpu_ieee_arithmetic_status(source, source, 0:1, flags, result, toward_zero, 0:1, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
+
+# FSCALE scales ST(0) by the truncated integer value of ST(1). The scaling is
+# IEEE scaleB; the infinite and zero combinations follow Intel's FSCALE table,
+# which is architectural and lives here.
+macro fpu_ieee_scale_result(a, b, result, commit) {
+    local faulted:1;
+    local source_a:10;
+    local source_b:10;
+    fpu_ieee_fault_operands(1:2, a, b, source_a, source_b, faulted);
+    local round:2 = (FPUControlWord >> 10) & 3;
+
+    local a_zero:1 = (source_a[64,15] == 0) && (source_a[0,64] == 0);
+    local a_inf:1 = (source_a[64,15] == 0x7fff) && (source_a[63,1] == 1) &&
+                    (source_a[0,63] == 0);
+    local b_inf:1 = (source_b[64,15] == 0x7fff) && (source_b[63,1] == 1) &&
+                    (source_b[0,63] == 0);
+    local b_negative:1 = source_b[79,1];
+
+    # The exponent range is far narrower than any count a 64-bit conversion
+    # can lose, so an out-of-range scale saturates by its sign.
+    local steps:8 = float_to_int(source_b, 8:2, 3:2);
+    local steps_flags:1 = float_to_int_flags(source_b, 8:2, 3:2);
+    local saturate:1 = (steps_flags & 1) != 0;
+    steps = (steps * zext(!saturate)) | (0x20000 * zext(saturate && !b_negative)) |
+            ((0 - 0x20000) * zext(saturate && b_negative));
+
+    local flags:1 = float_scalb_flags(source_a, steps, round);
+    result = float_scalb(source_a, steps, round);
+    # scaleB has no opinion about a signalling NaN; x87 does.
+    local signalling:1 = (nan(source_a) && (source_a[62,1] == 0)) ||
+                         (nan(source_b) && (source_b[62,1] == 0));
+
+    # Zero scaled by +INF, and an infinity scaled by -INF, are indeterminate.
+    local indeterminate:1 = (a_zero && b_inf && !b_negative) ||
+                            (a_inf && b_inf && b_negative);
+    local infinite_result:1 = b_inf && !b_negative && !a_zero;
+    local zero_result:1 = b_inf && b_negative && !a_inf;
+    local saturated:1 = infinite_result || zero_result;
+    # A saturated result is exact by definition: the range and precision facts
+    # the clamped scale produced describe an operation that never happened.
+    flags = flags * zext(!(saturated || indeterminate ||
+                           nan(source_a) || nan(source_b)));
+    flags = flags | zext(indeterminate) | zext(signalling);
+    local sign:10 = zext(source_a[79,1]) << 79;
+    local infinity:10 = (zext(0x7fff:2) << 64) | zext(0x8000000000000000:8);
+    result = (result * zext(!saturated)) |
+             ((sign | (infinity * zext(infinite_result))) * zext(saturated));
+
+    fpu_ieee_invalid_result(source_a, source_b, flags, result);
+    local toward_zero:10 = float_scalb(source_a, steps, 3:2);
+    # A scaled result is delivered even when the range exception is unmasked,
+    # so it keeps its rounding indication and its inexactness.
+    local under:1;
+    local over:1;
+    local wrapped:1;
+    fpu_ieee_unmasked_range(flags, under, over, wrapped);
+    fpu_ieee_arithmetic_status(source_a, source_b, 0:1, flags, result, toward_zero, wrapped, commit);
+    fpu_ieee_fault_deliver(faulted, 0:2, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_add_result(index, dest, a, b, result, commit) {
+    fpu_ieee_add_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_sub_result(index, dest, a, b, result, commit) {
+    fpu_ieee_sub_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_mul_result(index, dest, a, b, result, commit) {
+    fpu_ieee_mul_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# A register-only form has no narrow memory source, so it reports neither a
+# memory denormal nor a memory signalling NaN.
+macro fpu_ieee_div_result(index, dest, a, b, result, commit) {
+    fpu_ieee_div_result_ex(index, dest, a, b, 0:1, 0:1, result, commit);
+}
+
+# Legacy generic f+ constructors still rely on QCode's contextual x87 path.
+macro fpu_arithmetic_result(expression, result, commit) {
+    result = expression;
+    commit = (FPUStatusWord & ~FPUControlWord & 7) == 0;
+    # Unmasked exceptions have no C1 rounding result. DE discards all
+    # result-derived range/precision flags; unmasked OE/UE retain their range
+    # bit but discard PE. IE and ZE retain PE when the operation was inexact.
+    local unmasked:2 = FPUStatusWord & ~FPUControlWord & 0x1f;
+    local clear_c1:2 = zext(unmasked != 0) * 0x200;
+    local unmasked_de:2 = zext((unmasked & 2) != 0);
+    local unmasked_range:2 = zext((unmasked & 0x18) != 0);
+    local clear:2 = clear_c1 | (unmasked_de * 0x38) | (unmasked_range * 0x20);
+    FPUStatusWord = FPUStatusWord & ~clear;
+    fpu_refresh_error_summary();
+}
+
+# The unordered EFLAGS compare: like fcomi, but a quiet NaN is not invalid.
+macro fucomi_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    PF = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
+	CF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
+
+    OF = 0;
+    AF = 0;
+    SF = 0;
+    # Only a signalling NaN is invalid for an unordered compare. The FCOMI
+    # family reports through ZF/PF/CF alone, so C0-C3 are left as they were.
+    local snan_a:1;
+    fpu_is_signaling_nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), snan_a);
+    local snan_b:1;
+    fpu_is_signaling_nan(val, snan_b);
+    local unsup_a:1;
+    fpu_is_unsupported(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), unsup_a);
+    local unsup_b:1;
+    fpu_is_unsupported(val, unsup_b);
+    fpu_signal_invalid_if(snan_a || snan_b || unsup_a || unsup_b);
+}
+
+macro fcomi_faulted(val, faulted) {
+    fpu_signal_denormal2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), val);
+    PF = faulted || nan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)) || nan(val);
+	ZF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f== val );
+	CF = PF | ( *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) f< val  );
+ 
+    OF = 0;
+    AF = 0;
+    SF = 0;
+    # The FCOMI family reports its result only through ZF/PF/CF. C0-C3 are
+    # unaffected, so C1 must keep whatever the previous operation left there.
+    # PF is set exactly when an operand is a NaN, which is invalid for an
+    # ordered compare.
+    fpu_signal_invalid_if(PF);
+}
+
+with : lockprefx=0 {
+
+#
+# floating point instructions
+#
+define pcodeop f2xm1;
+#@family x87
+# Informs the 80287 coprocessor of the switch to protected mode, treated as NOP for 80387 and later.
+# We used to have a pseudo-op, but as this is a legacy instruction which is now explicitly treated
+# as a NOP.  We treat it as a NOP as well.
+:FSETPM 	is vexMode=0 & byte=0xdb; byte=0xe4	{ } # 80287 set protected mode
+
+:F2XM1          is vexMode=0 & byte=0xD9; byte=0xF0 
+{ 
+    FPUInstructionPointer = inst_start;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = f2xm1(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    fpu_record_opcode(0x1f0:2);
+} # compute 2^x-1
+
+:FABS           is vexMode=0 & byte=0xD9; byte=0xE1 
+{ 
+    FPUInstructionPointer = inst_start;
+    # FABS only clears the sign bit, so it rewrites the top word and leaves
+    # the significand untouched. Writing that word directly avoids a bit-range
+    # assignment into 80-bit storage, which the lifter cannot mask.
+    local absslotfaulted:1;
+    fpu_stack_underflow_out(0:2, absslotfaulted);
+    local absslot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    *[x87]:2 (absslot + 8) = *[x87]:2 (absslot + 8) & 0x7fff;
+    # An underflow aborts the operation, so the indefinite result is
+    # delivered after it rather than being modified by it.
+    fpu_underflow_indefinite(absslotfaulted, absslot);
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    fpu_record_opcode(0x1e1:2);
+}
+    
+:FADD m32fp      is vexMode=0 & byte=0xD8; reg_opcode=0 ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_add_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+ 
+:FADD m64fp      is vexMode=0 & byte=0xDC; reg_opcode=0 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_add_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+} 
+
+:FADD st0, fregop     is vexMode=0 & byte=0xD8; frow=12 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    # For arithmetic C1 is the rounding indicator, set by the operation when
+    # an inexact result rounds away from zero. Clear it first; clearing after
+    # the add would discard what the add reported.
+    fpu_clear_c1();
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_add_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x0c0:2 | zext(fregidx)));
+}
+             
+:FADD fregop, st0     is vexMode=0 & byte=0xDC; frow=12 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_add_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4c0:2 | zext(fregidx)));
+}        
+
+:FADDP              is vexMode=0 & byte=0xDE; byte=0xC1                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_add_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6c1:2);
+}      
+
+:FADDP fregop, st0    is vexMode=0 & byte=0xDE; frow=12 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_add_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x6c0:2 | zext(fregidx)));
+}    
+
+:FIADD m32     is vexMode=0 & byte=0xDA; reg_opcode=0 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}   
+
+:FIADD m16     is vexMode=0 & byte=0xDE; reg_opcode=0 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_add_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}   
+
+:FBLD  m80     is vexMode=0 & byte=0xDF; reg_opcode=4 ... & m80 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    # Packed BCD is an integer format, not a floating one: eighteen decimal
+    # digits and a sign byte whose top bit applies even to zero.
+    local accumulator:8 = 0;
+    accumulator = (accumulator * 10) + zext(m80[68,4]);
+    accumulator = (accumulator * 10) + zext(m80[64,4]);
+    accumulator = (accumulator * 10) + zext(m80[60,4]);
+    accumulator = (accumulator * 10) + zext(m80[56,4]);
+    accumulator = (accumulator * 10) + zext(m80[52,4]);
+    accumulator = (accumulator * 10) + zext(m80[48,4]);
+    accumulator = (accumulator * 10) + zext(m80[44,4]);
+    accumulator = (accumulator * 10) + zext(m80[40,4]);
+    accumulator = (accumulator * 10) + zext(m80[36,4]);
+    accumulator = (accumulator * 10) + zext(m80[32,4]);
+    accumulator = (accumulator * 10) + zext(m80[28,4]);
+    accumulator = (accumulator * 10) + zext(m80[24,4]);
+    accumulator = (accumulator * 10) + zext(m80[20,4]);
+    accumulator = (accumulator * 10) + zext(m80[16,4]);
+    accumulator = (accumulator * 10) + zext(m80[12,4]);
+    accumulator = (accumulator * 10) + zext(m80[8,4]);
+    accumulator = (accumulator * 10) + zext(m80[4,4]);
+    accumulator = (accumulator * 10) + zext(m80[0,4]);
+    local magnitude:10 = int2float(accumulator);
+    local value:10 = magnitude | (zext(m80[79,1]) << 79);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+
+:FBSTP m80     is vexMode=0 & byte=0xDF; reg_opcode=6 ... & m80 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    fpu_clear_c1();
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local mask:10 = 0 - zext(faulted);
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~mask) | (indefinite & mask);
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:10;
+    local store:1;
+    fpu_bcd_store(value, round, converted, store);
+    # Unlike invalid, an unmasked precision exception still stores and pops.
+    if (store == 0) goto <done>;
+    m80 = converted;
+    fpop();
+    <done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+
+:FCHS           is vexMode=0 & byte=0xD9; byte=0xE0                 
+{ 
+    FPUInstructionPointer = inst_start;
+    # FCHS inverts the sign bit and leaves everything else alone.
+    local chsslotfaulted:1;
+    fpu_stack_underflow_out(0:2, chsslotfaulted);
+    local chsslot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    *[x87]:2 (chsslot + 8) = *[x87]:2 (chsslot + 8) ^ 0x8000;
+    # An underflow aborts the operation, so the indefinite result is
+    # delivered after it rather than being modified by it.
+    fpu_underflow_indefinite(chsslotfaulted, chsslot);
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    fpu_record_opcode(0x1e0:2);
+}
+
+:FCLEX          is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE2      
+{ 
+    FPUStatusWord[0,8] = 0; 
+    FPUStatusWord[15,1] = 0; 
+}
+
+:FNCLEX         is vexMode=0 & byte=0xDB; byte=0xE2                 
+{ 
+    FPUStatusWord[0,8] = 0; 
+    FPUStatusWord[15,1] = 0; 
+} 
+
+# FCMOV references ST(0) and ST(i) whether or not it moves, so an empty
+# operand is a stack fault either way: the fault is detected before the
+# condition is tested, and the indefinite it delivers overwrites whatever the
+# move left behind.
+:FCMOVB st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=0 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !CF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x2c0:2 | zext(fregidx)));
+}   
+
+:FCMOVE st0, fregop   is vexMode=0 & byte=0xDA; frow=12 & fpage=1 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x2c8:2 | zext(fregidx)));
+}   
+
+:FCMOVBE st0, fregop   is vexMode=0 & byte=0xDA; frow=13 & fpage=0 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !CF & !ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x2d0:2 | zext(fregidx)));
+} 
+
+:FCMOVU st0, fregop   is vexMode=0 & byte=0xDA; frow=13 & fpage=1 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( !PF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x2d8:2 | zext(fregidx)));
+}   
+
+:FCMOVNB st0, fregop   is vexMode=0 & byte=0xDB; frow=12 & fpage=0 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( CF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x3c0:2 | zext(fregidx)));
+}    
+
+:FCMOVNE st0, fregop   is vexMode=0 & byte=0xDB; frow=12 & fpage=1 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x3c8:2 | zext(fregidx)));
+}    
+
+:FCMOVNBE st0, fregop   is vexMode=0 & byte=0xDB; frow=13 & fpage=0 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( CF || ZF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x3d0:2 | zext(fregidx)));
+}   
+:FCMOVNU st0, fregop   is vexMode=0 & byte=0xDB; frow=13 & fpage=1 & fregop & fregidx & st0
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    local slot:2 = ((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10;
+    if ( PF ) goto <skip>;
+    *[x87]:10 (slot) = fregop;
+<skip>
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode((0x3d8:2 | zext(fregidx)));
+}    
+                                                                 
+:FCOM m32fp       is vexMode=0 & byte=0xD8; reg_opcode=2 ... & m32fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start; 
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local tmp=float2float(m32fp);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted_mem(tmp, faulted, mem_de);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}         
+
+:FCOM m64fp       is vexMode=0 & byte=0xDC; reg_opcode=2 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local tmp=float2float(m64fp);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted_mem(tmp, faulted, mem_de);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}         
+
+:FCOM fregop      is vexMode=0 & byte=0xD8; frow=13 & fpage=0 & fregop & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcom_faulted(fregop, faulted);
+    fpu_record_opcode((0x0d0:2 | zext(fregidx)));
+}                  
+
+:FCOM           is vexMode=0 & byte=0xD8; byte=0xD1                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpu_record_opcode(0x0d1:2);
+}                   
+
+:FCOMP m32fp      is vexMode=0 & byte=0xD8; reg_opcode=3 ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local tmp=float2float(m32fp);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted_mem(tmp, faulted, mem_de);
+    fpop(); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}     
+
+:FCOMP m64fp      is vexMode=0 & byte=0xDC; reg_opcode=3 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local tmp=float2float(m64fp);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted_mem(tmp, faulted, mem_de);
+    fpop(); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}     
+
+:FCOMP fregop     is vexMode=0 & byte=0xD8; frow=13 & fpage=1 & fregop & fregidx & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start; 
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcom_faulted(fregop, faulted);
+    fpop(); 
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}              
+
+:FCOMP          is vexMode=0 & byte=0xD8; byte=0xD9                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpop();
+    fpu_record_opcode(0x0d9:2);
+}               
+
+:FCOMPP         is vexMode=0 & byte=0xDE; byte=0xD9                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fcom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpop(); 
+    fpop(); 
+    fpu_record_opcode(0x6d9:2);
+}           
+                                                                 
+:FCOMI st0, fregop    is vexMode=0 & byte=0xDB; frow=15 & fpage=0 & fregop & fregidx & st0
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcomi_faulted(fregop, faulted);
+    fpu_record_opcode((0x3f0:2 | zext(fregidx)));
+}                 
+
+:FCOMIP st0, fregop   is vexMode=0 & byte=0xDF; frow=15 & fpage=0 & fregop & fregidx & st0
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fcomi_faulted(fregop, faulted);
+    fpop();
+    fpu_record_opcode((0x7f0:2 | zext(fregidx)));
+}             
+
+:FUCOMI st0, fregop   is vexMode=0 & byte=0xDB; frow=14 & fpage=1 & fregop & fregidx & st0
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucomi_faulted(fregop, faulted);
+    fpu_record_opcode((0x3e8:2 | zext(fregidx)));
+}                 
+
+:FUCOMIP st0, fregop  is vexMode=0 & byte=0xDF; frow=14 & fpage=1 & fregop & fregidx & st0
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucomi_faulted(fregop, faulted);
+    fpop();
+    fpu_record_opcode((0x7e8:2 | zext(fregidx)));
+}             
+                                                                 
+define pcodeop fcos;
+:FCOS			    is vexMode=0 & byte=0xD9; byte=0xFF					
+{ 
+    FPUInstructionPointer = inst_start;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fcos(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    fpu_record_opcode(0x1ff:2);
+}
+                                                                 
+:FDECSTP		    is vexMode=0 & byte=0xD9; byte=0xF6					
+{ 
+   FPUInstructionPointer = inst_start;
+   fdec();
+   # C1 is the only defined condition code for FINCSTP/FDECSTP.
+   FPUStatusWord = FPUStatusWord & 0xfdff;
+    fpu_record_opcode(0x1f6:2);
+}
+
+# Legacy 8087 instructions. Still valid but treated as NOP instructions.
+:FDISI              is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE1 {}
+:FNDISI             is vexMode=0 & byte=0xDB; byte=0xE1            {}
+:FENI               is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE0 {}
+:FNENI              is vexMode=0 & byte=0xDB; byte=0xE0            {}
+
+:FDIV m32fp      is vexMode=0 & byte=0xD8; reg_opcode=6 ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FDIV m64fp      is vexMode=0 & byte=0xDC; reg_opcode=6 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FDIV st0,fregop      is vexMode=0 & byte=0xD8; frow=15 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x0f0:2 | zext(fregidx)));
+}            
+
+:FDIV fregop,st0      is vexMode=0 & byte=0xDC; frow=15 & fpage=1 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4f8:2 | zext(fregidx)));
+}           
+
+:FDIVP fregop,st0     is vexMode=0 & byte=0xDE; frow=15 & fpage=1 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x6f8:2 | zext(fregidx)));
+}       
+
+:FDIVP              is vexMode=0 & byte=0xDE; byte=0xF9                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6f9:2);
+}         
+
+:FIDIV m32     is vexMode=0 & byte=0xDA; reg_opcode=6 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start; 
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}      
+
+:FIDIV m16     is vexMode=0 & byte=0xDE; reg_opcode=6 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_div_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}      
+                                                              
+:FDIVR m32fp     is vexMode=0 & byte=0xD8; reg_opcode=7 ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_lhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FDIVR m64fp     is vexMode=0 & byte=0xDC; reg_opcode=7 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_lhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_div_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FDIVR st0,fregop     is vexMode=0 & byte=0xD8; frow=15 & fpage=1 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, 0:2, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x0f8:2 | zext(fregidx)));
+}            
+
+:FDIVR fregop,st0     is vexMode=0 & byte=0xDC; frow=15 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4f0:2 | zext(fregidx)));
+}           
+
+:FDIVRP fregop,st0    is vexMode=0 & byte=0xDE; frow=15 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x6f0:2 | zext(fregidx)));
+}       
+
+:FDIVRP             is vexMode=0 & byte=0xDE; byte=0xF1                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_div_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6f1:2);
+}         
+
+:FIDIVR m32    is vexMode=0 & byte=0xDA; reg_opcode=7 ... & m32 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_lhs:10 = int2float(m32);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}      
+
+:FIDIVR m16    is vexMode=0 & byte=0xDE; reg_opcode=7 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_lhs:10 = int2float(m16);
+    fpu_ieee_div_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}      
+
+# FFREE marks one TOP-mapped logical x87 stack entry empty. `fregop` exports
+# a dynamic x87-RAM lvalue, so the constructors retain the ModR/M low-bit
+# selection and use the corresponding TOP-indexed physical full-tag pair.
+# FFREE's condition codes are architecturally undefined. Choose the C1=0
+# behavior observed on the hardware oracle, consistently for all ST(i).
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=0 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty0();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=1 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty1();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=2 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty2();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=3 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty3();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=4 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty4();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=5 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty5();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=6 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty6();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREE fregop          is vexMode=0 & byte=0xDD; frow=12 & fpage=0 & fregop & freg=7 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty7();
+    fpu_clear_c1();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=0 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty0();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=1 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty1();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=2 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty2();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=3 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty3();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=4 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty4();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=5 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty5();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=6 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty6();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FFREEP fregop         is vexMode=0 & byte=0xDF; frow=12 & fpage=0 & fregop & freg=7 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    tagempty7();
+    fpop();
+    fpu_clear_c1();
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+                                                                  
+:FICOM m16     is vexMode=0 & byte=0xDE; reg_opcode=2 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local tmp = int2float(m16);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FICOM m32     is vexMode=0 & byte=0xDA; reg_opcode=2 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local tmp = int2float(m32);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FICOMP m16    is vexMode=0 & byte=0xDE; (mod != 0b11 & reg_opcode=3) ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local tmp = int2float(m16); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
+    fpop(); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}  
+
+:FICOMP m32    is vexMode=0 & byte=0xDA; reg_opcode=3 ... & m32 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local tmp = int2float(m32); 
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
+    fpop(); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}  
+                                                                  
+:FILD m16      is vexMode=0 & byte=0xDF; reg_opcode=0 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local value:10 = int2float(m16);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}         
+
+:FILD m32      is vexMode=0 & byte=0xDB; reg_opcode=0 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local value:10 = int2float(m32);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}         
+
+:FILD m64      is vexMode=0 & byte=0xDF; reg_opcode=5 ... & m64 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local value:10 = int2float(m64);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}         
+                                                                  
+:FINCSTP            is vexMode=0 & byte=0xD9; byte=0xF7                 
+{ 
+    FPUInstructionPointer = inst_start;
+    finc();
+    # C1 is defined clear; the other condition codes are left untouched.
+    FPUStatusWord = FPUStatusWord & 0xfdff;
+    fpu_record_opcode(0x1f7:2);
+}                                   
+
+:FINIT              is vexMode=0 & byte=0x9B; byte=0xDB; byte=0xE3          
+{
+    FPUControlWord = 0x037f;        
+    FPUStatusWord = 0x0000;         
+    FPUTagWord = 0xffff;            
+    FPUDataPointer = 0x00000000;        
+    FPUInstructionPointer = 0x00000000;     
+    FPULastInstructionOpcode = 0x0000;  
+    C0 = 0;                 
+    C1 = 0;                 
+    C2 = 0;                 
+    C3 = 0; 
+}                           
+
+:FNINIT         is vexMode=0 & byte=0xDB; byte=0xE3                 
+{
+    FPUControlWord = 0x037f;        
+    FPUStatusWord = 0x0000;         
+    FPUTagWord = 0xffff;            
+    FPUDataPointer = 0x00000000;        
+    FPUInstructionPointer = 0x00000000;     
+    FPULastInstructionOpcode = 0x0000;  
+    C0 = 0;                 
+    C1 = 0;                 
+    C2 = 0;                 
+    C3 = 0; 
+}          
+
+:FIST m16       is vexMode=0 & byte=0xDF; (mod != 0b11 & reg_opcode=2) ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, round, 0:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                    
+
+:FIST m32       is vexMode=0 & byte=0xDB; (mod != 0b11 & reg_opcode=2) ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, round, 0:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+
+:FISTP m16      is vexMode=0 & byte=0xDF; reg_opcode=3 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, round, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                
+
+:FISTP m32      is vexMode=0 & byte=0xDB; reg_opcode=3 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, round, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                
+
+:FISTP m64      is vexMode=0 & byte=0xDF; reg_opcode=7 ... & m64 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local round:2 = (FPUControlWord >> 10) & 3;
+    local converted:8;
+    fpu_store_integer_st0(m64, 8:2, 0x8000000000000000:8, round, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                
+
+
+:FISTTP m16     is vexMode=0 & byte=0xDF; reg_opcode=1 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local converted:2;
+    fpu_store_integer_st0(m16, 2:2, 0x8000:2, 3:2, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x700:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                 
+
+:FISTTP m32     is vexMode=0 & byte=0xDB; reg_opcode=1 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local converted:4;
+    fpu_store_integer_st0(m32, 4:2, 0x80000000:4, 3:2, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+                 
+:FISTTP m64     is vexMode=0 & byte=0xDD; reg_opcode=1 ... & m64 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local converted:8;
+    fpu_store_integer_st0(m64, 8:2, 0x8000000000000000:8, 3:2, 1:1, converted);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                 
+                                                                      
+:FLD m32fp        is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=0) ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    # A narrow memory source reports its own denormal-operand and
+    # signalling-NaN facts: the widened extended value is normal and quiet.
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    fpu_signal_invalid_if(mem_snan);
+    fpu_signal_denormal_if(mem_de);
+    local value:10 = float2float(m32fp);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}           
+
+:FLD m64fp        is vexMode=0 & byte=0xDD; reg_opcode=0 ... & m64fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    # A narrow memory source reports its own denormal-operand and
+    # signalling-NaN facts: the widened extended value is normal and quiet.
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    fpu_signal_invalid_if(mem_snan);
+    fpu_signal_denormal_if(mem_de);
+    local value:10 = float2float(m64fp);
+    fpushv(value);
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+
+:FLD m80fp        is vexMode=0 & byte=0xDB; reg_opcode=5 ... & m80fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    fpushv(m80fp); 
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                      
+
+:FLD fregop       is vexMode=0 & byte=0xD9; frow=12 & fpage=0 & fregop & fregidx
+{ FPUInstructionPointer = inst_start; fpu_load_register(fregidx); }
+                                                                      
+:FLD1           is vexMode=0 & byte=0xD9; byte=0xE8  
+{ 
+    FPUInstructionPointer = inst_start;
+    one:4 = 1; 
+    tmp:10 = int2float(one); 
+    fpushv(tmp); 
+    fpu_record_opcode(0x1e8:2);
+}  
+
+:FLDL2T		is vexMode=0 & byte=0xD9; byte=0xE9
+{ 
+    FPUInstructionPointer = inst_start;
+    # Exact 80-bit log2(10); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xd49a784bcd1b8afe:8);
+    sign_exponent:10 = zext(0x4000:2);
+    tmp:10 = (sign_exponent << 64) | significand;
+    fpushv(tmp); 
+    fpu_record_opcode(0x1e9:2);
+}
+
+:FLDL2E		is vexMode=0 & byte=0xD9; byte=0xEA			
+{ 
+    FPUInstructionPointer = inst_start;
+    # Exact 80-bit log2(e); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xb8aa3b295c17f0bc:8);
+    sign_exponent:10 = zext(0x3fff:2);
+    tmp:10 = (sign_exponent << 64) | significand;
+    fpushv(tmp); 
+    fpu_record_opcode(0x1ea:2);
+}
+
+:FLDPI		is vexMode=0 & byte=0xD9; byte=0xEB			
+{
+    FPUInstructionPointer = inst_start;
+    # Exact 80-bit pi; the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xc90fdaa22168c235:8);
+    sign_exponent:10 = zext(0x4000:2);
+    tmp:10 = (sign_exponent << 64) | significand;
+    fpushv(tmp);
+    fpu_record_opcode(0x1eb:2);
+}
+
+:FLDLG2		is vexMode=0 & byte=0xD9; byte=0xEC			
+{ 
+    FPUInstructionPointer = inst_start;
+    # Exact 80-bit log10(2); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0x9a209a84fbcff799:8);
+    sign_exponent:10 = zext(0x3ffd:2);
+    tmp:10 = (sign_exponent << 64) | significand;
+    fpushv(tmp); 
+    fpu_record_opcode(0x1ec:2);
+}
+
+:FLDLN2		is vexMode=0 & byte=0xD9; byte=0xED			
+{ 
+    FPUInstructionPointer = inst_start;
+    # Exact 80-bit ln(2); the f64 source constant this replaced lost
+    # the low 11 significand bits at float2float.
+    significand:10 = zext(0xb17217f7d1cf79ac:8);
+    sign_exponent:10 = zext(0x3ffe:2);
+    tmp:10 = (sign_exponent << 64) | significand;
+    fpushv(tmp); 
+    fpu_record_opcode(0x1ed:2);
+}
+
+:FLDZ		is vexMode=0 & byte=0xD9; byte=0xEE			
+{ 
+    FPUInstructionPointer = inst_start;
+    zero:4 = 0;
+    tmp:10 = int2float(zero); 
+    fpushv(tmp); 
+    fpu_record_opcode(0x1ee:2);
+}
+
+:FLDCW m16      is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=5) ... & m16            
+{ 
+    FPUControlWord = m16; 
+    # A new control word can unmask an exception that is already pending, so
+    # the error summary has to be recomputed against the masks just loaded.
+    fpu_refresh_error_summary();
+}
+
+define pcodeop fldenv;
+:FLDENV Mem     is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=4) ... & Mem
+{
+  FPUControlWord           = *:2 (Mem);
+  FPUStatusWord            = *:2 (Mem +  4);
+  FPUTagWord               = *:2 (Mem +  8);
+  # Legacy environments carry 32-bit pointers.  Explicitly zero-extend them:
+  # assigning a bare *:4 to the 64-bit x86-64 register makes SLEIGH widen the
+  # memory load itself, incorrectly consuming the FOP/selector-adjacent bytes.
+  FPUDataPointer           = zext(*:4 (Mem + 20));
+  FPUInstructionPointer    = zext(*:4 (Mem + 12));
+  FPULastInstructionOpcode = *:2 (Mem + 18);
+}
+
+:FMUL m32fp       is vexMode=0 & byte=0xD8; reg_opcode=1 ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_mul_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}  
+
+:FMUL m64fp       is vexMode=0 & byte=0xDC; reg_opcode=1 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_mul_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    FPUInstructionPointer = inst_start;
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}  
+
+:FMUL fregop      is vexMode=0 & byte=0xD8; frow=12 & fpage=1 & fregop & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x0c8:2 | zext(fregidx)));
+}          
+
+:FMUL fregop      is vexMode=0 & byte=0xDC; frow=12 & fpage=1 & fregop & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4c8:2 | zext(fregidx)));
+}         
+
+:FMULP fregop     is vexMode=0 & byte=0xDE; frow=12 & fpage=1 & fregop & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x6c8:2 | zext(fregidx)));
+}     
+
+:FMULP          is vexMode=0 & byte=0xDE; byte=0xC9                         
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6c9:2);
+}       
+
+:FIMUL m32      is vexMode=0 & byte=0xDA; reg_opcode=1 ... & m32 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FIMUL m16      is vexMode=0 & byte=0xDE; reg_opcode=1 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_mul_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}    
+
+:FNOP           is vexMode=0 & byte=0xD9; byte=0xD0                 
+{ 
+    FPUInstructionPointer = inst_start;
+    fpu_record_opcode(0x1d0:2);
+}
+
+define pcodeop fpatan;
+:FPATAN		is vexMode=0 & byte=0xD9; byte=0xF3
+{
+    FPUInstructionPointer = inst_start;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = fpatan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    fpop(); 
+    fpu_record_opcode(0x1f3:2);
+}
+
+:FPREM          is vexMode=0 & byte=0xD9; byte=0xF8                 
+{ 
+    FPUInstructionPointer = inst_start;
+    # The remainder is exact, and its condition codes are operation
+    # results: the quotient's low three bits in C0/C3/C1, and C2 for an
+    # incomplete reduction. Computing it as x - trunc(x/y)*y reported
+    # none of them.
+    # Reducing an empty ST(0) or ST(1) is a stack fault: it reports the
+    # underflow and delivers the indefinite instead of a remainder.
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local result:10 = float_rem_partial(dividend, divisor, 0:1);
+    local quotient:1 = float_rem_quotient(dividend, divisor, 0:1);
+    # A NaN operand is propagated with x87's own choice of payload,
+    # and an unnormal encoding delivers the indefinite.
+    # An infinite dividend or a zero divisor has no remainder, and a
+    # signalling NaN operand always raises invalid; a quiet NaN is merely
+    # propagated.
+    local dividend_nan:1 = nan(dividend);
+    local divisor_nan:1 = nan(divisor);
+    local signalling:1 = (dividend_nan && (dividend[62,1] == 0)) ||
+                         (divisor_nan && (divisor[62,1] == 0));
+    local dividend_infinite:1 = (dividend[64,15] == 0x7fff) && (dividend[63,1] == 1) &&
+                                (dividend[0,63] == 0);
+    local divisor_zero:1 = (divisor[64,15] == 0) && (divisor[0,64] == 0);
+    local flags:1 = zext(signalling ||
+                         ((dividend_infinite || divisor_zero) &&
+                          !dividend_nan && !divisor_nan));
+    fpu_signal_invalid_if((flags & 1) != 0);
+    fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # C2 reports a partial reduction, and then no quotient bits exist.
+    # Otherwise the quotient's low three bits land in C0, C3 and C1. A NaN
+    # result has no quotient at all: hardware then clears C1 and C2 and leaves
+    # C0 and C3 as it found them.
+    local undefined:1 = nan(result) || faulted;
+    local incomplete:1 = (quotient & 8) != 0;
+    local kept0:1 = ((FPUStatusWord >> 8) & 1) != 0;
+    local kept3:1 = ((FPUStatusWord >> 14) & 1) != 0;
+    local defined:1 = !undefined && !incomplete;
+    fpu_set_condition_codes((defined && ((quotient & 4) != 0)) || (undefined && kept0),
+                            defined && ((quotient & 1) != 0),
+                            !undefined && incomplete,
+                            (defined && ((quotient & 2) != 0)) || (undefined && kept3));
+    # DE is reported only when the reduction actually uses the denormal:
+    # an invalid or NaN operand decides the result on its own.
+    local dividend_denormal:1;
+    fpu_is_denormal(dividend, dividend_denormal);
+    local divisor_denormal:1;
+    fpu_is_denormal(divisor, divisor_denormal);
+    local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
+    fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
+    local slot:2 = (((FPUStatusWord >> 11) & 7) & 7) * 10;
+    *[x87]:10 (slot) = result;
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode(0x1f8:2);
+}
+
+:FPREM1         is vexMode=0 & byte=0xD9; byte=0xF5                 
+{ 
+    FPUInstructionPointer = inst_start;
+    # The remainder is exact, and its condition codes are operation
+    # results: the quotient's low three bits in C0/C3/C1, and C2 for an
+    # incomplete reduction. Computing it as x - trunc(x/y)*y reported
+    # none of them.
+    # Reducing an empty ST(0) or ST(1) is a stack fault: it reports the
+    # underflow and delivers the indefinite instead of a remainder.
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    local dividend:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    local divisor:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local result:10 = float_rem_partial(dividend, divisor, 1:1);
+    local quotient:1 = float_rem_quotient(dividend, divisor, 1:1);
+    # A NaN operand is propagated with x87's own choice of payload,
+    # and an unnormal encoding delivers the indefinite.
+    # An infinite dividend or a zero divisor has no remainder, and a
+    # signalling NaN operand always raises invalid; a quiet NaN is merely
+    # propagated.
+    local dividend_nan:1 = nan(dividend);
+    local divisor_nan:1 = nan(divisor);
+    local signalling:1 = (dividend_nan && (dividend[62,1] == 0)) ||
+                         (divisor_nan && (divisor[62,1] == 0));
+    local dividend_infinite:1 = (dividend[64,15] == 0x7fff) && (dividend[63,1] == 1) &&
+                                (dividend[0,63] == 0);
+    local divisor_zero:1 = (divisor[64,15] == 0) && (divisor[0,64] == 0);
+    local flags:1 = zext(signalling ||
+                         ((dividend_infinite || divisor_zero) &&
+                          !dividend_nan && !divisor_nan));
+    fpu_signal_invalid_if((flags & 1) != 0);
+    fpu_ieee_invalid_result(dividend, divisor, flags, result);
+    # C2 reports a partial reduction, and then no quotient bits exist.
+    # Otherwise the quotient's low three bits land in C0, C3 and C1. A NaN
+    # result has no quotient at all: hardware then clears C1 and C2 and leaves
+    # C0 and C3 as it found them.
+    local undefined:1 = nan(result) || faulted;
+    local incomplete:1 = (quotient & 8) != 0;
+    local kept0:1 = ((FPUStatusWord >> 8) & 1) != 0;
+    local kept3:1 = ((FPUStatusWord >> 14) & 1) != 0;
+    local defined:1 = !undefined && !incomplete;
+    fpu_set_condition_codes((defined && ((quotient & 4) != 0)) || (undefined && kept0),
+                            defined && ((quotient & 1) != 0),
+                            !undefined && incomplete,
+                            (defined && ((quotient & 2) != 0)) || (undefined && kept3));
+    # DE is reported only when the reduction actually uses the denormal:
+    # an invalid or NaN operand decides the result on its own.
+    local dividend_denormal:1;
+    fpu_is_denormal(dividend, dividend_denormal);
+    local divisor_denormal:1;
+    fpu_is_denormal(divisor, divisor_denormal);
+    local decided:1 = ((flags & 1) != 0) || dividend_nan || divisor_nan;
+    fpu_signal_denormal_if((dividend_denormal || divisor_denormal) && !decided);
+    local slot:2 = (((FPUStatusWord >> 11) & 7) & 7) * 10;
+    *[x87]:10 (slot) = result;
+    fpu_underflow_indefinite(faulted, slot);
+    fpu_record_opcode(0x1f5:2);
+}
+
+define pcodeop fptan;
+:FPTAN		is vexMode=0 & byte=0xD9; byte=0xF2			
+{ 
+    FPUInstructionPointer = inst_start;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fptan(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    one:4 = 1;
+    tmp:10 = int2float(one);
+    fpushv(tmp); 
+    fpu_record_opcode(0x1f2:2);
+}
+
+:FRNDINT        is vexMode=0 & byte=0xD9; byte=0xFC                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local result:10;
+    local commit:1;
+    fpu_ieee_round_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
+    fpu_record_opcode(0x1fc:2);
+}
+
+:FRSTOR Mem     is vexMode=0 & byte=0xDD; reg_opcode=4 ... & Mem
+{
+  FPUControlWord           = *:2  (Mem);
+  FPUStatusWord            = *:2  (Mem +  4);
+  FPUTagWord               = *:2  (Mem +  8);
+  # The legacy image has 32-bit pointers even in long mode; do not widen the
+  # memory access when assigning the x86-64 pointer registers.
+  FPUDataPointer           = zext(*:4 (Mem + 20));
+  FPUInstructionPointer    = zext(*:4 (Mem + 12));
+  FPULastInstructionOpcode = *:2  (Mem + 18);
+
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10)                      = *:10 (Mem + 28);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10)                      = *:10 (Mem + 38);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10)                      = *:10 (Mem + 48);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10)                      = *:10 (Mem + 58);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10)                      = *:10 (Mem + 68);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10)                      = *:10 (Mem + 78);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10)                      = *:10 (Mem + 88);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10)                      = *:10 (Mem + 98);
+}
+
+:FSAVE Mem      is vexMode=0 & byte=0x9B; byte=0xDD; reg_opcode=6 ... & Mem
+{
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
+  *:4  (Mem + 20) = FPUDataPointer;          *:2 (Mem + 24) = 0;
+  *:4  (Mem + 12) = FPUInstructionPointer;    *:2 (Mem + 16) = 0;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+
+  *:10 (Mem + 28) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+  *:10 (Mem + 38) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+  *:10 (Mem + 48) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10);
+  *:10 (Mem + 58) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10);
+  *:10 (Mem + 68) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10);
+  *:10 (Mem + 78) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10);
+  *:10 (Mem + 88) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10);
+  *:10 (Mem + 98) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10);
+
+  FPUControlWord = 0x037f;
+  FPUStatusWord = 0x0000;
+  FPUTagWord = 0xffff;
+  FPUDataPointer = 0x00000000;
+  FPUInstructionPointer = 0x00000000;
+  FPULastInstructionOpcode = 0x0000;
+}
+
+:FNSAVE Mem     is vexMode=0 & byte=0xDD; reg_opcode=6 ... & Mem
+{
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
+  *:4  (Mem + 20) = FPUDataPointer;          *:2 (Mem + 24) = 0;
+  *:4  (Mem + 12) = FPUInstructionPointer;    *:2 (Mem + 16) = 0;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+
+  *:10 (Mem + 28) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+  *:10 (Mem + 38) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+  *:10 (Mem + 48) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10);
+  *:10 (Mem + 58) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10);
+  *:10 (Mem + 68) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10);
+  *:10 (Mem + 78) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10);
+  *:10 (Mem + 88) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10);
+  *:10 (Mem + 98) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10);
+
+  local stack_fault:1 = (FPUStatusWord & 0x40) != 0;
+  local stack_fault_mask:10 = 0 - zext(stack_fault);
+  local reset_indefinite:10 = zext(0xc000000000000000:8);
+  reset_indefinite = reset_indefinite | (zext(0xffff:2) << 64);
+  local stack_slot:2 = ((FPUStatusWord >> 11) & 7) * 10;
+  local old_stack_value:10 = *[x87]:10 (stack_slot);
+  *[x87]:10 (stack_slot) = (old_stack_value & ~stack_fault_mask) |
+                              (reset_indefinite & stack_fault_mask);
+
+  FPUControlWord = 0x037f;
+  FPUStatusWord = 0x0000;
+  FPUTagWord = 0xffff;
+  FPUDataPointer = 0x00000000;
+  FPUInstructionPointer = 0x00000000;
+  FPULastInstructionOpcode = 0x0000;
+}
+
+define pcodeop fscale;
+:FSCALE		    is vexMode=0 & byte=0xD9; byte=0xFD			
+{ 
+    FPUInstructionPointer = inst_start;
+    local result:10;
+    local commit:1;
+    fpu_ieee_scale_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
+    fpu_record_opcode(0x1fd:2);
+}
+
+define pcodeop fsin;
+:FSIN		    is vexMode=0 & byte=0xD9; byte=0xFE			
+{ 
+    FPUInstructionPointer = inst_start;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fsin(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    fpu_record_opcode(0x1fe:2);
+}
+
+:FSINCOS	    is vexMode=0 & byte=0xD9; byte=0xFB			
+{ 
+    FPUInstructionPointer = inst_start;
+    tmp:10 = fcos(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = fsin(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10));
+    fpushv(tmp);
+    fpu_record_opcode(0x1fb:2);
+}
+
+:FSQRT          is vexMode=0 & byte=0xD9; byte=0xFA                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local result:10;
+    local commit:1;
+    fpu_ieee_sqrt_result(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), result, commit);
+    if (commit == 0) goto <done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = result;
+<done>
+    fpu_record_opcode(0x1fa:2);
+}
+
+:FST m32fp   is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=2) ... & m32fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:4;
+    local store:1;
+    fpu_narrow_store(source, 4:2, 0xffc00000:4, converted, store);
+    if (store == 0) goto <done>;
+    m32fp = converted;
+<done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}     
+
+:FST m64fp   is vexMode=0 & byte=0xDD; reg_opcode=2 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:8;
+    local store:1;
+    fpu_narrow_store(source, 8:2, 0xfff8000000000000:8, converted, store);
+    if (store == 0) goto <done>;
+    m64fp = converted;
+<done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}     
+
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=0
+{ FPUInstructionPointer = inst_start; fpu_store_register(0:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=1
+{ FPUInstructionPointer = inst_start; fpu_store_register(1:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=2
+{ FPUInstructionPointer = inst_start; fpu_store_register(2:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=3
+{ FPUInstructionPointer = inst_start; fpu_store_register(3:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=4
+{ FPUInstructionPointer = inst_start; fpu_store_register(4:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=5
+{ FPUInstructionPointer = inst_start; fpu_store_register(5:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=6
+{ FPUInstructionPointer = inst_start; fpu_store_register(6:2, 0:2); }
+:FST fregop       is vexMode=0 & byte=0xDD; frow=13 & fpage=0 & fregop & freg=7
+{ FPUInstructionPointer = inst_start; fpu_store_register(7:2, 0:2); }
+
+:FSTP m32fp  is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=3) ... & m32fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:4;
+    local store:1;
+    fpu_narrow_store(source, 4:2, 0xffc00000:4, converted, store);
+    if (store == 0) goto <done>;
+    m32fp = converted;
+    fpop();
+<done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+} 
+
+:FSTP m64fp  is vexMode=0 & byte=0xDD; reg_opcode=3 ... & m64fp & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    # An empty ST(0) is a stack fault, and the value stored for a masked
+    # one is the indefinite QNaN rather than the slot's stale payload.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) |
+                      (qnan_indefinite & fault_mask);
+    local converted:8;
+    local store:1;
+    fpu_narrow_store(source, 8:2, 0xfff8000000000000:8, converted, store);
+    if (store == 0) goto <done>;
+    m64fp = converted;
+    fpop();
+<done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+} 
+
+:FSTP m80fp  is vexMode=0 & byte=0xDB; reg_opcode=7 ... & m80fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    # A store that does not round has no rounding indication: C1 is clear
+    # unless the pop itself faults.
+    fpu_clear_c1();
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local value:10 = (*[x87]:10 (((FPUStatusWord >> 11) & 7) * 10) & ~fault_mask) |
+                     (qnan_indefinite & fault_mask);
+    if ((FPUStatusWord & ~FPUControlWord & 1) != 0) goto <done>;
+    m80fp = value;
+    fpop();
+<done>
+
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x300:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}             
+
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=0 & fregidx
+{ FPUInstructionPointer = inst_start; fpu_store_register(0:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=1
+{ FPUInstructionPointer = inst_start; fpu_store_register(1:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=2
+{ FPUInstructionPointer = inst_start; fpu_store_register(2:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=3
+{ FPUInstructionPointer = inst_start; fpu_store_register(3:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=4
+{ FPUInstructionPointer = inst_start; fpu_store_register(4:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=5
+{ FPUInstructionPointer = inst_start; fpu_store_register(5:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=6
+{ FPUInstructionPointer = inst_start; fpu_store_register(6:2, 1:2); }
+:FSTP fregop      is vexMode=0 & byte=0xDD; frow=13 & fpage=1 & fregop & freg=7
+{ FPUInstructionPointer = inst_start; fpu_store_register(7:2, 1:2); }
+
+:FSTCW m16      is vexMode=0 & byte=0x9B; byte=0xD9; (mod != 0b11 & reg_opcode=7) ... & m16 & modidx & regidx & rmidx
+{
+    m16 = FPUControlWord; 
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+
+:FNSTCW m16     is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=7) ... & m16
+{
+    m16 = FPUControlWord; 
+}
+
+:FSTENV Mem     is vexMode=0 & byte=0x9B; byte=0xD9; (mod != 0b11 & reg_opcode=6) ... & Mem
+{
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
+  *:4  (Mem + 20) = FPUDataPointer;
+  *:4  (Mem + 12) = FPUInstructionPointer;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+  # Long mode stores no code or data selector, and both fields are written
+  # rather than left holding whatever the destination already contained.
+  *:2  (Mem + 16) = 0;
+  *:2  (Mem + 24) = 0;
+}
+
+:FNSTENV Mem    is vexMode=0 & byte=0xD9; (mod != 0b11 & reg_opcode=6) ... & Mem
+{
+  *:2  (Mem)      = FPUControlWord; *:2 (Mem +  2) = 0xffff;
+  *:2  (Mem +  4) = FPUStatusWord;  *:2 (Mem +  6) = 0xffff;
+  store_synthesized_fpu_tag(Mem);    *:2 (Mem + 10) = 0xffff;
+  *:4  (Mem + 20) = FPUDataPointer;
+  *:4  (Mem + 12) = FPUInstructionPointer;
+  *:2  (Mem + 18) = FPULastInstructionOpcode; *:2 (Mem + 26) = 0xffff;
+  # Long mode stores no code or data selector, and both fields are written
+  # rather than left holding whatever the destination already contained.
+  *:2  (Mem + 16) = 0;
+  *:2  (Mem + 24) = 0;
+}
+
+:FSTSW m16      is vexMode=0 & byte=0x9B; byte=0xDD; reg_opcode=7 ... & m16     
+{ 
+    m16 = FPUStatusWord; 
+}
+
+:FSTSW AX       is vexMode=0 & byte=0x9B; byte=0xDF; byte=0xE0 & AX         
+{ 
+    AX = FPUStatusWord; 
+}
+
+:FNSTSW m16     is vexMode=0 & byte=0xDD; reg_opcode=7 ... & m16 
+{
+    m16 = FPUStatusWord; 
+}
+
+:FNSTSW AX      is vexMode=0 & byte=0xDF; byte=0xE0 & AX      
+{
+    AX = FPUStatusWord; 
+}
+
+:FSUB m32fp  is vexMode=0 & byte=0xD8; reg_opcode=4 ... & m32fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FSUB m64fp  is vexMode=0 & byte=0xDC; reg_opcode=4 ... & m64fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_rhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_rhs = arithmetic_rhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FSUB st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx & fregidx
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                  
+
+:FSUB fregop,st0  is vexMode=0 & byte=0xDC; frow=14 & fpage=1 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4e8:2 | zext(fregidx)));
+}                 
+
+:FSUBP          is vexMode=0 & byte=0xDE; byte=0xE9
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6e9:2);
+}               
+
+:FSUBP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx & fregidx
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, fregidx, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}             
+
+:FISUB m32 is vexMode=0 & byte=0xDA; (mod != 0b11 & reg_opcode=4) ... & m32 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m32);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+
+:FISUB m16 is vexMode=0 & byte=0xDE; reg_opcode=4 ... & m16 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_rhs:10 = int2float(m16);
+    fpu_ieee_sub_result(0:2, 0:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_rhs, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+                                                                    
+:FSUBR m32fp  is vexMode=0 & byte=0xD8; reg_opcode=5 ... & m32fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f32_source_flags(m32fp, mem_de, mem_snan);
+    local arithmetic_lhs:10 = float2float(m32fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FSUBR m64fp  is vexMode=0 & byte=0xDC; reg_opcode=5 ... & m64fp & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local mem_de:1;
+    local mem_snan:1;
+    fpu_f64_source_flags(m64fp, mem_de, mem_snan);
+    local arithmetic_lhs:10 = float2float(m64fp);
+    # x87 chooses between two NaN operands by significand before quieting
+    # either, so restore the signalling bit the widening cleared.
+    arithmetic_lhs = arithmetic_lhs & ~(zext(mem_snan) << 62);
+    fpu_ieee_sub_result_ex(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), mem_de, mem_snan, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x400:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}          
+
+:FSUBR st0,fregop  is vexMode=0 & byte=0xD8; frow=14 & fpage=1 & fregop & st0 & modidx & regidx & rmidx & fregidx
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, 0:2, fregop, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x000:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                  
+
+:FSUBR fregop,st0  is vexMode=0 & byte=0xDC; frow=14 & fpage=0 & fregop & st0 & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+<arithmetic_done>
+    fpu_record_opcode((0x4e0:2 | zext(fregidx)));
+}                 
+
+:FSUBRP          is vexMode=0 & byte=0xDE; byte=0xE1 
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x6e1:2);
+}               
+
+:FSUBRP fregop,st0 is vexMode=0 & byte=0xDE; frow=14 & fpage=0 & fregop & st0 & modidx & regidx & rmidx & fregidx
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_sub_result(fregidx, fregidx, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), fregop, arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    fregop = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}             
+
+:FISUBR m32 is vexMode=0 & byte=0xDA; reg_opcode=5 ... & m32 & modidx & regidx & rmidx & Mem
+{
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_lhs:10 = int2float(m32);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x200:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+
+:FISUBR m16 is vexMode=0 & byte=0xDE; reg_opcode=5 ... & m16 & modidx & regidx & rmidx & Mem
+{ 
+    FPUInstructionPointer = inst_start;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    local arithmetic_lhs:10 = int2float(m16);
+    fpu_ieee_sub_result(0:2, 0:2, arithmetic_lhs, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), arithmetic_result, arithmetic_commit);
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = arithmetic_result;
+<arithmetic_done>
+    fpu_record_data_pointer(Mem);
+    fpu_record_opcode((0x600:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}            
+                                                                    
+:FTST           is vexMode=0 & byte=0xD9; byte=0xE4                 
+{ 
+    FPUInstructionPointer = inst_start;
+    zero:4 = 0;
+    tmp:10 = int2float(zero);
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    fcom_faulted(tmp, faulted); 
+    fpu_record_opcode(0x1e4:2);
+}    
+                                                                    
+:FUCOM fregop     is vexMode=0 & byte=0xDD; frow=14 & fpage=0 & fregop & fregidx
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucom_faulted(fregop, faulted);
+    fpu_record_opcode((0x5e0:2 | zext(fregidx)));
+}                     
+
+:FUCOM          is vexMode=0 & byte=0xDD; byte=0xE1                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpu_record_opcode(0x5e1:2);
+}                      
+
+:FUCOMP fregop    is vexMode=0 & byte=0xDD; frow=14 & fpage=1 & fregop & fregidx & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(fregidx, faulted);
+    fucom_faulted(fregop, faulted);
+    fpop();
+    fpu_record_opcode((0x500:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}                 
+
+:FUCOMP         is vexMode=0 & byte=0xDD; byte=0xE9                 
+{
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpop(); 
+    fpu_record_opcode(0x5e9:2);
+}                  
+
+:FUCOMPP        is vexMode=0 & byte=0xDA; byte=0xE9                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local faulted:1;
+    fpu_stack_underflow_out(1:2, faulted);
+    fucom_faulted(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), faulted);
+    fpop();
+    fpop(); 
+    fpu_record_opcode(0x2e9:2);
+}                  
+                                                                    
+:FXAM           is vexMode=0 & byte=0xD9; byte=0xE5
+{
+  FPUInstructionPointer = inst_start;
+  local top:2 = (FPUStatusWord >> 11) & 7;
+  local value:10 = *[x87]:10 (top * 10);
+  local tag:2 = (FPUTagWord >> (top * 2)) & 3;
+  local exponent:2 = value[64,15];
+  local significand:8 = value[0,64];
+  local fraction:8 = value[0,63];
+  local integer_bit:1 = value[63,1];
+  local sign:1 = value[79,1];
+  local empty:1 = tag == 3;
+  local zero:1 = !empty && exponent == 0 && significand == 0;
+  local normal:1 = !empty && exponent != 0 && exponent != 0x7fff && integer_bit;
+  local infinity:1 = !empty && exponent == 0x7fff && integer_bit && fraction == 0;
+  local nan:1 = !empty && exponent == 0x7fff && integer_bit && fraction != 0;
+  local denormal:1 = !empty && exponent == 0 && significand != 0;
+  # Codes are C3:C2:C0: unsupported=000, NaN=001, normal=010,
+  # infinity=011, zero=100, empty=101, denormal=110.
+  local c0:1 = empty || infinity || nan;
+  local c1:1 = !empty && sign;
+  local c2:1 = normal || infinity || denormal;
+  local c3:1 = empty || zero || denormal;
+  fpu_set_condition_codes(c0, c1, c2, c3);
+    fpu_record_opcode(0x1e5:2);
+}
+                                                                    
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=0 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(0:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=1 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(1:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=2 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(2:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=3 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(3:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=4 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(4:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=5 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(5:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=6 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(6:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+:FXCH fregop      is vexMode=0 & byte=0xD9; frow=12 & fpage=1 & fregop & freg=7 & modidx & regidx & rmidx
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(7:2);
+    fpu_record_opcode((0x100:2 | (modidx << 6) | (regidx << 3) | rmidx));
+}
+
+:FXCH           is vexMode=0 & byte=0xD9; byte=0xC9
+{
+    FPUInstructionPointer = inst_start;
+    fpu_exchange_register(1:2);
+    fpu_record_opcode(0x1c9:2);
+}
+
+# FXSAVE carries an abridged (one-bit) tag image in physical-register order;
+# keep the architectural full tag word private to the x87 model.
+macro fxsave_tag(Mem) {
+  local t0:1 = ((FPUTagWord >>  0) & 3) != 3;
+  local t1:1 = ((FPUTagWord >>  2) & 3) != 3;
+  local t2:1 = ((FPUTagWord >>  4) & 3) != 3;
+  local t3:1 = ((FPUTagWord >>  6) & 3) != 3;
+  local t4:1 = ((FPUTagWord >>  8) & 3) != 3;
+  local t5:1 = ((FPUTagWord >> 10) & 3) != 3;
+  local t6:1 = ((FPUTagWord >> 12) & 3) != 3;
+  local t7:1 = ((FPUTagWord >> 14) & 3) != 3;
+  *:1 (Mem + 4) = t0 | (t1 << 1) | (t2 << 2) | (t3 << 3) |
+                   (t4 << 4) | (t5 << 5) | (t6 << 6) | (t7 << 7);
+}
+
+macro fxrstor_tag(Mem) {
+  local tag:2 = zext(*:1 (Mem + 4));
+  local e0:2 = zext((tag & 0x01) == 0) * 3;
+  local e1:2 = zext((tag & 0x02) == 0) * 3;
+  local e2:2 = zext((tag & 0x04) == 0) * 3;
+  local e3:2 = zext((tag & 0x08) == 0) * 3;
+  local e4:2 = zext((tag & 0x10) == 0) * 3;
+  local e5:2 = zext((tag & 0x20) == 0) * 3;
+  local e6:2 = zext((tag & 0x40) == 0) * 3;
+  local e7:2 = zext((tag & 0x80) == 0) * 3;
+  FPUTagWord = e0 | (e1 << 2) | (e2 << 4) | (e3 << 6) |
+               (e4 << 8) | (e5 << 10) | (e6 << 12) | (e7 << 14);
+}
+
+# fxsave and fxrstor
+macro _fxsave(Mem) {
+  *:2  (Mem)      = FPUControlWord;
+  *:2  (Mem +  2) = FPUStatusWord;
+  fxsave_tag(Mem);
+  # Byte 5 and each 16-byte ST/MM slot's tail are reserved. FXSAVE writes
+  # them as zero rather than retaining the old memory contents.
+  *:1  (Mem +  5) = 0:1;
+  *:2  (Mem +  6) = FPULastInstructionOpcode;
+  *:8  (Mem +  8) = FPUInstructionPointer;
+  *:8  (Mem + 16) = FPUDataPointer;
+  *:4  (Mem + 24) = MXCSR;
+  # This model implements the architectural low sixteen MXCSR control/status
+  # bits; report that supported-bit mask rather than retaining old memory.
+  *:4  (Mem + 28) = 0xffff:4;
+
+  # Save logical ST registers in 16-byte FXSAVE slots and clear their padding.
+  *:10 (Mem +  32) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+  *:6  (Mem +  42) = 0:6;
+  *:10 (Mem +  48) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+  *:6  (Mem +  58) = 0:6;
+  *:10 (Mem +  64) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10);
+  *:6  (Mem +  74) = 0:6;
+  *:10 (Mem +  80) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10);
+  *:6  (Mem +  90) = 0:6;
+  *:10 (Mem +  96) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10);
+  *:6  (Mem + 106) = 0:6;
+  *:10 (Mem + 112) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10);
+  *:6  (Mem + 122) = 0:6;
+  *:10 (Mem + 128) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10);
+  *:6  (Mem + 138) = 0:6;
+  *:10 (Mem + 144) = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10);
+  *:6  (Mem + 154) = 0:6;
+
+  *:16 (Mem + 160) = XMM0;
+  *:16 (Mem + 176) = XMM1;
+  *:16 (Mem + 192) = XMM2;
+  *:16 (Mem + 208) = XMM3;
+  *:16 (Mem + 224) = XMM4;
+  *:16 (Mem + 240) = XMM5;
+  *:16 (Mem + 256) = XMM6;
+  *:16 (Mem + 272) = XMM7;
+@ifdef IA64
+  *:16 (Mem + 288) = XMM8;
+  *:16 (Mem + 304) = XMM9;
+  *:16 (Mem + 320) = XMM10;
+  *:16 (Mem + 336) = XMM11;
+  *:16 (Mem + 352) = XMM12;
+  *:16 (Mem + 368) = XMM13;
+  *:16 (Mem + 384) = XMM14;
+  *:16 (Mem + 400) = XMM15;
+@endif
+}
+
+macro _fxrstor(Mem) {
+  FPUControlWord           = *:2  (Mem);
+  FPUStatusWord            = *:2  (Mem +  2);
+  fxrstor_tag(Mem);
+  FPULastInstructionOpcode = *:2  (Mem +  6);
+  FPUInstructionPointer    = *:8  (Mem +  8);
+  FPUDataPointer           = *:8  (Mem + 16);
+  MXCSR                    = *:4  (Mem + 24);
+
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = *:10 (Mem +  32);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = *:10 (Mem +  48);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 2) & 7) * 10) = *:10 (Mem +  64);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 3) & 7) * 10) = *:10 (Mem +  80);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 4) & 7) * 10) = *:10 (Mem +  96);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 5) & 7) * 10) = *:10 (Mem + 112);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 6) & 7) * 10) = *:10 (Mem + 128);
+  *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 7) & 7) * 10) = *:10 (Mem + 144);
+
+  XMM0 = *:16 (Mem + 160);
+  XMM1 = *:16 (Mem + 176);
+  XMM2 = *:16 (Mem + 192);
+  XMM3 = *:16 (Mem + 208);
+  XMM4 = *:16 (Mem + 224);
+  XMM5 = *:16 (Mem + 240);
+  XMM6 = *:16 (Mem + 256);
+  XMM7 = *:16 (Mem + 272);
+@ifdef IA64
+  XMM8 = *:16 (Mem + 288);
+  XMM9 = *:16 (Mem + 304);
+  XMM10 = *:16 (Mem + 320);
+  XMM11 = *:16 (Mem + 336);
+  XMM12 = *:16 (Mem + 352);
+  XMM13 = *:16 (Mem + 368);
+  XMM14 = *:16 (Mem + 384);
+  XMM15 = *:16 (Mem + 400);
+@endif
+}
+@ifdef IA64
+define pcodeop _fxsave64;
+define pcodeop _fxrstor64;
+@endif
+
+# this saves the FPU state into 512 bytes of memory
+:FXSAVE Mem    is $(LONGMODE_OFF) & vexMode=0 & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=0 ) ... & Mem
+{
+  _fxsave(Mem);
+}
+
+:FXRSTOR Mem   is $(LONGMODE_OFF) & vexMode=0 & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=1 ) ... & Mem
+{
+  _fxrstor(Mem);
+}
+
+@ifdef IA64
+# this saves the FPU state into 512 bytes of memory similar to the 32-bit mode
+:FXSAVE Mem    is $(LONGMODE_ON) & vexMode=0 & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=0 ) ... & Mem
+{
+  _fxsave(Mem);
+}
+
+:FXSAVE64 Mem    is $(LONGMODE_ON) & vexMode=0 & $(REX_W) & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=0 ) ... & Mem
+{
+  _fxsave(Mem);
+}
+
+:FXRSTOR Mem   is $(LONGMODE_ON) & vexMode=0 & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=1 ) ... & Mem
+{
+  _fxrstor(Mem);
+}
+
+:FXRSTOR64 Mem   is $(LONGMODE_ON) & vexMode=0 & $(REX_W) & byte=0x0F; byte=0xAE; ( mod != 0b11 & reg_opcode=1 ) ... & Mem
+{
+  _fxrstor(Mem);
+}
+@endif
+
+define pcodeop extract_significand;
+define pcodeop extract_exponent;
+:FXTRACT        is vexMode=0 & byte=0xD9; byte=0xF4                 
+{ 
+    FPUInstructionPointer = inst_start;
+    # A stack overflow aborts the extraction before it runs, so the
+    # divide-by-zero a zero operand would raise never appears. Decide it
+    # first: both the old and the new top hold the indefinite QNaN, and
+    # fpushv reports IE, SF and C1.
+    local top:2 = (FPUStatusWord >> 11) & 7;
+    local shift:2 = (((top - 1) & 7)) * 2;
+    local full:1 = ((FPUTagWord >> shift) & 3) != 3;
+    if (full) goto <overflow>;
+    # `extract_significand` and `extract_exponent` are the IEEE parts - a
+    # logB and a scaleB in disguise. Classifying the operand is x87's: a
+    # signalling NaN or an unnormal raises invalid and both results become
+    # that NaN quieted or the indefinite, a zero raises divide-by-zero and a
+    # denormal reports a denormal operand.
+    local faulted:1;
+    fpu_stack_underflow_out(0:2, faulted);
+    local fault_mask:10 = 0 - zext(faulted);
+    local qnan_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local source:10 = (*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) & ~fault_mask) | (qnan_indefinite & fault_mask);
+    local significand:10 = extract_significand(source);
+    local exponent:10 = extract_exponent(source);
+    local unsupported:1 = (source[64,15] != 0) && (source[63,1] == 0);
+    local signalling:1 = nan(source) && (source[62,1] == 0) && !unsupported;
+    local is_zero:1 = (source[64,15] == 0) && (source[0,64] == 0);
+    local denormal:1;
+    fpu_is_denormal(source, denormal);
+    fpu_signal_invalid_if(signalling || unsupported);
+    fpu_signal_denormal_if(denormal);
+    FPUStatusWord = FPUStatusWord | (zext(is_zero) << 2);
+    fpu_refresh_error_summary();
+    local indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    local quieted:10 = source | (zext(1:1) << 62);
+    local replaced:10 = (quieted * zext(signalling)) | (indefinite * zext(unsupported));
+    local replace:1 = signalling || unsupported;
+    significand = (significand * zext(!replace)) | replaced;
+    exponent = (exponent * zext(!replace)) | replaced;
+    fpu_clear_c1();
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = exponent;
+    fpu_underflow_indefinite(faulted, (((FPUStatusWord >> 11) & 7) * 10));
+    fpushv(significand);
+    goto <done>;
+<overflow>
+    local indefinite:10 = zext(0xc000000000000000:8);
+    indefinite = indefinite | (zext(0xffff:2) << 64);
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10) = indefinite;
+    fpushv(indefinite);
+<done>
+    fpu_record_opcode(0x1f4:2);
+}
+
+:FYL2X          is vexMode=0 & byte=0xD9; byte=0xF1                 
+{ 
+    FPUInstructionPointer = inst_start;
+    local log_round:2 = (FPUControlWord >> 10) & 3;
+    local log_flags:1 = float_log2_flags(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), log_round);
+    local log2st0:10 = float_log2(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), log_round);
+    # A negative operand has no logarithm: raise invalid here and hand the
+    # multiplication the indefinite, which it then propagates.
+    local log_invalid:1 = (log_flags & 1) != 0;
+    local log_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    log2st0 = (log2st0 * zext(!log_invalid)) | (log_indefinite * zext(log_invalid));
+    fpu_signal_invalid_if(log_invalid);
+    local prior_denormal:2 = FPUStatusWord & 2;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    # Invalid takes precedence over the logarithm's divide-by-zero: an
+    # indeterminate product reports IE alone. An unmasked divide-by-zero that
+    # does survive aborts the store and the pop.
+    local invalid:1 = (FPUStatusWord & 1) != 0;
+    # An infinite multiplier settles the result on its own, so the pole in the
+    # logarithm goes unreported, just as an indeterminate product does.
+    local multiplier:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local multiplier_infinite:1 = (multiplier[64,15] == 0x7fff) && (multiplier[63,1] == 1) &&
+                                  (multiplier[0,63] == 0);
+    local zero_divide:1 = ((log_flags & 4) != 0) && !nan(arithmetic_result) &&
+                          !multiplier_infinite;
+    FPUStatusWord = FPUStatusWord | (zext(zero_divide) << 2);
+    # A divide-by-zero decides the result on its own; the multiplication's
+    # denormal operand goes unreported, exactly as for an invalid one.
+    FPUStatusWord = (FPUStatusWord & ~(zext(zero_divide) * 2)) | prior_denormal;
+    # A zero product is exact however inexact the logarithm was.
+    local product_zero:1 = (arithmetic_result[64,15] == 0) &&
+                           (arithmetic_result[0,64] == 0);
+    FPUStatusWord = FPUStatusWord |
+                    (zext(((log_flags & 0x20) != 0) && !product_zero) << 5);
+    fpu_refresh_error_summary();
+    arithmetic_commit = arithmetic_commit && !(zero_divide && ((FPUControlWord & 4) == 0));
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x1f1:2);
+}
+:FYL2XP1        is vexMode=0 & byte=0xD9; byte=0xF9                 
+{ 
+    FPUInstructionPointer = inst_start;
+    one:4 = 1;
+    tmp:10 = int2float(one);
+    # The +1 is part of forming the operand, not an x87 arithmetic result:
+    # take the value from the explicit IEEE operation and drop its facts.
+    local incremented_flags:1;
+    log2st0:10 = 0;
+    local incremented:10 = 0;
+    ieee_add(*[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10), tmp, (FPUControlWord >> 10) & 3, incremented, incremented_flags);
+    local log_round:2 = (FPUControlWord >> 10) & 3;
+    local log_flags:1 = float_log2_flags(incremented, log_round);
+    log2st0 = float_log2(incremented, log_round);
+    # log2(1+x) keeps the sign of a zero x. Forming the sum first loses it,
+    # so restore it on the zero logarithm the sum produces.
+    local log_zero:1 = (log2st0[64,15] == 0) && (log2st0[0,64] == 0);
+    local operand_negative:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 0) & 7) * 10);
+    log2st0 = log2st0 | (zext(log_zero && (operand_negative[79,1] == 1)) << 79);
+    # A negative operand has no logarithm: raise invalid here and hand the
+    # multiplication the indefinite, which it then propagates.
+    local log_invalid:1 = (log_flags & 1) != 0;
+    local log_indefinite:10 = (zext(0xffff:2) << 64) | zext(0xc000000000000000:8);
+    log2st0 = (log2st0 * zext(!log_invalid)) | (log_indefinite * zext(log_invalid));
+    fpu_signal_invalid_if(log_invalid);
+    local prior_denormal:2 = FPUStatusWord & 2;
+    local arithmetic_result:10;
+    local arithmetic_commit:1;
+    fpu_ieee_mul_result(1:2, 1:2, *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10), log2st0, arithmetic_result, arithmetic_commit);
+    # Invalid takes precedence over the logarithm's divide-by-zero: an
+    # indeterminate product reports IE alone. An unmasked divide-by-zero that
+    # does survive aborts the store and the pop.
+    local invalid:1 = (FPUStatusWord & 1) != 0;
+    # An infinite multiplier settles the result on its own, so the pole in the
+    # logarithm goes unreported, just as an indeterminate product does.
+    local multiplier:10 = *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10);
+    local multiplier_infinite:1 = (multiplier[64,15] == 0x7fff) && (multiplier[63,1] == 1) &&
+                                  (multiplier[0,63] == 0);
+    local zero_divide:1 = ((log_flags & 4) != 0) && !nan(arithmetic_result) &&
+                          !multiplier_infinite;
+    FPUStatusWord = FPUStatusWord | (zext(zero_divide) << 2);
+    # A divide-by-zero decides the result on its own; the multiplication's
+    # denormal operand goes unreported, exactly as for an invalid one.
+    FPUStatusWord = (FPUStatusWord & ~(zext(zero_divide) * 2)) | prior_denormal;
+    # A zero product is exact however inexact the logarithm was.
+    local product_zero:1 = (arithmetic_result[64,15] == 0) &&
+                           (arithmetic_result[0,64] == 0);
+    FPUStatusWord = FPUStatusWord |
+                    (zext(((log_flags & 0x20) != 0) && !product_zero) << 5);
+    fpu_refresh_error_summary();
+    arithmetic_commit = arithmetic_commit && !(zero_divide && ((FPUControlWord & 4) == 0));
+    if (arithmetic_commit == 0) goto <arithmetic_done>;
+    *[x87]:10 (((((FPUStatusWord >> 11) & 7) + 1) & 7) * 10) = arithmetic_result;
+    fpop();
+<arithmetic_done>
+    fpu_record_opcode(0x1f9:2);
+}
+
+} # end with : lockprefx=0
