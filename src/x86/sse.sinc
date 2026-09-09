@@ -413,6 +413,111 @@ macro sse_sqrt64(dest, source) {
     dest = result;
 }
 
+# A compare reads its operands but produces no floating result, so only the
+# operand facts are reported: a denormal raises DE, and a NaN raises IE - any
+# NaN when `strict` is non-zero (COMIS and the ordered CMP predicates), a
+# signalling one alone otherwise (UCOMIS and the equality/ordering ones).
+# The operands come back flushed by DAZ, because the comparison itself must
+# see the flushed values.
+macro sse_compare32(a, b, strict) {
+    local de_a:1; sse_daz32(a, de_a);
+    local de_b:1; sse_daz32(b, de_b);
+    local a_nan:1 = (a[23,8] == 0xff) && (a[0,23] != 0);
+    local b_nan:1 = (b[23,8] == 0xff) && (b[0,23] != 0);
+    local signaling:1 = (a_nan && (a[22,1] == 0)) || (b_nan && (b[22,1] == 0));
+    local any:1 = (strict != 0) && (a_nan || b_nan);
+    local flags:1 = zext(signaling || any);
+    sse_report(flags, (de_a || de_b) && !(a_nan || b_nan));
+}
+
+# SSE MIN returns its second operand whenever either operand is a NaN or both
+# operands are zero of either sign, and the smaller operand otherwise; MAX is
+# symmetric. An ordered `f<` is false in exactly the return-the-second-operand
+# cases, so one comparison per lane selects the source, and the lane is moved
+# bit-for-bit so that a NaN payload survives unchanged. Either NaN raises IE.
+macro sse_min32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    sse_compare32(a, b, 1:1);
+    local pick:4 = 0 - zext(a f< b);
+    dest = (a & pick) | (b & ~pick);
+}
+
+macro sse_max32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    sse_compare32(a, b, 1:1);
+    local pick:4 = 0 - zext(b f< a);
+    dest = (a & pick) | (b & ~pick);
+}
+
+# COMIS raises IE for any NaN, UCOMIS only for a signalling one; both raise DE
+# for a denormal. EFLAGS follow the flushed operands.
+macro sse_comis32(lhs, rhs, strict) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    sse_compare32(a, b, strict);
+    fucompe(a, b);
+}
+
+# A compare reads its operands but produces no floating result, so only the
+# operand facts are reported: a denormal raises DE, and a NaN raises IE - any
+# NaN when `strict` is non-zero (COMIS and the ordered CMP predicates), a
+# signalling one alone otherwise (UCOMIS and the equality/ordering ones).
+# The operands come back flushed by DAZ, because the comparison itself must
+# see the flushed values.
+macro sse_compare64(a, b, strict) {
+    local de_a:1; sse_daz64(a, de_a);
+    local de_b:1; sse_daz64(b, de_b);
+    local a_nan:1 = (a[52,11] == 0x7ff) && (a[0,52] != 0);
+    local b_nan:1 = (b[52,11] == 0x7ff) && (b[0,52] != 0);
+    local signaling:1 = (a_nan && (a[51,1] == 0)) || (b_nan && (b[51,1] == 0));
+    local any:1 = (strict != 0) && (a_nan || b_nan);
+    local flags:1 = zext(signaling || any);
+    sse_report(flags, (de_a || de_b) && !(a_nan || b_nan));
+}
+
+# SSE MIN returns its second operand whenever either operand is a NaN or both
+# operands are zero of either sign, and the smaller operand otherwise; MAX is
+# symmetric. An ordered `f<` is false in exactly the return-the-second-operand
+# cases, so one comparison per lane selects the source, and the lane is moved
+# bit-for-bit so that a NaN payload survives unchanged. Either NaN raises IE.
+macro sse_min64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    sse_compare64(a, b, 1:1);
+    local pick:8 = 0 - zext(a f< b);
+    dest = (a & pick) | (b & ~pick);
+}
+
+macro sse_max64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    sse_compare64(a, b, 1:1);
+    local pick:8 = 0 - zext(b f< a);
+    dest = (a & pick) | (b & ~pick);
+}
+
+# COMIS raises IE for any NaN, UCOMIS only for a signalling one; both raise DE
+# for a denormal. EFLAGS follow the flushed operands.
+macro sse_comis64(lhs, rhs, strict) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    sse_compare64(a, b, strict);
+    fucompe(a, b);
+}
+
+# CMPPS/CMPPD/CMPSS/CMPSD signal invalid for any NaN under the ordered
+# predicates LT, LE, NLT and NLE, and for a signalling NaN alone under EQ,
+# UNORD, NEQ and ORD. The immediate is not readable from the constructor's own
+# semantics, and the compiler takes only one further operand beside the
+# memory form's ellipsis, so this replaces the CMP*_OPERAND suffix: it prints
+# exactly as that did and exports the distinction as well.
+XmmCmpOrdered:           is imm8=1 | imm8=2 | imm8=5 | imm8=6 { export 1:1; }
+XmmCmpOrdered:           is imm8=0 | imm8=3 | imm8=4 | imm8=7 { export 0:1; }
+XmmCmpOrdered: ", "^imm8 is imm8                              { export 0:1; }
+
+
 # The packed float operations are lifted lane by lane in p-code.
 macro divpd128(dst, src) {
     local a:16 = dst;
@@ -438,45 +543,33 @@ macro divps128(dst, src) {
 macro maxpd128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    local pick0:8 = 0 - zext(b[  0,64] f< a[  0,64]);
-    dst[  0,64] = (a[  0,64] & pick0) | (b[  0,64] & (~pick0));
-    local pick1:8 = 0 - zext(b[ 64,64] f< a[ 64,64]);
-    dst[ 64,64] = (a[ 64,64] & pick1) | (b[ 64,64] & (~pick1));
+    sse_max64(dst[  0,64], a[  0,64], b[  0,64]);
+    sse_max64(dst[ 64,64], a[ 64,64], b[ 64,64]);
 }
 
 macro maxps128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    local pick0:4 = 0 - zext(b[  0,32] f< a[  0,32]);
-    dst[  0,32] = (a[  0,32] & pick0) | (b[  0,32] & (~pick0));
-    local pick1:4 = 0 - zext(b[ 32,32] f< a[ 32,32]);
-    dst[ 32,32] = (a[ 32,32] & pick1) | (b[ 32,32] & (~pick1));
-    local pick2:4 = 0 - zext(b[ 64,32] f< a[ 64,32]);
-    dst[ 64,32] = (a[ 64,32] & pick2) | (b[ 64,32] & (~pick2));
-    local pick3:4 = 0 - zext(b[ 96,32] f< a[ 96,32]);
-    dst[ 96,32] = (a[ 96,32] & pick3) | (b[ 96,32] & (~pick3));
+    sse_max32(dst[  0,32], a[  0,32], b[  0,32]);
+    sse_max32(dst[ 32,32], a[ 32,32], b[ 32,32]);
+    sse_max32(dst[ 64,32], a[ 64,32], b[ 64,32]);
+    sse_max32(dst[ 96,32], a[ 96,32], b[ 96,32]);
 }
 
 macro minpd128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    local pick0:8 = 0 - zext(a[  0,64] f< b[  0,64]);
-    dst[  0,64] = (a[  0,64] & pick0) | (b[  0,64] & (~pick0));
-    local pick1:8 = 0 - zext(a[ 64,64] f< b[ 64,64]);
-    dst[ 64,64] = (a[ 64,64] & pick1) | (b[ 64,64] & (~pick1));
+    sse_min64(dst[  0,64], a[  0,64], b[  0,64]);
+    sse_min64(dst[ 64,64], a[ 64,64], b[ 64,64]);
 }
 
 macro minps128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    local pick0:4 = 0 - zext(a[  0,32] f< b[  0,32]);
-    dst[  0,32] = (a[  0,32] & pick0) | (b[  0,32] & (~pick0));
-    local pick1:4 = 0 - zext(a[ 32,32] f< b[ 32,32]);
-    dst[ 32,32] = (a[ 32,32] & pick1) | (b[ 32,32] & (~pick1));
-    local pick2:4 = 0 - zext(a[ 64,32] f< b[ 64,32]);
-    dst[ 64,32] = (a[ 64,32] & pick2) | (b[ 64,32] & (~pick2));
-    local pick3:4 = 0 - zext(a[ 96,32] f< b[ 96,32]);
-    dst[ 96,32] = (a[ 96,32] & pick3) | (b[ 96,32] & (~pick3));
+    sse_min32(dst[  0,32], a[  0,32], b[  0,32]);
+    sse_min32(dst[ 32,32], a[ 32,32], b[ 32,32]);
+    sse_min32(dst[ 64,32], a[ 64,32], b[ 64,32]);
+    sse_min32(dst[ 96,32], a[ 96,32], b[ 96,32]);
 }
 
 macro packsswb_xmm(dst, src) {
@@ -990,126 +1083,178 @@ with : lockprefx=0 {
     XmmReg1[96,32] = ~XmmReg1[96,32] & m[96,32];
 }
 
-:CMP^XmmCondPD^"PD"        XmmReg,m128^CMPPD_OPERAND      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xC2; (m128 & XmmReg ...); XmmCondPD & CMPPD_OPERAND
+:CMP^XmmCondPD^"PD"        XmmReg,m128^XmmCmpOrdered      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xC2; (m128 & XmmReg ...); XmmCondPD & XmmCmpOrdered
 {
     local m:16 = m128;
-	xmmTmp1_Qa = XmmReg[0,64];
-	xmmTmp1_Qb = XmmReg[64,64];
-
-	xmmTmp2_Qa = m[0,64];
-	xmmTmp2_Qb = m[64,64];
+	local strict:1 = XmmCmpOrdered;
+	local a0:8 = XmmReg[0,64];
+	local b0:8 = m[0,64];
+	sse_compare64(a0, b0, strict);
+	xmmTmp1_Qa = a0;
+	xmmTmp2_Qa = b0;
+	local a1:8 = XmmReg[64,64];
+	local b1:8 = m[64,64];
+	sse_compare64(a1, b1, strict);
+	xmmTmp1_Qb = a1;
+	xmmTmp2_Qb = b1;
 
 	build XmmCondPD;
-	
+
 	XmmReg[0,64] = xmmTmp1_Qa;
 	XmmReg[64,64] = xmmTmp1_Qb;
 }
 
-:CMP^XmmCondPD^"PD"        XmmReg1,XmmReg2^CMPPD_OPERAND  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondPD & CMPPD_OPERAND 
+:CMP^XmmCondPD^"PD"        XmmReg1,XmmReg2^XmmCmpOrdered  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondPD & XmmCmpOrdered 
 {
-	xmmTmp1_Qa = XmmReg1[0,64];
-	xmmTmp1_Qb = XmmReg1[64,64];
-	
-	xmmTmp2_Qa = XmmReg2[0,64];
-	xmmTmp2_Qb = XmmReg2[64,64];
-	
+	local strict:1 = XmmCmpOrdered;
+	local a0:8 = XmmReg1[0,64];
+	local b0:8 = XmmReg2[0,64];
+	sse_compare64(a0, b0, strict);
+	xmmTmp1_Qa = a0;
+	xmmTmp2_Qa = b0;
+	local a1:8 = XmmReg1[64,64];
+	local b1:8 = XmmReg2[64,64];
+	sse_compare64(a1, b1, strict);
+	xmmTmp1_Qb = a1;
+	xmmTmp2_Qb = b1;
+
 	build XmmCondPD;
-	
+
 	XmmReg1[0,64] = xmmTmp1_Qa;
 	XmmReg1[64,64] = xmmTmp1_Qb;
 }
 
-:CMP^XmmCondPS^"PS"        XmmReg,m128^CMPPS_OPERAND      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC2; (m128 & XmmReg ...); XmmCondPS & CMPPS_OPERAND
+:CMP^XmmCondPS^"PS"        XmmReg,m128^XmmCmpOrdered      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC2; (m128 & XmmReg ...); XmmCondPS & XmmCmpOrdered
 {
     local m:16 = m128;
-	xmmTmp1_Da = XmmReg[0,32];
-	xmmTmp1_Db = XmmReg[32,32];
-	xmmTmp1_Dc = XmmReg[64,32];
-	xmmTmp1_Dd = XmmReg[96,32];
-
-	xmmTmp2_Da = m[0,32];
-	xmmTmp2_Db = m[32,32];
-	xmmTmp2_Dc = m[64,32];
-	xmmTmp2_Dd = m[96,32];
+	local strict:1 = XmmCmpOrdered;
+	local a0:4 = XmmReg[0,32];
+	local b0:4 = m[0,32];
+	sse_compare32(a0, b0, strict);
+	xmmTmp1_Da = a0;
+	xmmTmp2_Da = b0;
+	local a1:4 = XmmReg[32,32];
+	local b1:4 = m[32,32];
+	sse_compare32(a1, b1, strict);
+	xmmTmp1_Db = a1;
+	xmmTmp2_Db = b1;
+	local a2:4 = XmmReg[64,32];
+	local b2:4 = m[64,32];
+	sse_compare32(a2, b2, strict);
+	xmmTmp1_Dc = a2;
+	xmmTmp2_Dc = b2;
+	local a3:4 = XmmReg[96,32];
+	local b3:4 = m[96,32];
+	sse_compare32(a3, b3, strict);
+	xmmTmp1_Dd = a3;
+	xmmTmp2_Dd = b3;
 
 	build XmmCondPS;
-	
+
 	XmmReg[0,32] = xmmTmp1_Da;
 	XmmReg[32,32] = xmmTmp1_Db;
 	XmmReg[64,32] = xmmTmp1_Dc;
 	XmmReg[96,32] = xmmTmp1_Dd;
 }
 
-:CMP^XmmCondPS^"PS"        XmmReg1,XmmReg2^CMPPS_OPERAND  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondPS & CMPPS_OPERAND 
+:CMP^XmmCondPS^"PS"        XmmReg1,XmmReg2^XmmCmpOrdered  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondPS & XmmCmpOrdered 
 {
-	xmmTmp1_Da = XmmReg1[0,32];
-	xmmTmp1_Db = XmmReg1[32,32];
-	xmmTmp1_Dc = XmmReg1[64,32];
-	xmmTmp1_Dd = XmmReg1[96,32];
-	
-	xmmTmp2_Da = XmmReg2[0,32];
-	xmmTmp2_Db = XmmReg2[32,32];
-	xmmTmp2_Dc = XmmReg2[64,32];
-	xmmTmp2_Dd = XmmReg2[96,32];
-	
+	local strict:1 = XmmCmpOrdered;
+	local a0:4 = XmmReg1[0,32];
+	local b0:4 = XmmReg2[0,32];
+	sse_compare32(a0, b0, strict);
+	xmmTmp1_Da = a0;
+	xmmTmp2_Da = b0;
+	local a1:4 = XmmReg1[32,32];
+	local b1:4 = XmmReg2[32,32];
+	sse_compare32(a1, b1, strict);
+	xmmTmp1_Db = a1;
+	xmmTmp2_Db = b1;
+	local a2:4 = XmmReg1[64,32];
+	local b2:4 = XmmReg2[64,32];
+	sse_compare32(a2, b2, strict);
+	xmmTmp1_Dc = a2;
+	xmmTmp2_Dc = b2;
+	local a3:4 = XmmReg1[96,32];
+	local b3:4 = XmmReg2[96,32];
+	sse_compare32(a3, b3, strict);
+	xmmTmp1_Dd = a3;
+	xmmTmp2_Dd = b3;
+
 	build XmmCondPS;
-	
+
 	XmmReg1[0,32] = xmmTmp1_Da;
 	XmmReg1[32,32] = xmmTmp1_Db;
 	XmmReg1[64,32] = xmmTmp1_Dc;
 	XmmReg1[96,32] = xmmTmp1_Dd;
 }
 
-:CMP^XmmCondSD^"SD"  XmmReg, m64^CMPSD_OPERAND  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0xC2; (m64 & XmmReg ...); XmmCondSD & CMPSD_OPERAND
-{ 
-	xmmTmp1_Qa = XmmReg[0,64];
-	xmmTmp2_Qa = m64;
+:CMP^XmmCondSD^"SD"  XmmReg, m64^XmmCmpOrdered  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0xC2; (m64 & XmmReg ...); XmmCondSD & XmmCmpOrdered
+{
+	local strict:1 = XmmCmpOrdered;
+	local a0:8 = XmmReg[0,64];
+	local b0:8 = m64;
+	sse_compare64(a0, b0, strict);
+	xmmTmp1_Qa = a0;
+	xmmTmp2_Qa = b0;
 	build XmmCondSD;
 	XmmReg[0,64] = xmmTmp1_Qa;
 }
 
-:CMP^XmmCondSD^"SD"  XmmReg1, XmmReg2^CMPSD_OPERAND  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondSD & CMPSD_OPERAND
-{ 
-	xmmTmp1_Qa = XmmReg1[0,64];
-	xmmTmp2_Qa = XmmReg2[0,64];
+:CMP^XmmCondSD^"SD"  XmmReg1, XmmReg2^XmmCmpOrdered  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondSD & XmmCmpOrdered
+{
+	local strict:1 = XmmCmpOrdered;
+	local a0:8 = XmmReg1[0,64];
+	local b0:8 = XmmReg2[0,64];
+	sse_compare64(a0, b0, strict);
+	xmmTmp1_Qa = a0;
+	xmmTmp2_Qa = b0;
 	build XmmCondSD;
 	XmmReg1[0,64] = xmmTmp1_Qa;
 }
 
-:CMP^XmmCondSS^"SS"  XmmReg, m32^CMPSS_OPERAND  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0xC2; (m32 & XmmReg ...); XmmCondSS & CMPSS_OPERAND
-{ 
-	xmmTmp1_Da = XmmReg[0,32];
-	xmmTmp2_Da = m32;
+:CMP^XmmCondSS^"SS"  XmmReg, m32^XmmCmpOrdered  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0xC2; (m32 & XmmReg ...); XmmCondSS & XmmCmpOrdered
+{
+	local strict:1 = XmmCmpOrdered;
+	local a0:4 = XmmReg[0,32];
+	local b0:4 = m32;
+	sse_compare32(a0, b0, strict);
+	xmmTmp1_Da = a0;
+	xmmTmp2_Da = b0;
 	build XmmCondSS;
 	XmmReg[0,32] = xmmTmp1_Da;
 }
 
-:CMP^XmmCondSS^"SS"  XmmReg1, XmmReg2^CMPSS_OPERAND  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondSS & CMPSS_OPERAND
-{ 
-	xmmTmp1_Da = XmmReg1[0,32];
-	xmmTmp2_Da = XmmReg2[0,32];
+:CMP^XmmCondSS^"SS"  XmmReg1, XmmReg2^XmmCmpOrdered  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0xC2; xmmmod=3 & XmmReg1 & XmmReg2; XmmCondSS & XmmCmpOrdered
+{
+	local strict:1 = XmmCmpOrdered;
+	local a0:4 = XmmReg1[0,32];
+	local b0:4 = XmmReg2[0,32];
+	sse_compare32(a0, b0, strict);
+	xmmTmp1_Da = a0;
+	xmmTmp2_Da = b0;
 	build XmmCondSS;
 	XmmReg1[0,32] = xmmTmp1_Da;
 }
 
 :COMISD       XmmReg, m64   is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2F; m64 & XmmReg ...
 {
-  fucompe(XmmReg[0,64], m64);
+  sse_comis64(XmmReg[0,64], m64, 1:1);
 }
 
 :COMISD       XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x2F; xmmmod=3 & XmmReg1 & XmmReg2
 {
-  fucompe(XmmReg1[0,64], XmmReg2[0,64]);
+  sse_comis64(XmmReg1[0,64], XmmReg2[0,64], 1:1);
 }
 
 :COMISS       XmmReg, m32       is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2F; m32 & XmmReg ...
 {
-  fucompe(XmmReg[0,32], m32);
+  sse_comis32(XmmReg[0,32], m32, 1:1);
 }
 
 :COMISS       XmmReg1, XmmReg2  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2F; xmmmod=3 & XmmReg1 & XmmReg2
 {
-  fucompe(XmmReg1[0,32], XmmReg2[0,32]);
+  sse_comis32(XmmReg1[0,32], XmmReg2[0,32], 1:1);
 }
 
 :CVTDQ2PD     XmmReg, m64       is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0xE6; m64 & XmmReg ...
@@ -1496,28 +1641,22 @@ with : lockprefx=0 {
 
 :MAXSD        XmmReg, m64         is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5F; XmmReg ... & m64
 {
-    local tmp:8 = m64;
-    if (tmp f< XmmReg[0,64]) goto inst_next;
-    XmmReg[0,64] = tmp;
+    sse_max64(XmmReg[0,64], XmmReg[0,64], m64);
 }
 
 :MAXSD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    if (XmmReg2[0,64] f< XmmReg1[0,64]) goto inst_next;
-    XmmReg1[0,64] = XmmReg2[0,64];
+    sse_max64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]);
 }
 
 :MAXSS        XmmReg, m32         is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5F; XmmReg ... & m32
 {
-    local tmp:4 = m32;
-    if (tmp f< XmmReg[0,32]) goto inst_next;
-    XmmReg[0,32] = tmp;
+    sse_max32(XmmReg[0,32], XmmReg[0,32], m32);
 }
 
 :MAXSS        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5F; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    if (XmmReg2[0,32] f< XmmReg1[0,32]) goto inst_next;
-    XmmReg1[0,32] = XmmReg2[0,32];
+    sse_max32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]);
 }
 
 :MINPD               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x5D; XmmReg1 ... & XmmReg2_m128
@@ -1528,28 +1667,22 @@ with : lockprefx=0 {
 
 :MINSD        XmmReg, m64         is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5D; XmmReg ... & m64
 {
-    local tmp:8 = m64;
-    if (XmmReg[0,64] f< tmp) goto inst_next;
-    XmmReg[0,64] = tmp;
+    sse_min64(XmmReg[0,64], XmmReg[0,64], m64);
 }
 
 :MINSD        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    if (XmmReg1[0,64] f< XmmReg2[0,64]) goto inst_next;
-    XmmReg1[0,64] = XmmReg2[0,64];
+    sse_min64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]);
 }
 
 :MINSS        XmmReg, m32         is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5D; XmmReg ... & m32
 {
-    local tmp:4 = m32;
-    if (XmmReg[0,32] f< tmp) goto inst_next;
-    XmmReg[0,32] = tmp;
+    sse_min32(XmmReg[0,32], XmmReg[0,32], m32);
 }
 
 :MINSS        XmmReg1, XmmReg2    is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5D; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    if (XmmReg1[0,32] f< XmmReg2[0,32]) goto inst_next;
-    XmmReg1[0,32] = XmmReg2[0,32];
+    sse_min32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]);
 }
 
 :MOVAPD              XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x28; XmmReg1 ... & XmmReg2_m128
@@ -2709,22 +2842,22 @@ with : lockprefx=0 {
 
 :UCOMISD         XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x2E; m64 & XmmReg ...
 {
-	fucompe(XmmReg[0,64], m64);
+	sse_comis64(XmmReg[0,64], m64, 0:1);
 }
 
 :UCOMISD         XmmReg1, XmmReg2  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x2E; xmmmod=3 & XmmReg1 & XmmReg2
 {
-	fucompe(XmmReg1[0,64], XmmReg2[0,64]);
+	sse_comis64(XmmReg1[0,64], XmmReg2[0,64], 0:1);
 }
 
 :UCOMISS         XmmReg, m32      is vexMode=0 & mandover=0 & byte=0x0F; byte=0x2E; m32 & XmmReg ...
 {
-    fucompe(XmmReg[0,32], m32);
+    sse_comis32(XmmReg[0,32], m32, 0:1);
 }
 
 :UCOMISS         XmmReg1, XmmReg2  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x2E; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    fucompe(XmmReg1[0,32], XmmReg2[0,32]);
+    sse_comis32(XmmReg1[0,32], XmmReg2[0,32], 0:1);
 }
 
 :UNPCKHPD            XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x15; XmmReg1 ... & XmmReg2_m128
