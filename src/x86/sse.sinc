@@ -148,22 +148,286 @@ macro fucompe(val1, val2) {
     SF = 0;
 }
 
-# The packed float operations are lifted lane by lane in p-code. MXCSR
-# rounding and exception flags are deliberately not modelled.
+
+# --- MXCSR exception reporting ---------------------------------------------
+# SSE keeps its whole floating policy here: the generic IEEE operations report
+# only IEEE facts, and these macros map them onto MXCSR, apply MXCSR's
+# rounding control, denormals-are-zero and flush-to-zero, and choose the
+# result an invalid operation delivers. Every corpus mode is masked, so the
+# flags only accumulate; #XM delivery is not modelled.
+
+# The MXCSR rounding-control field uses exactly the encoding the generic IEEE
+# operations take, so it passes straight through.
+macro sse_rc(rc) {
+    local field:4 = (MXCSR >> 13) & 3;
+    rc = field:1;
+}
+
+# IE, ZE, OE, UE and PE sit in MXCSR at the bit positions the generic flags
+# byte already uses; DE is determined from the source operands.
+# Invalid and divide-by-zero take precedence over the denormal report, and so
+# does a NaN operand: hardware raises neither DE nor anything else for a
+# denormal paired with a NaN.
+macro sse_report(flags, de) {
+    local suppressed:1 = (flags & 5) != 0;
+    MXCSR = MXCSR | (zext(flags) & 0x3d) | (zext(de && !suppressed) * 2);
+}
+
+# A denormal source operand raises DE, unless MXCSR.DAZ is set, in which case
+# it is replaced by a zero of its own sign before the operation sees it and
+# nothing is reported.
+macro sse_daz32(value, de) {
+    local denormal:1 = (value[23,8] == 0) && (value[0,23] != 0);
+    local daz:1 = ((MXCSR >> 6) & 1) != 0;
+    local flush:1 = denormal && daz;
+    local keep:4 = 0 - zext(!flush);
+    value = (value & keep) | (value & 0x80000000 & ~keep);
+    de = denormal && !daz;
+}
+
+# MXCSR.FTZ replaces a masked tiny result by a zero of its own sign and reports
+# both underflow and precision. Tininess alone triggers it: an exact denormal
+# result is flushed and reported just as a rounded one is, so the test is the
+# result's own encoding rather than the generic underflow fact.
+macro sse_ftz32(result, flags) {
+    local ftz:1 = ((MXCSR >> 15) & 1) != 0;
+    local masked:1 = ((MXCSR >> 11) & 1) != 0;
+    local tiny:1 = (result[23,8] == 0) && (result[0,23] != 0);
+    local flush:1 = ftz && masked && tiny;
+    local keep:4 = 0 - zext(!flush);
+    result = (result & keep) | (result & 0x80000000 & ~keep);
+    flags = flags | (flush * 0x30);
+}
+
+# x86 chooses what an invalid operation delivers, and how a NaN operand
+# propagates, rather than taking the generic operation's own NaN: a NaN first
+# operand wins, quieted, then a NaN second operand, and any other invalid
+# yields the QNaN indefinite. A one-operand form passes its operand twice.
+macro sse_invalid32(a, b, flags, result) {
+    local a_nan:1 = (a[23,8] == 0xff) && (a[0,23] != 0);
+    local b_nan:1 = (b[23,8] == 0xff) && (b[0,23] != 0);
+    local pick_a:4 = 0 - zext(a_nan);
+    local propagated:4 = ((a | 0x00400000) & pick_a) | ((b | 0x00400000) & ~pick_a);
+    local any_nan:1 = a_nan || b_nan;
+    local nan_mask:4 = 0 - zext(any_nan);
+    local indefinite_mask:4 = 0 - zext(((flags & 1) != 0) && !any_nan);
+    local substituted:4 = nan_mask | indefinite_mask;
+    result = (propagated & nan_mask) | (0xffc00000 & indefinite_mask) |
+             (result & ~substituted);
+}
+
+macro sse_add32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    local de_a:1; sse_daz32(a, de_a);
+    local de_b:1; sse_daz32(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_add(a, b, rc);
+    local flags:1 = float_add_flags(a, b, rc);
+    sse_invalid32(a, b, flags, result);
+    sse_ftz32(result, flags);
+    local nan_operand:1 = ((a[23,8] == 0xff) && (a[0,23] != 0)) ||
+                          ((b[23,8] == 0xff) && (b[0,23] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_sub32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    local de_a:1; sse_daz32(a, de_a);
+    local de_b:1; sse_daz32(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_sub(a, b, rc);
+    local flags:1 = float_sub_flags(a, b, rc);
+    sse_invalid32(a, b, flags, result);
+    sse_ftz32(result, flags);
+    local nan_operand:1 = ((a[23,8] == 0xff) && (a[0,23] != 0)) ||
+                          ((b[23,8] == 0xff) && (b[0,23] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_mul32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    local de_a:1; sse_daz32(a, de_a);
+    local de_b:1; sse_daz32(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_mul(a, b, rc);
+    local flags:1 = float_mul_flags(a, b, rc);
+    sse_invalid32(a, b, flags, result);
+    sse_ftz32(result, flags);
+    local nan_operand:1 = ((a[23,8] == 0xff) && (a[0,23] != 0)) ||
+                          ((b[23,8] == 0xff) && (b[0,23] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_div32(dest, lhs, rhs) {
+    local a:4 = lhs;
+    local b:4 = rhs;
+    local de_a:1; sse_daz32(a, de_a);
+    local de_b:1; sse_daz32(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_div(a, b, rc);
+    local flags:1 = float_div_flags(a, b, rc);
+    sse_invalid32(a, b, flags, result);
+    sse_ftz32(result, flags);
+    local nan_operand:1 = ((a[23,8] == 0xff) && (a[0,23] != 0)) ||
+                          ((b[23,8] == 0xff) && (b[0,23] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_sqrt32(dest, source) {
+    local a:4 = source;
+    local de_a:1; sse_daz32(a, de_a);
+    local rc:1; sse_rc(rc);
+    local result:4 = float_sqrt(a, rc);
+    local flags:1 = float_sqrt_flags(a, rc);
+    sse_invalid32(a, a, flags, result);
+    sse_ftz32(result, flags);
+    local nan_operand:1 = (a[23,8] == 0xff) && (a[0,23] != 0);
+    sse_report(flags, de_a && !nan_operand);
+    dest = result;
+}
+
+# A denormal source operand raises DE, unless MXCSR.DAZ is set, in which case
+# it is replaced by a zero of its own sign before the operation sees it and
+# nothing is reported.
+macro sse_daz64(value, de) {
+    local denormal:1 = (value[52,11] == 0) && (value[0,52] != 0);
+    local daz:1 = ((MXCSR >> 6) & 1) != 0;
+    local flush:1 = denormal && daz;
+    local keep:8 = 0 - zext(!flush);
+    value = (value & keep) | (value & 0x8000000000000000 & ~keep);
+    de = denormal && !daz;
+}
+
+# MXCSR.FTZ replaces a masked tiny result by a zero of its own sign and reports
+# both underflow and precision. Tininess alone triggers it: an exact denormal
+# result is flushed and reported just as a rounded one is, so the test is the
+# result's own encoding rather than the generic underflow fact.
+macro sse_ftz64(result, flags) {
+    local ftz:1 = ((MXCSR >> 15) & 1) != 0;
+    local masked:1 = ((MXCSR >> 11) & 1) != 0;
+    local tiny:1 = (result[52,11] == 0) && (result[0,52] != 0);
+    local flush:1 = ftz && masked && tiny;
+    local keep:8 = 0 - zext(!flush);
+    result = (result & keep) | (result & 0x8000000000000000 & ~keep);
+    flags = flags | (flush * 0x30);
+}
+
+# x86 chooses what an invalid operation delivers, and how a NaN operand
+# propagates, rather than taking the generic operation's own NaN: a NaN first
+# operand wins, quieted, then a NaN second operand, and any other invalid
+# yields the QNaN indefinite. A one-operand form passes its operand twice.
+macro sse_invalid64(a, b, flags, result) {
+    local a_nan:1 = (a[52,11] == 0x7ff) && (a[0,52] != 0);
+    local b_nan:1 = (b[52,11] == 0x7ff) && (b[0,52] != 0);
+    local pick_a:8 = 0 - zext(a_nan);
+    local propagated:8 = ((a | 0x0008000000000000) & pick_a) | ((b | 0x0008000000000000) & ~pick_a);
+    local any_nan:1 = a_nan || b_nan;
+    local nan_mask:8 = 0 - zext(any_nan);
+    local indefinite_mask:8 = 0 - zext(((flags & 1) != 0) && !any_nan);
+    local substituted:8 = nan_mask | indefinite_mask;
+    result = (propagated & nan_mask) | (0xfff8000000000000 & indefinite_mask) |
+             (result & ~substituted);
+}
+
+macro sse_add64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    local de_a:1; sse_daz64(a, de_a);
+    local de_b:1; sse_daz64(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:8 = float_add(a, b, rc);
+    local flags:1 = float_add_flags(a, b, rc);
+    sse_invalid64(a, b, flags, result);
+    sse_ftz64(result, flags);
+    local nan_operand:1 = ((a[52,11] == 0x7ff) && (a[0,52] != 0)) ||
+                          ((b[52,11] == 0x7ff) && (b[0,52] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_sub64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    local de_a:1; sse_daz64(a, de_a);
+    local de_b:1; sse_daz64(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:8 = float_sub(a, b, rc);
+    local flags:1 = float_sub_flags(a, b, rc);
+    sse_invalid64(a, b, flags, result);
+    sse_ftz64(result, flags);
+    local nan_operand:1 = ((a[52,11] == 0x7ff) && (a[0,52] != 0)) ||
+                          ((b[52,11] == 0x7ff) && (b[0,52] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_mul64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    local de_a:1; sse_daz64(a, de_a);
+    local de_b:1; sse_daz64(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:8 = float_mul(a, b, rc);
+    local flags:1 = float_mul_flags(a, b, rc);
+    sse_invalid64(a, b, flags, result);
+    sse_ftz64(result, flags);
+    local nan_operand:1 = ((a[52,11] == 0x7ff) && (a[0,52] != 0)) ||
+                          ((b[52,11] == 0x7ff) && (b[0,52] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_div64(dest, lhs, rhs) {
+    local a:8 = lhs;
+    local b:8 = rhs;
+    local de_a:1; sse_daz64(a, de_a);
+    local de_b:1; sse_daz64(b, de_b);
+    local rc:1; sse_rc(rc);
+    local result:8 = float_div(a, b, rc);
+    local flags:1 = float_div_flags(a, b, rc);
+    sse_invalid64(a, b, flags, result);
+    sse_ftz64(result, flags);
+    local nan_operand:1 = ((a[52,11] == 0x7ff) && (a[0,52] != 0)) ||
+                          ((b[52,11] == 0x7ff) && (b[0,52] != 0));
+    sse_report(flags, (de_a || de_b) && !nan_operand);
+    dest = result;
+}
+
+macro sse_sqrt64(dest, source) {
+    local a:8 = source;
+    local de_a:1; sse_daz64(a, de_a);
+    local rc:1; sse_rc(rc);
+    local result:8 = float_sqrt(a, rc);
+    local flags:1 = float_sqrt_flags(a, rc);
+    sse_invalid64(a, a, flags, result);
+    sse_ftz64(result, flags);
+    local nan_operand:1 = (a[52,11] == 0x7ff) && (a[0,52] != 0);
+    sse_report(flags, de_a && !nan_operand);
+    dest = result;
+}
+
+# The packed float operations are lifted lane by lane in p-code.
 macro divpd128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    dst[  0,64] = a[  0,64] f/ b[  0,64];
-    dst[ 64,64] = a[ 64,64] f/ b[ 64,64];
+    sse_div64(dst[  0,64], a[  0,64], b[  0,64]);
+    sse_div64(dst[ 64,64], a[ 64,64], b[ 64,64]);
 }
 
 macro divps128(dst, src) {
     local a:16 = dst;
     local b:16 = src;
-    dst[  0,32] = a[  0,32] f/ b[  0,32];
-    dst[ 32,32] = a[ 32,32] f/ b[ 32,32];
-    dst[ 64,32] = a[ 64,32] f/ b[ 64,32];
-    dst[ 96,32] = a[ 96,32] f/ b[ 96,32];
+    sse_div32(dst[  0,32], a[  0,32], b[  0,32]);
+    sse_div32(dst[ 32,32], a[ 32,32], b[ 32,32]);
+    sse_div32(dst[ 64,32], a[ 64,32], b[ 64,32]);
+    sse_div32(dst[ 96,32], a[ 96,32], b[ 96,32]);
 }
 
 # SSE MIN returns its second operand whenever either operand is a NaN or both
@@ -395,16 +659,16 @@ macro psrad128(xmm, count) {
 
 macro sqrtpd128(dst, src) {
     local b:16 = src;
-    dst[  0,64] = sqrt(b[  0,64]);
-    dst[ 64,64] = sqrt(b[ 64,64]);
+    sse_sqrt64(dst[  0,64], b[  0,64]);
+    sse_sqrt64(dst[ 64,64], b[ 64,64]);
 }
 
 macro sqrtps128(dst, src) {
     local b:16 = src;
-    dst[  0,32] = sqrt(b[  0,32]);
-    dst[ 32,32] = sqrt(b[ 32,32]);
-    dst[ 64,32] = sqrt(b[ 64,32]);
-    dst[ 96,32] = sqrt(b[ 96,32]);
+    sse_sqrt32(dst[  0,32], b[  0,32]);
+    sse_sqrt32(dst[ 32,32], b[ 32,32]);
+    sse_sqrt32(dst[ 64,32], b[ 64,32]);
+    sse_sqrt32(dst[ 96,32], b[ 96,32]);
 }
 
 # --- SSE4.1 immediate-controlled lanes -------------------------------------
@@ -639,53 +903,53 @@ with : lockprefx=0 {
 
 :ADDPD            XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x58; XmmReg1 ... & XmmReg2_m128
 {
-    XmmReg1[0,64]  = XmmReg1[0,64]  f+ XmmReg2_m128[0,64];
-    XmmReg1[64,64] = XmmReg1[64,64] f+ XmmReg2_m128[64,64];
+    sse_add64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2_m128[0,64]);
+    sse_add64(XmmReg1[64,64], XmmReg1[64,64], XmmReg2_m128[64,64]);
 }
 
 :ADDPS            XmmReg1, XmmReg2_m128  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x58; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;	# Guarantee value is in a fixed location
-    XmmReg1[0,32] = XmmReg1[0,32] f+ m[0,32];
-    XmmReg1[32,32] = XmmReg1[32,32] f+ m[32,32];
-    XmmReg1[64,32] = XmmReg1[64,32] f+ m[64,32];
-    XmmReg1[96,32] = XmmReg1[96,32] f+ m[96,32];
+    sse_add32(XmmReg1[0,32], XmmReg1[0,32], m[0,32]);
+    sse_add32(XmmReg1[32,32], XmmReg1[32,32], m[32,32]);
+    sse_add32(XmmReg1[64,32], XmmReg1[64,32], m[64,32]);
+    sse_add32(XmmReg1[96,32], XmmReg1[96,32], m[96,32]);
 }
 
 :ADDSD        XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x58; m64 & XmmReg ...
 {
-    XmmReg[0,64] = XmmReg[0,64] f+ m64;
+    sse_add64(XmmReg[0,64], XmmReg[0,64], m64);
 }
 
 :ADDSD        XmmReg1, XmmReg2 is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x58; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,64] = XmmReg1[0,64] f+ XmmReg2[0,64];
+    sse_add64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]);
 }
 
 :ADDSS        XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x58; m32 & XmmReg ...
 {
-    XmmReg[0,32] = XmmReg[0,32] f+ m32;
+    sse_add32(XmmReg[0,32], XmmReg[0,32], m32);
 }
 
 :ADDSS        XmmReg1, XmmReg2 is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x58; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,32] = XmmReg1[0,32] f+ XmmReg2[0,32];
+    sse_add32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]);
 }
 
 :ADDSUBPD         XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0xD0; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,64] = XmmReg1[0,64] f- m[0,64];
-    XmmReg1[64,64] = XmmReg1[64,64] f+ m[64,64];
+    sse_sub64(XmmReg1[0,64], XmmReg1[0,64], m[0,64]);
+    sse_add64(XmmReg1[64,64], XmmReg1[64,64], m[64,64]);
 }
 
 :ADDSUBPS         XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0xD0; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = XmmReg1[0,32] f- m[0,32];
-    XmmReg1[32,32] = XmmReg1[32,32] f+ m[32,32];
-    XmmReg1[64,32] = XmmReg1[64,32] f- m[64,32];
-    XmmReg1[96,32] = XmmReg1[96,32] f+ m[96,32];
+    sse_sub32(XmmReg1[0,32], XmmReg1[0,32], m[0,32]);
+    sse_add32(XmmReg1[32,32], XmmReg1[32,32], m[32,32]);
+    sse_sub32(XmmReg1[64,32], XmmReg1[64,32], m[64,32]);
+    sse_add32(XmmReg1[96,32], XmmReg1[96,32], m[96,32]);
 }
 
 # special FLOATING POINT bitwise AND
@@ -1146,54 +1410,54 @@ with : lockprefx=0 {
 
 :DIVSD        XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5E; m64 & XmmReg ...
 {
-    XmmReg[0,64] = XmmReg[0,64] f/ m64;
+    sse_div64(XmmReg[0,64], XmmReg[0,64], m64);
 }
 
 :DIVSD        XmmReg1, XmmReg2 is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,64] = XmmReg1[0,64] f/ XmmReg2[0,64];
+    sse_div64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]);
 }
 
 :DIVSS        XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x5E; m32 & XmmReg ...
 {
-    XmmReg[0,32] = XmmReg[0,32] f/ m32;
+    sse_div32(XmmReg[0,32], XmmReg[0,32], m32);
 }
 
 :DIVSS        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x5E; xmmmod=3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,32] = XmmReg1[0,32] f/ XmmReg2[0,32];
+    sse_div32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]);
 }
 
 :HADDPD               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x7C; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,64] = XmmReg1[0,64] f+ XmmReg1[64,64];
-    XmmReg1[64,64] = m[0,64]   f+ m[64,64];
+    sse_add64(XmmReg1[0,64], XmmReg1[0,64], XmmReg1[64,64]);
+    sse_add64(XmmReg1[64,64], m[0,64], m[64,64]);
 }
 
 :HADDPS               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x7C; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = XmmReg1[0,32] f+ XmmReg1[32,32];
-    XmmReg1[32,32] = XmmReg1[64,32] f+ XmmReg1[96,32];
-    XmmReg1[64,32] = m[0,32]   f+ m[32,32];
-    XmmReg1[96,32] = m[64,32]   f+ m[96,32];
+    sse_add32(XmmReg1[0,32], XmmReg1[0,32], XmmReg1[32,32]);
+    sse_add32(XmmReg1[32,32], XmmReg1[64,32], XmmReg1[96,32]);
+    sse_add32(XmmReg1[64,32], m[0,32], m[32,32]);
+    sse_add32(XmmReg1[96,32], m[64,32], m[96,32]);
 }
 
 :HSUBPD               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x7D; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,64] = XmmReg1[0,64] f- XmmReg1[64,64];
-    XmmReg1[64,64] = m[0,64]   f- m[64,64];
+    sse_sub64(XmmReg1[0,64], XmmReg1[0,64], XmmReg1[64,64]);
+    sse_sub64(XmmReg1[64,64], m[0,64], m[64,64]);
 }
 
 :HSUBPS               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x7D; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = XmmReg1[0,32] f- XmmReg1[32,32];
-    XmmReg1[32,32] = XmmReg1[64,32] f- XmmReg1[96,32];
-    XmmReg1[64,32] = m[0,32]   f- m[32,32];
-    XmmReg1[96,32] = m[64,32]   f- m[96,32];
+    sse_sub32(XmmReg1[0,32], XmmReg1[0,32], XmmReg1[32,32]);
+    sse_sub32(XmmReg1[32,32], XmmReg1[64,32], XmmReg1[96,32]);
+    sse_sub32(XmmReg1[64,32], m[0,32], m[32,32]);
+    sse_sub32(XmmReg1[96,32], m[64,32], m[96,32]);
 }
 
 :LDDQU        XmmReg, m128        is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xF0; XmmReg ... & m128 { XmmReg = lddqu(XmmReg, m128); }
@@ -1527,37 +1791,37 @@ with : lockprefx=0 {
 :MULPD            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x59; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,64] = XmmReg1[0,64] f* m[0,64];
-    XmmReg1[64,64] = XmmReg1[64,64] f* m[64,64];
+    sse_mul64(XmmReg1[0,64], XmmReg1[0,64], m[0,64]);
+    sse_mul64(XmmReg1[64,64], XmmReg1[64,64], m[64,64]);
 }
 
 :MULPS            XmmReg1, XmmReg2_m128  is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x59; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = XmmReg1[0,32] f* m[0,32];
-    XmmReg1[32,32] = XmmReg1[32,32] f* m[32,32];
-    XmmReg1[64,32] = XmmReg1[64,32] f* m[64,32];
-    XmmReg1[96,32] = XmmReg1[96,32] f* m[96,32];
+    sse_mul32(XmmReg1[0,32], XmmReg1[0,32], m[0,32]);
+    sse_mul32(XmmReg1[32,32], XmmReg1[32,32], m[32,32]);
+    sse_mul32(XmmReg1[64,32], XmmReg1[64,32], m[64,32]);
+    sse_mul32(XmmReg1[96,32], XmmReg1[96,32], m[96,32]);
 }
 
 :MULSD        XmmReg, m64      is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x59;  m64 & XmmReg ...
 {
-    XmmReg[0,64] = XmmReg[0,64] f* m64;
+    sse_mul64(XmmReg[0,64], XmmReg[0,64], m64);
 }
 
 :MULSD        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0x59; xmmmod = 3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,64] = XmmReg1[0,64] f* XmmReg2[0,64];
+    sse_mul64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]);
 }
 
 :MULSS        XmmReg, m32      is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x59; m32 & XmmReg ...
 {
-    XmmReg[0,32] = XmmReg[0,32] f* m32;
+    sse_mul32(XmmReg[0,32], XmmReg[0,32], m32);
 }
 
 :MULSS        XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x59; xmmmod = 3 & XmmReg1 & XmmReg2
 {
-    XmmReg1[0,32] = XmmReg1[0,32] f* XmmReg2[0,32];
+    sse_mul32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]);
 }
 
 :ORPD              XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x56; XmmReg1 ... & XmmReg2_m128
@@ -2411,37 +2675,37 @@ with : lockprefx=0 {
 :SQRTPS              XmmReg1, XmmReg2_m128  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x51; XmmReg1 ... & XmmReg2_m128
 { sqrtps128(XmmReg1, XmmReg2_m128); }
 
-:SQRTSD          XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; XmmReg ... & m64 { XmmReg[0,64] = sqrt(m64); }
+:SQRTSD          XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; XmmReg ... & m64 { sse_sqrt64(XmmReg[0,64], m64); }
 
-:SQRTSD          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,64] = sqrt(XmmReg2[0,64]); }
+:SQRTSD          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { sse_sqrt64(XmmReg1[0,64], XmmReg2[0,64]); }
 
-:SQRTSS          XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x51; XmmReg ... & m32 { XmmReg[0,32] = sqrt(m32); }
+:SQRTSS          XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x51; XmmReg ... & m32 { sse_sqrt32(XmmReg[0,32], m32); }
 
-:SQRTSS          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,32] = sqrt(XmmReg2[0,32]); }
+:SQRTSS          XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x51; xmmmod=3 & XmmReg1 & XmmReg2 { sse_sqrt32(XmmReg1[0,32], XmmReg2[0,32]); }
 
 :SUBPD               XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x5C; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,64] = XmmReg1[0,64] f- m[0,64];
-    XmmReg1[64,64] = XmmReg1[64,64] f- m[64,64];
+    sse_sub64(XmmReg1[0,64], XmmReg1[0,64], m[0,64]);
+    sse_sub64(XmmReg1[64,64], XmmReg1[64,64], m[64,64]);
 }
 
 :SUBPS               XmmReg1, XmmReg2_m128  is vexMode=0 & mandover=0 & byte=0x0F; byte=0x5C; XmmReg1 ... & XmmReg2_m128
 {
     local m:16 = XmmReg2_m128;
-    XmmReg1[0,32] = XmmReg1[0,32] f- m[0,32];
-    XmmReg1[32,32] = XmmReg1[32,32] f- m[32,32];
-    XmmReg1[64,32] = XmmReg1[64,32] f- m[64,32];
-    XmmReg1[96,32] = XmmReg1[96,32] f- m[96,32];
+    sse_sub32(XmmReg1[0,32], XmmReg1[0,32], m[0,32]);
+    sse_sub32(XmmReg1[32,32], XmmReg1[32,32], m[32,32]);
+    sse_sub32(XmmReg1[64,32], XmmReg1[64,32], m[64,32]);
+    sse_sub32(XmmReg1[96,32], XmmReg1[96,32], m[96,32]);
 }
 
-:SUBSD           XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5C; XmmReg ... & m64 { XmmReg[0,64] = XmmReg[0,64] f- m64; }
+:SUBSD           XmmReg, m64      is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5C; XmmReg ... & m64 { sse_sub64(XmmReg[0,64], XmmReg[0,64], m64); }
 
-:SUBSD           XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5C; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,64] = XmmReg1[0,64] f- XmmReg2[0,64]; }
+:SUBSD           XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F2) & byte=0x0F; byte=0x5C; xmmmod=3 & XmmReg1 & XmmReg2 { sse_sub64(XmmReg1[0,64], XmmReg1[0,64], XmmReg2[0,64]); }
 
-:SUBSS           XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x5C; XmmReg ...& m32 { XmmReg[0,32] = XmmReg[0,32] f- m32; }
+:SUBSS           XmmReg, m32      is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x5C; XmmReg ...& m32 { sse_sub32(XmmReg[0,32], XmmReg[0,32], m32); }
 
-:SUBSS           XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x5C; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,32] = XmmReg1[0,32] f- XmmReg2[0,32]; }
+:SUBSS           XmmReg1, XmmReg2  is vexMode=0 & $(PRE_F3) & byte=0x0F; byte=0x5C; xmmmod=3 & XmmReg1 & XmmReg2 { sse_sub32(XmmReg1[0,32], XmmReg1[0,32], XmmReg2[0,32]); }
 
 :UCOMISD         XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x2E; m64 & XmmReg ...
 {
