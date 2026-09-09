@@ -8675,60 +8675,153 @@ macro psrad64(mmx, count) {
 :PSLLQ          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF3; mmxmod = 3 & mmxreg1op & mmxreg2op { psllq64(mmxreg1op, mmxreg2op); }
 :PSLLQ          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=6 & mmxreg2dest; imm8 { psllq64(mmxreg2dest, zext(imm8)); }
 
+# The SSE shift-by-count forms take a single 64-bit count from the low quadword
+# of the source operand -- it is not a per-lane count -- and a count at or
+# beyond the lane width produces an all-zero lane (an all-sign-bits lane for an
+# arithmetic shift). Clamp the count to the lane width the way the MMX macros
+# above do, so that SLEIGH's narrowing of the count to the lane width cannot
+# silently wrap an oversized count.
 macro psllw128(xmm, count) {
-    local tmp:8 = count:8;
-    xmm[  0,16] = xmm[  0,16] << tmp;
-    xmm[ 16,16] = xmm[ 16,16] << tmp;
-    xmm[ 32,16] = xmm[ 32,16] << tmp;
-    xmm[ 48,16] = xmm[ 48,16] << tmp;
-    xmm[ 64,16] = xmm[ 64,16] << tmp;
-    xmm[ 80,16] = xmm[ 80,16] << tmp;
-    xmm[ 96,16] = xmm[ 96,16] << tmp;
-    xmm[112,16] = xmm[112,16] << tmp;
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    xmm[  0,16] = xmm[  0,16] << amount;
+    xmm[ 16,16] = xmm[ 16,16] << amount;
+    xmm[ 32,16] = xmm[ 32,16] << amount;
+    xmm[ 48,16] = xmm[ 48,16] << amount;
+    xmm[ 64,16] = xmm[ 64,16] << amount;
+    xmm[ 80,16] = xmm[ 80,16] << amount;
+    xmm[ 96,16] = xmm[ 96,16] << amount;
+    xmm[112,16] = xmm[112,16] << amount;
+}
+
+macro pslld128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    xmm[  0,32] = xmm[  0,32] << amount;
+    xmm[ 32,32] = xmm[ 32,32] << amount;
+    xmm[ 64,32] = xmm[ 64,32] << amount;
+    xmm[ 96,32] = xmm[ 96,32] << amount;
+}
+
+macro psllq128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    xmm[  0,64] = xmm[  0,64] << amount;
+    xmm[ 64,64] = xmm[ 64,64] << amount;
+}
+
+macro psrlw128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    xmm[  0,16] = xmm[  0,16] >> amount;
+    xmm[ 16,16] = xmm[ 16,16] >> amount;
+    xmm[ 32,16] = xmm[ 32,16] >> amount;
+    xmm[ 48,16] = xmm[ 48,16] >> amount;
+    xmm[ 64,16] = xmm[ 64,16] >> amount;
+    xmm[ 80,16] = xmm[ 80,16] >> amount;
+    xmm[ 96,16] = xmm[ 96,16] >> amount;
+    xmm[112,16] = xmm[112,16] >> amount;
+}
+
+macro psrld128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    xmm[  0,32] = xmm[  0,32] >> amount;
+    xmm[ 32,32] = xmm[ 32,32] >> amount;
+    xmm[ 64,32] = xmm[ 64,32] >> amount;
+    xmm[ 96,32] = xmm[ 96,32] >> amount;
+}
+
+macro psrlq128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    xmm[  0,64] = xmm[  0,64] >> amount;
+    xmm[ 64,64] = xmm[ 64,64] >> amount;
+}
+
+macro psraw128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    xmm[  0,16] = xmm[  0,16] s>> amount;
+    xmm[ 16,16] = xmm[ 16,16] s>> amount;
+    xmm[ 32,16] = xmm[ 32,16] s>> amount;
+    xmm[ 48,16] = xmm[ 48,16] s>> amount;
+    xmm[ 64,16] = xmm[ 64,16] s>> amount;
+    xmm[ 80,16] = xmm[ 80,16] s>> amount;
+    xmm[ 96,16] = xmm[ 96,16] s>> amount;
+    xmm[112,16] = xmm[112,16] s>> amount;
+}
+
+macro psrad128(xmm, count) {
+    local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    xmm[  0,32] = xmm[  0,32] s>> amount;
+    xmm[ 32,32] = xmm[ 32,32] s>> amount;
+    xmm[ 64,32] = xmm[ 64,32] s>> amount;
+    xmm[ 96,32] = xmm[ 96,32] s>> amount;
 }
 #@family sse
-:PSLLW          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF1; XmmReg ... & m128 ...                       { psllw128(XmmReg, m128); }
-:PSLLW          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF1; xmmmod = 3 & XmmReg1 & XmmReg2              { psllw128(XmmReg1, XmmReg2); }
-:PSLLW          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8   { local count:8 = imm8; psllw128(XmmReg2, count); }
-
-:PSLLD          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF2; XmmReg ... & m128 ... {
-  local m:16 = m128;
-  XmmReg[0,32] = XmmReg[0,32] << m[0,32];
-  XmmReg[32,32] = XmmReg[32,32] << m[32,32];
-  XmmReg[64,32] = XmmReg[64,32] << m[64,32];
-  XmmReg[96,32] = XmmReg[96,32] << m[96,32];
+:PSLLW           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF1; XmmReg ... & m128 ...
+{
+    local m:16 = m128;
+    psllw128(XmmReg, m[0,64]);
 }
 
-:PSLLD          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF2; xmmmod = 3 & XmmReg1 & XmmReg2 {
-  XmmReg1[0,32] = XmmReg1[0,32] << XmmReg2[0,32];
-  XmmReg1[32,32] = XmmReg1[32,32] << XmmReg2[32,32];
-  XmmReg1[64,32] = XmmReg1[64,32] << XmmReg2[64,32];
-  XmmReg1[96,32] = XmmReg1[96,32] << XmmReg2[96,32];
+:PSLLW           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF1; xmmmod = 3 & XmmReg1 & XmmReg2
+{
+    #save this off in case XmmReg1 and XmmReg2 are the same register
+    local count:8 = XmmReg2[0,64];
+    psllw128(XmmReg1, count);
 }
 
-:PSLLD          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8 {
-  XmmReg2[0,32] = XmmReg2[0,32] << imm8;
-  XmmReg2[32,32] = XmmReg2[32,32] << imm8;
-  XmmReg2[64,32] = XmmReg2[64,32] << imm8;
-  XmmReg2[96,32] = XmmReg2[96,32] << imm8;
-}
-                    
-:PSLLQ          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF3; XmmReg ... & m128 ... {
-  local m:16 = m128;
-  XmmReg[0,64] = XmmReg[0,64] << m[0,64];
-  XmmReg[64,64] = XmmReg[64,64] << m[64,64];
+:PSLLW           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8
+{
+    psllw128(XmmReg2, zext(imm8));
 }
 
-:PSLLQ          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF3; xmmmod = 3 & XmmReg1 & XmmReg2 {
-  XmmReg1[0,64] = XmmReg1[0,64] << XmmReg2[0,64];
-  XmmReg1[64,64] = XmmReg1[64,64] << XmmReg2[64,64];
+:PSLLD           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF2; XmmReg ... & m128 ...
+{
+    local m:16 = m128;
+    pslld128(XmmReg, m[0,64]);
 }
 
-:PSLLQ          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8 {
-  XmmReg2[0,64] = XmmReg2[0,64] << imm8;
-  XmmReg2[64,64] = XmmReg2[64,64] << imm8;
+:PSLLD           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF2; xmmmod = 3 & XmmReg1 & XmmReg2
+{
+    #save this off in case XmmReg1 and XmmReg2 are the same register
+    local count:8 = XmmReg2[0,64];
+    pslld128(XmmReg1, count);
 }
 
+:PSLLD           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8
+{
+    pslld128(XmmReg2, zext(imm8));
+}
+
+:PSLLQ           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF3; XmmReg ... & m128 ...
+{
+    local m:16 = m128;
+    psllq128(XmmReg, m[0,64]);
+}
+
+:PSLLQ           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF3; xmmmod = 3 & XmmReg1 & XmmReg2
+{
+    #save this off in case XmmReg1 and XmmReg2 are the same register
+    local count:8 = XmmReg2[0,64];
+    psllq128(XmmReg1, count);
+}
+
+:PSLLQ           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=6 & XmmReg2; imm8
+{
+    psllq128(XmmReg2, zext(imm8));
+}
 #@family mmx
 :PSRAW          mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE1; mmxregop ... & m64 ... { psraw64(mmxregop, m64); }
 :PSRAW          mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xE1; mmxmod = 3 & mmxreg1op & mmxreg2op { psraw64(mmxreg1op, mmxreg2op); }
@@ -8743,49 +8836,42 @@ macro psllw128(xmm, count) {
 :PSRAD          mmxreg2dest, imm8    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=4 & mmxreg2dest; imm8
 { psrad64(mmxreg2dest, zext(imm8)); }
 
-macro psraw128(xmm, count) {
-    local tmp:8 = count:8;
-    xmm[  0,16] = xmm[  0,16] s>> tmp;
-    xmm[ 16,16] = xmm[ 16,16] s>> tmp;
-    xmm[ 32,16] = xmm[ 32,16] s>> tmp;
-    xmm[ 48,16] = xmm[ 48,16] s>> tmp;
-    xmm[ 64,16] = xmm[ 64,16] s>> tmp;
-    xmm[ 80,16] = xmm[ 80,16] s>> tmp;
-    xmm[ 96,16] = xmm[ 96,16] s>> tmp;
-    xmm[112,16] = xmm[112,16] s>> tmp;
-}
 #@family sse
-:PSRAW          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE1; XmmReg ... & m128 ...                       { psraw128(XmmReg, m128); }
-:PSRAW          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE1; xmmmod = 3 & XmmReg1 & XmmReg2              { psraw128(XmmReg1, XmmReg2); }
-:PSRAW          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=4 & XmmReg2; imm8   { local count:8 = imm8; psraw128(XmmReg2, count); }
-                    
-:PSRAD          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE2; m128 & XmmReg ...
+:PSRAW           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE1; XmmReg ... & m128 ...
 {
-# a count greater than 31 just clears all the bits
-    XmmReg[0,32] = XmmReg[0,32] s>> m128;
-    XmmReg[32,32] = XmmReg[32,32] s>> m128;
-    XmmReg[64,32] = XmmReg[64,32] s>> m128;
-    XmmReg[96,32] = XmmReg[96,32] s>> m128;
+    local m:16 = m128;
+    psraw128(XmmReg, m[0,64]);
 }
 
-:PSRAD          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE2; xmmmod = 3 & XmmReg1 & XmmReg2
+:PSRAW           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE1; xmmmod = 3 & XmmReg1 & XmmReg2
 {
-# a count greater than 31 just clears all the bits
-    XmmReg1[0,32] = XmmReg1[0,32] s>> XmmReg2;
-    XmmReg1[32,32] = XmmReg1[32,32] s>> XmmReg2;
-    XmmReg1[64,32] = XmmReg1[64,32] s>> XmmReg2;
-    XmmReg1[96,32] = XmmReg1[96,32] s>> XmmReg2;
+    #save this off in case XmmReg1 and XmmReg2 are the same register
+    local count:8 = XmmReg2[0,64];
+    psraw128(XmmReg1, count);
 }
 
-:PSRAD          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=4 & XmmReg2; imm8
+:PSRAW           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=4 & XmmReg2; imm8
 {
-# a count greater than 31 just clears all the bits
-    XmmReg2[0,32] = XmmReg2[0,32] s>> imm8;
-    XmmReg2[32,32] = XmmReg2[32,32] s>> imm8;
-    XmmReg2[64,32] = XmmReg2[64,32] s>> imm8;
-    XmmReg2[96,32] = XmmReg2[96,32] s>> imm8;
+    psraw128(XmmReg2, zext(imm8));
 }
 
+:PSRAD           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE2; XmmReg ... & m128 ...
+{
+    local m:16 = m128;
+    psrad128(XmmReg, m[0,64]);
+}
+
+:PSRAD           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE2; xmmmod = 3 & XmmReg1 & XmmReg2
+{
+    #save this off in case XmmReg1 and XmmReg2 are the same register
+    local count:8 = XmmReg2[0,64];
+    psrad128(XmmReg1, count);
+}
+
+:PSRAD           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=4 & XmmReg2; imm8
+{
+    psrad128(XmmReg2, zext(imm8));
+}
 :PSRLDQ         XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x73; xmmmod=3 & reg_opcode=3 & XmmReg2; imm8
 {
 # a count greater than 15 just clears all the bits
@@ -8821,93 +8907,57 @@ macro psraw128(xmm, count) {
 { psrlq64(mmxreg2dest, zext(imm8)); }
                    
 #@family sse
-:PSRLW          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD1; XmmReg ... & m128 ...
+:PSRLW           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD1; XmmReg ... & m128 ...
 {
-    XmmReg[0,16]   = XmmReg[0,16]   >> m128[0,64];
-    XmmReg[16,16]  = XmmReg[16,16]  >> m128[0,64];
-    XmmReg[32,16]  = XmmReg[32,16]  >> m128[0,64];
-    XmmReg[48,16]  = XmmReg[48,16]  >> m128[0,64];
-    XmmReg[64,16]  = XmmReg[64,16]  >> m128[0,64];
-    XmmReg[80,16]  = XmmReg[80,16]  >> m128[0,64];
-    XmmReg[96,16]  = XmmReg[96,16]  >> m128[0,64];
-    XmmReg[112,16] = XmmReg[112,16] >> m128[0,64];
+    local m:16 = m128;
+    psrlw128(XmmReg, m[0,64]);
 }
 
-:PSRLW          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD1; xmmmod = 3 & XmmReg1 & XmmReg2
+:PSRLW           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD1; xmmmod = 3 & XmmReg1 & XmmReg2
 {
     #save this off in case XmmReg1 and XmmReg2 are the same register
     local count:8 = XmmReg2[0,64];
-    
-    XmmReg1[0,16]   = XmmReg1[0,16]   >> count;
-    XmmReg1[16,16]  = XmmReg1[16,16]  >> count;
-    XmmReg1[32,16]  = XmmReg1[32,16]  >> count;
-    XmmReg1[48,16]  = XmmReg1[48,16]  >> count;
-    XmmReg1[64,16]  = XmmReg1[64,16]  >> count;
-    XmmReg1[80,16]  = XmmReg1[80,16]  >> count;
-    XmmReg1[96,16]  = XmmReg1[96,16]  >> count;
-    XmmReg1[112,16] = XmmReg1[112,16] >> count;
+    psrlw128(XmmReg1, count);
 }
 
-:PSRLW          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
+:PSRLW           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x71; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
 {
-    XmmReg2[0,16]   = XmmReg2[0,16]   >> imm8;
-    XmmReg2[16,16]  = XmmReg2[16,16]  >> imm8;
-    XmmReg2[32,16]  = XmmReg2[32,16]  >> imm8;
-    XmmReg2[48,16]  = XmmReg2[48,16]  >> imm8;
-    XmmReg2[64,16]  = XmmReg2[64,16]  >> imm8;
-    XmmReg2[80,16]  = XmmReg2[80,16]  >> imm8;
-    XmmReg2[96,16]  = XmmReg2[96,16]  >> imm8;
-    XmmReg2[112,16] = XmmReg2[112,16] >> imm8;
+    psrlw128(XmmReg2, zext(imm8));
 }
-
-:PSRLD          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD2; XmmReg ... & m128 ...
+:PSRLD           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD2; XmmReg ... & m128 ...
 {
-    XmmReg[0,32]  = XmmReg[0,32]  >> m128[0,64];
-    XmmReg[32,32] = XmmReg[32,32] >> m128[0,64];
-    XmmReg[64,32] = XmmReg[64,32] >> m128[0,64];
-    XmmReg[96,32] = XmmReg[96,32] >> m128[0,64];
+    local m:16 = m128;
+    psrld128(XmmReg, m[0,64]);
 }
 
-:PSRLD          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD2; xmmmod = 3 & XmmReg1 & XmmReg2
+:PSRLD           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD2; xmmmod = 3 & XmmReg1 & XmmReg2
 {
     #save this off in case XmmReg1 and XmmReg2 are the same register
-    local count = XmmReg2[0,64];
-    
-    XmmReg1[0,32]  = XmmReg1[0,32]  >> count;
-    XmmReg1[32,32] = XmmReg1[32,32] >> count;
-    XmmReg1[64,32] = XmmReg1[64,32] >> count;
-    XmmReg1[96,32] = XmmReg1[96,32] >> count;
+    local count:8 = XmmReg2[0,64];
+    psrld128(XmmReg1, count);
 }
 
-:PSRLD          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
+:PSRLD           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x72; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
 {
-    XmmReg2[0,32]  = XmmReg2[0,32]  >> imm8;
-    XmmReg2[32,32] = XmmReg2[32,32] >> imm8;
-    XmmReg2[64,32] = XmmReg2[64,32] >> imm8;
-    XmmReg2[96,32] = XmmReg2[96,32] >> imm8;
+    psrld128(XmmReg2, zext(imm8));
 }
-                    
-:PSRLQ          XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD3; XmmReg ... & m128 ...
+:PSRLQ           XmmReg, m128      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD3; XmmReg ... & m128 ...
 {
-    XmmReg[0,64]  = XmmReg[0,64]  >> m128[0,64];
-    XmmReg[64,64] = XmmReg[64,64] >> m128[0,64];
+    local m:16 = m128;
+    psrlq128(XmmReg, m[0,64]);
 }
 
-:PSRLQ          XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD3; xmmmod = 3 & XmmReg1 & XmmReg2
+:PSRLQ           XmmReg1, XmmReg2  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xD3; xmmmod = 3 & XmmReg1 & XmmReg2
 {
     #save this off in case XmmReg1 and XmmReg2 are the same register
-    local count = XmmReg2[0,64];
-    
-    XmmReg1[0,64]  = XmmReg1[0,64]  >> count;
-    XmmReg1[64,64] = XmmReg1[64,64] >> count;
+    local count:8 = XmmReg2[0,64];
+    psrlq128(XmmReg1, count);
 }
 
-:PSRLQ          XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
+:PSRLQ           XmmReg2, imm8     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x73; mod = 0b11 & reg_opcode=2 & XmmReg2; imm8
 {
-    XmmReg2[0,64]  = XmmReg2[0,64]  >> imm8;
-    XmmReg2[64,64] = XmmReg2[64,64] >> imm8;
+    psrlq128(XmmReg2, zext(imm8));
 }
-
 #@family mmx
 :PSUBB           mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF8; mmxregop ... & m64 ...
 {
