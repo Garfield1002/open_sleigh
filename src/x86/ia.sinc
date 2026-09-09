@@ -8368,7 +8368,6 @@ macro pmulhw128(xmm1, xmm2) {
 :POR            XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xEB; XmmReg ... & m128			    { XmmReg = XmmReg | m128; }
 :POR            XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xEB; xmmmod = 3 & XmmReg1 & XmmReg2	{ XmmReg1 = XmmReg1 | XmmReg2; }
 
-define pcodeop psadbw;
 
 # Accumulate one unsigned-byte absolute difference. The 16-bit difference is
 # sufficient for [-255,255], so its arithmetic sign bit is bit 15.
@@ -8400,8 +8399,22 @@ macro psadbw_mmx(dst, src) {
 :PSADBW         mmxregop, m64      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxregop ... & m64 { psadbw_mmx(mmxregop, m64); }
 :PSADBW         mmxreg1op, mmxreg2op is vexMode=0 &  mandover=0 & byte=0x0F; byte=0xF6; mmxmod = 3 & mmxreg1op & mmxreg2op { psadbw_mmx(mmxreg1op, mmxreg2op); }
 #@family sse
-:PSADBW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; XmmReg ... & m128 { XmmReg = psadbw(XmmReg, m128); }
-:PSADBW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; xmmmod = 3 & XmmReg1 & XmmReg2 { XmmReg1 = psadbw(XmmReg1, XmmReg2); }
+# The XMM form is two independent MMX-shaped halves: each 64-bit half becomes
+# the 16-bit sum of its eight absolute byte differences, zero extended.
+macro psadbw_xmm(dst, src) {
+    local left:16 = dst;
+    local right:16 = src;
+    local lo:8 = left[0,64];
+    local rlo:8 = right[0,64];
+    psadbw_mmx(lo, rlo);
+    local hi:8 = left[64,64];
+    local rhi:8 = right[64,64];
+    psadbw_mmx(hi, rhi);
+    dst[0,64] = lo;
+    dst[64,64] = hi;
+}
+:PSADBW         XmmReg, m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; XmmReg ... & m128 { psadbw_xmm(XmmReg, m128); }
+:PSADBW         XmmReg1, XmmReg2 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; xmmmod = 3 & XmmReg1 & XmmReg2 { psadbw_xmm(XmmReg1, XmmReg2); }
 
 # these byte and word shuffles need to be done also ?????
 define pcodeop pshufb;
