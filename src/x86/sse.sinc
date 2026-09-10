@@ -4,45 +4,13 @@
 # macros the MMX forms share are defined in ia.sinc, which must be included
 # first; the AVX files reuse the same operands and come after.
 
-define pcodeop lddqu;
-
 define pcodeop movdq2q;
 
 define pcodeop movmskpd;
 
 define pcodeop movmskps;
 
-define pcodeop pabsb;
-
-define pcodeop pabsw;
-
-define pcodeop pabsd;
-
 define pcodeop paddusw;
-
-define pcodeop phaddd;
-
-define pcodeop phaddw;
-
-define pcodeop phaddsw;
-
-define pcodeop phsubd;
-
-define pcodeop phsubw;
-
-define pcodeop phsubsw;
-
-define pcodeop pmaddubsw;
-
-define pcodeop pmulhrsw;
-
-define pcodeop pshufb;
-
-define pcodeop psignb;
-
-define pcodeop psignw;
-
-define pcodeop psignd;
 
 define pcodeop rcpps;
 
@@ -54,12 +22,6 @@ define pcodeop rsqrtss;
 
 define pcodeop mpsadbw;
 
-define pcodeop phminposuw;
-
-define pcodeop pmuldq;
-
-define pcodeop pmulld;
-
 define pcodeop dpps;
 
 define pcodeop dppd;
@@ -67,12 +29,6 @@ define pcodeop dppd;
 define pcodeop blendps;
 
 define pcodeop blendpd;
-
-define pcodeop blendvps;
-
-define pcodeop blendvpd;
-
-define pcodeop pblendvb;
 
 define pcodeop pblendw;
 
@@ -87,34 +43,6 @@ define pcodeop roundsd;
 define pcodeop insertps;
 
 define pcodeop extractps;
-
-define pcodeop pmovsxbw;
-
-define pcodeop pmovsxbd;
-
-define pcodeop pmovsxbq;
-
-define pcodeop pmovsxwd;
-
-define pcodeop pmovsxwq;
-
-define pcodeop pmovsxdq;
-
-define pcodeop pmovzxbw;
-
-define pcodeop pmovzxbd;
-
-define pcodeop pmovzxbq;
-
-define pcodeop pmovzxwd;
-
-define pcodeop pmovzxwq;
-
-define pcodeop pmovzxdq;
-
-define pcodeop packusdw;
-
-define pcodeop movntdqa;
 
 define pcodeop pcmpestri;
 
@@ -719,6 +647,14 @@ macro minps128(dst, src) {
     sse_min32(dst[ 96,32], a[ 96,32], b[ 96,32]);
 }
 
+# Signed doubleword to unsigned word with saturation, for PACKUSDW.
+macro ssduw(sdword, uword) {
+    local negative:1 = sdword s< 0;
+    local large:1 = sdword s> 0xffff:4;
+    local inbounds:1 = !(negative || large);
+    uword = (sdword:2 * zext(inbounds)) + (0xffff:2 * zext(large));
+}
+
 macro packsswb_xmm(dst, src) {
 	# A bit range passed as a macro output parameter is an rvalue, so the
 	# assignment inside the saturating macro lands on a discarded
@@ -946,37 +882,77 @@ macro pblendw128(dst, src, ctl) {
 }
 
 # DPPS/DPPD: the high nibble of the control byte masks the products, the low
-# nibble masks which lanes receive the sum. Intel sums as (p0+p1)+(p2+p3).
+# nibble masks which lanes receive the sum. A masked product is +0.0 and is
+# not computed, so it raises nothing; the multiplies and the adds go through
+# the MXCSR-aware lane macros so rounding control and the exception flags
+# match hardware (-0.0 + +0.0 is -0.0 under round-down).
+#
+# The SDM sums once as (p0+p1)+(p2+p3) and broadcasts, but hardware reaches
+# each lane through its own operand order, which only shows when two products
+# are NaNs (the first operand's NaN wins): lane 0 is (p1+p0)+(p2+p3), lane 1
+# (p0+p1)+(p2+p3), lane 2 (p3+p2)+(p1+p0), lane 3 (p2+p3)+(p0+p1); DPPD's
+# lane 0 is p0+p1 and lane 1 p1+p0. Derived from the Binit captures (every
+# NaN result of 207k states), numerically identical since each pairing is
+# commutative.
 macro dpps128(dst, src, ctl) {
     local a:16 = dst;
     local b:16 = src;
     local c:1 = ctl;
-    local p0:4 = a[  0,32] f* b[  0,32];
-    local p1:4 = a[ 32,32] f* b[ 32,32];
-    local p2:4 = a[ 64,32] f* b[ 64,32];
-    local p3:4 = a[ 96,32] f* b[ 96,32];
-    conditionalAssign(p0, c[4,1], p0, 0:4);
-    conditionalAssign(p1, c[5,1], p1, 0:4);
-    conditionalAssign(p2, c[6,1], p2, 0:4);
-    conditionalAssign(p3, c[7,1], p3, 0:4);
-    local sum:4 = (p0 f+ p1) f+ (p2 f+ p3);
-    conditionalAssign(dst[  0,32], c[0,1], sum, 0:4);
-    conditionalAssign(dst[ 32,32], c[1,1], sum, 0:4);
-    conditionalAssign(dst[ 64,32], c[2,1], sum, 0:4);
-    conditionalAssign(dst[ 96,32], c[3,1], sum, 0:4);
+    local x0:4; local y0:4;
+    local x1:4; local y1:4;
+    local x2:4; local y2:4;
+    local x3:4; local y3:4;
+    conditionalAssign(x0, c[4,1], a[  0,32], 0:4); conditionalAssign(y0, c[4,1], b[  0,32], 0:4);
+    conditionalAssign(x1, c[5,1], a[ 32,32], 0:4); conditionalAssign(y1, c[5,1], b[ 32,32], 0:4);
+    conditionalAssign(x2, c[6,1], a[ 64,32], 0:4); conditionalAssign(y2, c[6,1], b[ 64,32], 0:4);
+    conditionalAssign(x3, c[7,1], a[ 96,32], 0:4); conditionalAssign(y3, c[7,1], b[ 96,32], 0:4);
+    local p0:4; sse_mul32(p0, x0, y0);
+    local p1:4; sse_mul32(p1, x1, y1);
+    local p2:4; sse_mul32(p2, x2, y2);
+    local p3:4; sse_mul32(p3, x3, y3);
+    local s01:4; sse_add32(s01, p0, p1);
+    local s23:4; sse_add32(s23, p2, p3);
+    local sum:4; sse_add32(sum, s01, s23);
+    # The per-lane orders only differ in which NaN survives, so the three
+    # adds above carry the numerics and the flags, and the reversed orders
+    # are integer selects: a reversed pair differs from its pair only when
+    # both products are NaNs, and a reversed outer add only when its first
+    # pair is a NaN.
+    local n0:1 = (p0[23,8] == 0xff) && (p0[0,23] != 0);
+    local n1:1 = (p1[23,8] == 0xff) && (p1[0,23] != 0);
+    local n2:1 = (p2[23,8] == 0xff) && (p2[0,23] != 0);
+    local n3:1 = (p3[23,8] == 0xff) && (p3[0,23] != 0);
+    local s10:4; conditionalAssign(s10, n0 && n1, p1, s01);
+    local s32:4; conditionalAssign(s32, n2 && n3, p3, s23);
+    local ns01:1 = (s01[23,8] == 0xff) && (s01[0,23] != 0);
+    local ns23:1 = (s23[23,8] == 0xff) && (s23[0,23] != 0);
+    local sum0:4; conditionalAssign(sum0, ns01, s10, sum);
+    local sum1:4 = sum;
+    local sum2:4; conditionalAssign(sum2, ns01, s10, sum);
+    conditionalAssign(sum2, ns23, s32, sum2);
+    local sum3:4; conditionalAssign(sum3, ns23, s23, sum);
+    conditionalAssign(dst[  0,32], c[0,1], sum0, 0:4);
+    conditionalAssign(dst[ 32,32], c[1,1], sum1, 0:4);
+    conditionalAssign(dst[ 64,32], c[2,1], sum2, 0:4);
+    conditionalAssign(dst[ 96,32], c[3,1], sum3, 0:4);
 }
 
 macro dppd128(dst, src, ctl) {
     local a:16 = dst;
     local b:16 = src;
     local c:1 = ctl;
-    local p0:8 = a[  0,64] f* b[  0,64];
-    local p1:8 = a[ 64,64] f* b[ 64,64];
-    conditionalAssign(p0, c[4,1], p0, 0:8);
-    conditionalAssign(p1, c[5,1], p1, 0:8);
-    local sum:8 = p0 f+ p1;
-    conditionalAssign(dst[  0,64], c[0,1], sum, 0:8);
-    conditionalAssign(dst[ 64,64], c[1,1], sum, 0:8);
+    local x0:8; local y0:8;
+    local x1:8; local y1:8;
+    conditionalAssign(x0, c[4,1], a[  0,64], 0:8); conditionalAssign(y0, c[4,1], b[  0,64], 0:8);
+    conditionalAssign(x1, c[5,1], a[ 64,64], 0:8); conditionalAssign(y1, c[5,1], b[ 64,64], 0:8);
+    local p0:8; sse_mul64(p0, x0, y0);
+    local p1:8; sse_mul64(p1, x1, y1);
+    local sum0:8; sse_add64(sum0, p0, p1);
+    local n0:1 = (p0[52,11] == 0x7ff) && (p0[0,52] != 0);
+    local n1:1 = (p1[52,11] == 0x7ff) && (p1[0,52] != 0);
+    local sum1:8; conditionalAssign(sum1, n0 && n1, p1, sum0);
+    conditionalAssign(dst[  0,64], c[0,1], sum0, 0:8);
+    conditionalAssign(dst[ 64,64], c[1,1], sum1, 0:8);
 }
 
 # ROUND*: bits 0-1 of the control byte select nearest/down/up/toward-zero, and
@@ -989,56 +965,61 @@ macro sse_round_mode(mode, ctl) {
     conditionalAssign(mode, c[2,1], fromMxcsr, fromImm);
 }
 
-macro round_f4(dst, src, mode) {
-    local s:4 = src;
-    local down:4 = floor(s);
-    local up:4 = ceil(s);
-    local nearest:4 = round(s);
-    local toZero:4;
-    conditionalAssign(toZero, s f< 0:4, up, down);
-    shuffle_4(dst, mode, nearest, down, up, toZero);
+# The rounding itself is the generic IEEE round-to-integral with the selected
+# mode. Only IE (a signalling NaN, quieted the x86 way) and PE are reported:
+# hardware raises neither DE for a denormal source nor UE for a tiny one that
+# rounds to zero, which the generic op flags, and bit 3 of the control byte
+# suppresses PE. DAZ still replaces a denormal source by zero.
+macro sse_round32(dest, source, ctl) {
+    local a:4 = source;
+    local c:1 = ctl;
+    local de:1; sse_daz32(a, de);
+    local mode:1; sse_round_mode(mode, ctl);
+    local result:4 = float_round_to_integral(a, mode);
+    local flags:1 = float_round_to_integral_flags(a, mode);
+    sse_invalid32(a, a, flags, result);
+    local keep:1 = 0x21 & ~(zext(c[3,1]) * 0x20);
+    flags = flags & keep;
+    sse_report(flags, 0:1);
+    dest = result;
 }
 
-macro round_f8(dst, src, mode) {
-    local s:8 = src;
-    local down:8 = floor(s);
-    local up:8 = ceil(s);
-    local nearest:8 = round(s);
-    local toZero:8;
-    conditionalAssign(toZero, s f< 0:8, up, down);
-    shuffle_4(dst, mode, nearest, down, up, toZero);
+macro sse_round64(dest, source, ctl) {
+    local a:8 = source;
+    local c:1 = ctl;
+    local de:1; sse_daz64(a, de);
+    local mode:1; sse_round_mode(mode, ctl);
+    local result:8 = float_round_to_integral(a, mode);
+    local flags:1 = float_round_to_integral_flags(a, mode);
+    sse_invalid64(a, a, flags, result);
+    local keep:1 = 0x21 & ~(zext(c[3,1]) * 0x20);
+    flags = flags & keep;
+    sse_report(flags, 0:1);
+    dest = result;
 }
 
 macro roundps128(dst, src, ctl) {
     local b:16 = src;
-    local mode:1;
-    sse_round_mode(mode, ctl);
-    round_f4(dst[  0,32], b[  0,32], mode);
-    round_f4(dst[ 32,32], b[ 32,32], mode);
-    round_f4(dst[ 64,32], b[ 64,32], mode);
-    round_f4(dst[ 96,32], b[ 96,32], mode);
+    sse_round32(dst[  0,32], b[  0,32], ctl);
+    sse_round32(dst[ 32,32], b[ 32,32], ctl);
+    sse_round32(dst[ 64,32], b[ 64,32], ctl);
+    sse_round32(dst[ 96,32], b[ 96,32], ctl);
 }
 
 macro roundpd128(dst, src, ctl) {
     local b:16 = src;
-    local mode:1;
-    sse_round_mode(mode, ctl);
-    round_f8(dst[  0,64], b[  0,64], mode);
-    round_f8(dst[ 64,64], b[ 64,64], mode);
+    sse_round64(dst[  0,64], b[  0,64], ctl);
+    sse_round64(dst[ 64,64], b[ 64,64], ctl);
 }
 
 macro roundss128(dst, src, ctl) {
     local b:4 = src;
-    local mode:1;
-    sse_round_mode(mode, ctl);
-    round_f4(dst[0,32], b, mode);
+    sse_round32(dst[0,32], b, ctl);
 }
 
 macro roundsd128(dst, src, ctl) {
     local b:8 = src;
-    local mode:1;
-    sse_round_mode(mode, ctl);
-    round_f8(dst[0,64], b, mode);
+    sse_round64(dst[0,64], b, ctl);
 }
 
 # INSERTPS: bits 6-7 pick the source lane (register form only), bits 4-5 the
@@ -1765,7 +1746,7 @@ with : lockprefx=0 {
     sse_sub32(XmmReg1[96,32], m[64,32], m[96,32]);
 }
 
-:LDDQU        XmmReg, m128        is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xF0; XmmReg ... & m128 { XmmReg = lddqu(XmmReg, m128); }
+:LDDQU        XmmReg, m128        is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xF0; XmmReg ... & m128 { XmmReg = m128; }
 
 # The 128-bit masked store. Like MASKMOVQ this writes DS:[rDI] rather than the
 # register, and leaves the source alone. No hardware capture covers it yet, so
@@ -2170,13 +2151,47 @@ with : lockprefx=0 {
 }
 
 :PABSB             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1c; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=pabsb(XmmReg1,XmmReg2_m128); }
+{
+    local src:16 = XmmReg2_m128;
+    XmmReg1[0,8] = (zext(src[0,8] s< 0) * (0 - src[0,8])) | (zext(!(src[0,8] s< 0)) * src[0,8]);
+    XmmReg1[8,8] = (zext(src[8,8] s< 0) * (0 - src[8,8])) | (zext(!(src[8,8] s< 0)) * src[8,8]);
+    XmmReg1[16,8] = (zext(src[16,8] s< 0) * (0 - src[16,8])) | (zext(!(src[16,8] s< 0)) * src[16,8]);
+    XmmReg1[24,8] = (zext(src[24,8] s< 0) * (0 - src[24,8])) | (zext(!(src[24,8] s< 0)) * src[24,8]);
+    XmmReg1[32,8] = (zext(src[32,8] s< 0) * (0 - src[32,8])) | (zext(!(src[32,8] s< 0)) * src[32,8]);
+    XmmReg1[40,8] = (zext(src[40,8] s< 0) * (0 - src[40,8])) | (zext(!(src[40,8] s< 0)) * src[40,8]);
+    XmmReg1[48,8] = (zext(src[48,8] s< 0) * (0 - src[48,8])) | (zext(!(src[48,8] s< 0)) * src[48,8]);
+    XmmReg1[56,8] = (zext(src[56,8] s< 0) * (0 - src[56,8])) | (zext(!(src[56,8] s< 0)) * src[56,8]);
+    XmmReg1[64,8] = (zext(src[64,8] s< 0) * (0 - src[64,8])) | (zext(!(src[64,8] s< 0)) * src[64,8]);
+    XmmReg1[72,8] = (zext(src[72,8] s< 0) * (0 - src[72,8])) | (zext(!(src[72,8] s< 0)) * src[72,8]);
+    XmmReg1[80,8] = (zext(src[80,8] s< 0) * (0 - src[80,8])) | (zext(!(src[80,8] s< 0)) * src[80,8]);
+    XmmReg1[88,8] = (zext(src[88,8] s< 0) * (0 - src[88,8])) | (zext(!(src[88,8] s< 0)) * src[88,8]);
+    XmmReg1[96,8] = (zext(src[96,8] s< 0) * (0 - src[96,8])) | (zext(!(src[96,8] s< 0)) * src[96,8]);
+    XmmReg1[104,8] = (zext(src[104,8] s< 0) * (0 - src[104,8])) | (zext(!(src[104,8] s< 0)) * src[104,8]);
+    XmmReg1[112,8] = (zext(src[112,8] s< 0) * (0 - src[112,8])) | (zext(!(src[112,8] s< 0)) * src[112,8]);
+    XmmReg1[120,8] = (zext(src[120,8] s< 0) * (0 - src[120,8])) | (zext(!(src[120,8] s< 0)) * src[120,8]);
+}
 
 :PABSW             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1d; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=pabsw(XmmReg1,XmmReg2_m128); }
+{
+    local src:16 = XmmReg2_m128;
+    XmmReg1[0,16] = (zext(src[0,16] s< 0) * (0 - src[0,16])) | (zext(!(src[0,16] s< 0)) * src[0,16]);
+    XmmReg1[16,16] = (zext(src[16,16] s< 0) * (0 - src[16,16])) | (zext(!(src[16,16] s< 0)) * src[16,16]);
+    XmmReg1[32,16] = (zext(src[32,16] s< 0) * (0 - src[32,16])) | (zext(!(src[32,16] s< 0)) * src[32,16]);
+    XmmReg1[48,16] = (zext(src[48,16] s< 0) * (0 - src[48,16])) | (zext(!(src[48,16] s< 0)) * src[48,16]);
+    XmmReg1[64,16] = (zext(src[64,16] s< 0) * (0 - src[64,16])) | (zext(!(src[64,16] s< 0)) * src[64,16]);
+    XmmReg1[80,16] = (zext(src[80,16] s< 0) * (0 - src[80,16])) | (zext(!(src[80,16] s< 0)) * src[80,16]);
+    XmmReg1[96,16] = (zext(src[96,16] s< 0) * (0 - src[96,16])) | (zext(!(src[96,16] s< 0)) * src[96,16]);
+    XmmReg1[112,16] = (zext(src[112,16] s< 0) * (0 - src[112,16])) | (zext(!(src[112,16] s< 0)) * src[112,16]);
+}
 
 :PABSD             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x1e; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=pabsd(XmmReg1,XmmReg2_m128); }
+{
+    local src:16 = XmmReg2_m128;
+    XmmReg1[0,32] = (zext(src[0,32] s< 0) * (0 - src[0,32])) | (zext(!(src[0,32] s< 0)) * src[0,32]);
+    XmmReg1[32,32] = (zext(src[32,32] s< 0) * (0 - src[32,32])) | (zext(!(src[32,32] s< 0)) * src[32,32]);
+    XmmReg1[64,32] = (zext(src[64,32] s< 0) * (0 - src[64,32])) | (zext(!(src[64,32] s< 0)) * src[64,32]);
+    XmmReg1[96,32] = (zext(src[96,32] s< 0) * (0 - src[96,32])) | (zext(!(src[96,32] s< 0)) * src[96,32]);
+}
 
 :PADDB               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xFC; XmmReg1 ... & XmmReg2_m128
 {
@@ -2239,14 +2254,36 @@ with : lockprefx=0 {
 
 :PALIGNR        XmmReg1, m128, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x0F; m128 & XmmReg1 ...; imm8
 {
-    temp:32 = ( ( zext(XmmReg1) << 128 ) | zext( m128 ) ) >> ( imm8 * 8 );
-    XmmReg1 = temp:16;
+    # 256-bit intermediate shifted by `imm8 * 8`, on 128-bit halves: the low
+    # half is the source, the high half the destination. A shift of 16 to 31
+    # bytes reads only the destination, 32 or more yields zero.
+    local n:1 = imm8:1;
+    local bits:2 = zext(n) * 8;
+    local src:16 = m128;
+    local dst:16 = XmmReg1;
+    local low:16 = (src >> bits) | (dst << (128:2 - bits));
+    local high:16 = dst >> (bits - 128:2);
+    local r:16;
+    conditionalAssign(r, n < 16, low, high);
+    conditionalAssign(r, n >= 32, 0:16, r);
+    XmmReg1 = r;
 }
 
 :PALIGNR        XmmReg1, XmmReg2, imm8  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x0F; xmmmod=3 & XmmReg1 & XmmReg2; imm8
 {
-    temp:32 = ( ( zext(XmmReg1) << 128 ) | zext( XmmReg2 ) ) >> ( imm8 * 8 );
-    XmmReg1 = temp:16;
+    # 256-bit intermediate shifted by `imm8 * 8`, on 128-bit halves: the low
+    # half is the source, the high half the destination. A shift of 16 to 31
+    # bytes reads only the destination, 32 or more yields zero.
+    local n:1 = imm8:1;
+    local bits:2 = zext(n) * 8;
+    local src:16 = XmmReg2;
+    local dst:16 = XmmReg1;
+    local low:16 = (src >> bits) | (dst << (128:2 - bits));
+    local high:16 = dst >> (bits - 128:2);
+    local r:16;
+    conditionalAssign(r, n < 16, low, high);
+    conditionalAssign(r, n >= 32, 0:16, r);
+    XmmReg1 = r;
 }
 
 :PAND               XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xDB; XmmReg1 ... & XmmReg2_m128
@@ -2409,22 +2446,116 @@ with : lockprefx=0 {
 }
 
 :PHADDD            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x02; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phaddd(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    XmmReg1[0,32] = hdst[0,32] + hdst[32,32];
+    XmmReg1[32,32] = hdst[64,32] + hdst[96,32];
+    XmmReg1[64,32] = hsrc[0,32] + hsrc[32,32];
+    XmmReg1[96,32] = hsrc[64,32] + hsrc[96,32];
+}
 
 :PHADDW            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x01; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phaddw(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    XmmReg1[0,16] = hdst[0,16] + hdst[16,16];
+    XmmReg1[16,16] = hdst[32,16] + hdst[48,16];
+    XmmReg1[32,16] = hdst[64,16] + hdst[80,16];
+    XmmReg1[48,16] = hdst[96,16] + hdst[112,16];
+    XmmReg1[64,16] = hsrc[0,16] + hsrc[16,16];
+    XmmReg1[80,16] = hsrc[32,16] + hsrc[48,16];
+    XmmReg1[96,16] = hsrc[64,16] + hsrc[80,16];
+    XmmReg1[112,16] = hsrc[96,16] + hsrc[112,16];
+}
 
 :PHADDSW           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x03; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phaddsw(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) + sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    XmmReg1[0,16] = lane;
+    wide = sext(hdst[32,16]) + sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    XmmReg1[16,16] = lane;
+    wide = sext(hdst[64,16]) + sext(hdst[80,16]);
+    ssdsw(wide, lane);
+    XmmReg1[32,16] = lane;
+    wide = sext(hdst[96,16]) + sext(hdst[112,16]);
+    ssdsw(wide, lane);
+    XmmReg1[48,16] = lane;
+    wide = sext(hsrc[0,16]) + sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    XmmReg1[64,16] = lane;
+    wide = sext(hsrc[32,16]) + sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    XmmReg1[80,16] = lane;
+    wide = sext(hsrc[64,16]) + sext(hsrc[80,16]);
+    ssdsw(wide, lane);
+    XmmReg1[96,16] = lane;
+    wide = sext(hsrc[96,16]) + sext(hsrc[112,16]);
+    ssdsw(wide, lane);
+    XmmReg1[112,16] = lane;
+}
 
 :PHSUBD            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x06; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phsubd(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    XmmReg1[0,32] = hdst[0,32] - hdst[32,32];
+    XmmReg1[32,32] = hdst[64,32] - hdst[96,32];
+    XmmReg1[64,32] = hsrc[0,32] - hsrc[32,32];
+    XmmReg1[96,32] = hsrc[64,32] - hsrc[96,32];
+}
 
 :PHSUBW            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x05; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phsubw(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    XmmReg1[0,16] = hdst[0,16] - hdst[16,16];
+    XmmReg1[16,16] = hdst[32,16] - hdst[48,16];
+    XmmReg1[32,16] = hdst[64,16] - hdst[80,16];
+    XmmReg1[48,16] = hdst[96,16] - hdst[112,16];
+    XmmReg1[64,16] = hsrc[0,16] - hsrc[16,16];
+    XmmReg1[80,16] = hsrc[32,16] - hsrc[48,16];
+    XmmReg1[96,16] = hsrc[64,16] - hsrc[80,16];
+    XmmReg1[112,16] = hsrc[96,16] - hsrc[112,16];
+}
 
 :PHSUBSW           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x07; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=phsubsw(XmmReg1,XmmReg2_m128); }
+{
+    local hsrc:16 = XmmReg2_m128;
+    local hdst:16 = XmmReg1;
+    local wide:4;
+    local lane:2;
+    wide = sext(hdst[0,16]) - sext(hdst[16,16]);
+    ssdsw(wide, lane);
+    XmmReg1[0,16] = lane;
+    wide = sext(hdst[32,16]) - sext(hdst[48,16]);
+    ssdsw(wide, lane);
+    XmmReg1[16,16] = lane;
+    wide = sext(hdst[64,16]) - sext(hdst[80,16]);
+    ssdsw(wide, lane);
+    XmmReg1[32,16] = lane;
+    wide = sext(hdst[96,16]) - sext(hdst[112,16]);
+    ssdsw(wide, lane);
+    XmmReg1[48,16] = lane;
+    wide = sext(hsrc[0,16]) - sext(hsrc[16,16]);
+    ssdsw(wide, lane);
+    XmmReg1[64,16] = lane;
+    wide = sext(hsrc[32,16]) - sext(hsrc[48,16]);
+    ssdsw(wide, lane);
+    XmmReg1[80,16] = lane;
+    wide = sext(hsrc[64,16]) - sext(hsrc[80,16]);
+    ssdsw(wide, lane);
+    XmmReg1[96,16] = lane;
+    wide = sext(hsrc[96,16]) - sext(hsrc[112,16]);
+    ssdsw(wide, lane);
+    XmmReg1[112,16] = lane;
+}
 
 :PINSRW        XmmReg, Rmr32, imm8 is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xC4; xmmmod=3 & Rmr32 & XmmReg; imm8 
 { 
@@ -2451,7 +2582,54 @@ with : lockprefx=0 {
 }
 
 :PMADDUBSW         XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x04; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=pmaddubsw(XmmReg1,XmmReg2_m128); }
+{
+    local msrc:16 = XmmReg2_m128;
+    local mdst:16 = XmmReg1;
+    local lo:4;
+    local hi:4;
+    local sum:4;
+    local lane:2;
+    lo = zext(mdst[0,8]) * sext(msrc[0,8]);
+    hi = zext(mdst[8,8]) * sext(msrc[8,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[0,16] = lane;
+    lo = zext(mdst[16,8]) * sext(msrc[16,8]);
+    hi = zext(mdst[24,8]) * sext(msrc[24,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[16,16] = lane;
+    lo = zext(mdst[32,8]) * sext(msrc[32,8]);
+    hi = zext(mdst[40,8]) * sext(msrc[40,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[32,16] = lane;
+    lo = zext(mdst[48,8]) * sext(msrc[48,8]);
+    hi = zext(mdst[56,8]) * sext(msrc[56,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[48,16] = lane;
+    lo = zext(mdst[64,8]) * sext(msrc[64,8]);
+    hi = zext(mdst[72,8]) * sext(msrc[72,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[64,16] = lane;
+    lo = zext(mdst[80,8]) * sext(msrc[80,8]);
+    hi = zext(mdst[88,8]) * sext(msrc[88,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[80,16] = lane;
+    lo = zext(mdst[96,8]) * sext(msrc[96,8]);
+    hi = zext(mdst[104,8]) * sext(msrc[104,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[96,16] = lane;
+    lo = zext(mdst[112,8]) * sext(msrc[112,8]);
+    hi = zext(mdst[120,8]) * sext(msrc[120,8]);
+    sum = lo + hi;
+    ssdsw(sum, lane);
+    XmmReg1[112,16] = lane;
+}
 
 :PMADDWD           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF5; XmmReg1 ... & XmmReg2_m128
 { XmmReg1 = pmaddwd(XmmReg1, XmmReg2_m128); }
@@ -2548,7 +2726,36 @@ with : lockprefx=0 {
 }
 
 :PMULHRSW           XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0B; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=pmulhrsw(XmmReg1,XmmReg2_m128); }
+{
+    local rsrc:16 = XmmReg2_m128;
+    local rdst:16 = XmmReg1;
+    local prod:4;
+    local rounded:4;
+    prod = sext(rdst[0,16]) * sext(rsrc[0,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[0,16] = rounded:2;
+    prod = sext(rdst[16,16]) * sext(rsrc[16,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[16,16] = rounded:2;
+    prod = sext(rdst[32,16]) * sext(rsrc[32,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[32,16] = rounded:2;
+    prod = sext(rdst[48,16]) * sext(rsrc[48,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[48,16] = rounded:2;
+    prod = sext(rdst[64,16]) * sext(rsrc[64,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[64,16] = rounded:2;
+    prod = sext(rdst[80,16]) * sext(rsrc[80,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[80,16] = rounded:2;
+    prod = sext(rdst[96,16]) * sext(rsrc[96,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[96,16] = rounded:2;
+    prod = sext(rdst[112,16]) * sext(rsrc[112,16]);
+    rounded = ((prod s>> 14) + 1) s>> 1;
+    XmmReg1[112,16] = rounded:2;
+}
 
 :PMULHUW            XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE4; XmmReg1 ... & XmmReg2_m128
 { XmmReg1 = pmulhuw(XmmReg1, XmmReg2_m128); }
@@ -2585,7 +2792,94 @@ with : lockprefx=0 {
 :PSADBW             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xF6; XmmReg1 ... & XmmReg2_m128
 { psadbw_xmm(XmmReg1, XmmReg2_m128); }
 
-:PSHUFB         XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x00; XmmReg1 ... & XmmReg2_m128              { XmmReg1=pshufb(XmmReg1,XmmReg2_m128); }
+:PSHUFB         XmmReg1, XmmReg2_m128     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x00; XmmReg1 ... & XmmReg2_m128              {
+    local pmask:16 = XmmReg2_m128;
+    local pdat:16 = XmmReg1;
+    local sel:1;
+    local shifted:16;
+    local byte:1;
+    local clear:1;
+    sel = zext(pmask[0,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[7,1];
+    XmmReg1[0,8] = byte * zext(!clear);
+    sel = zext(pmask[8,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[15,1];
+    XmmReg1[8,8] = byte * zext(!clear);
+    sel = zext(pmask[16,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[23,1];
+    XmmReg1[16,8] = byte * zext(!clear);
+    sel = zext(pmask[24,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[31,1];
+    XmmReg1[24,8] = byte * zext(!clear);
+    sel = zext(pmask[32,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[39,1];
+    XmmReg1[32,8] = byte * zext(!clear);
+    sel = zext(pmask[40,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[47,1];
+    XmmReg1[40,8] = byte * zext(!clear);
+    sel = zext(pmask[48,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[55,1];
+    XmmReg1[48,8] = byte * zext(!clear);
+    sel = zext(pmask[56,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[63,1];
+    XmmReg1[56,8] = byte * zext(!clear);
+    sel = zext(pmask[64,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[71,1];
+    XmmReg1[64,8] = byte * zext(!clear);
+    sel = zext(pmask[72,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[79,1];
+    XmmReg1[72,8] = byte * zext(!clear);
+    sel = zext(pmask[80,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[87,1];
+    XmmReg1[80,8] = byte * zext(!clear);
+    sel = zext(pmask[88,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[95,1];
+    XmmReg1[88,8] = byte * zext(!clear);
+    sel = zext(pmask[96,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[103,1];
+    XmmReg1[96,8] = byte * zext(!clear);
+    sel = zext(pmask[104,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[111,1];
+    XmmReg1[104,8] = byte * zext(!clear);
+    sel = zext(pmask[112,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[119,1];
+    XmmReg1[112,8] = byte * zext(!clear);
+    sel = zext(pmask[120,4]) * 8;
+    shifted = pdat >> sel;
+    byte = shifted:1;
+    clear = pmask[127,1];
+    XmmReg1[120,8] = byte * zext(!clear);
+}
 
 :PSHUFD         XmmReg1, XmmReg2_m128, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x70; (XmmReg2_m128 & XmmReg1 ...); imm8 & Order0 & Order1 & Order2 & Order3
 {
@@ -2638,13 +2932,47 @@ with : lockprefx=0 {
 }
 
 :PSIGNB             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x08; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=psignb(XmmReg1,XmmReg2_m128); }
+{
+    local psignsrc:16 = XmmReg2_m128;
+    XmmReg1[0,8] = (zext(psignsrc[0,8] s< 0) * (0 - XmmReg1[0,8])) | (zext(psignsrc[0,8] s> 0) * XmmReg1[0,8]);
+    XmmReg1[8,8] = (zext(psignsrc[8,8] s< 0) * (0 - XmmReg1[8,8])) | (zext(psignsrc[8,8] s> 0) * XmmReg1[8,8]);
+    XmmReg1[16,8] = (zext(psignsrc[16,8] s< 0) * (0 - XmmReg1[16,8])) | (zext(psignsrc[16,8] s> 0) * XmmReg1[16,8]);
+    XmmReg1[24,8] = (zext(psignsrc[24,8] s< 0) * (0 - XmmReg1[24,8])) | (zext(psignsrc[24,8] s> 0) * XmmReg1[24,8]);
+    XmmReg1[32,8] = (zext(psignsrc[32,8] s< 0) * (0 - XmmReg1[32,8])) | (zext(psignsrc[32,8] s> 0) * XmmReg1[32,8]);
+    XmmReg1[40,8] = (zext(psignsrc[40,8] s< 0) * (0 - XmmReg1[40,8])) | (zext(psignsrc[40,8] s> 0) * XmmReg1[40,8]);
+    XmmReg1[48,8] = (zext(psignsrc[48,8] s< 0) * (0 - XmmReg1[48,8])) | (zext(psignsrc[48,8] s> 0) * XmmReg1[48,8]);
+    XmmReg1[56,8] = (zext(psignsrc[56,8] s< 0) * (0 - XmmReg1[56,8])) | (zext(psignsrc[56,8] s> 0) * XmmReg1[56,8]);
+    XmmReg1[64,8] = (zext(psignsrc[64,8] s< 0) * (0 - XmmReg1[64,8])) | (zext(psignsrc[64,8] s> 0) * XmmReg1[64,8]);
+    XmmReg1[72,8] = (zext(psignsrc[72,8] s< 0) * (0 - XmmReg1[72,8])) | (zext(psignsrc[72,8] s> 0) * XmmReg1[72,8]);
+    XmmReg1[80,8] = (zext(psignsrc[80,8] s< 0) * (0 - XmmReg1[80,8])) | (zext(psignsrc[80,8] s> 0) * XmmReg1[80,8]);
+    XmmReg1[88,8] = (zext(psignsrc[88,8] s< 0) * (0 - XmmReg1[88,8])) | (zext(psignsrc[88,8] s> 0) * XmmReg1[88,8]);
+    XmmReg1[96,8] = (zext(psignsrc[96,8] s< 0) * (0 - XmmReg1[96,8])) | (zext(psignsrc[96,8] s> 0) * XmmReg1[96,8]);
+    XmmReg1[104,8] = (zext(psignsrc[104,8] s< 0) * (0 - XmmReg1[104,8])) | (zext(psignsrc[104,8] s> 0) * XmmReg1[104,8]);
+    XmmReg1[112,8] = (zext(psignsrc[112,8] s< 0) * (0 - XmmReg1[112,8])) | (zext(psignsrc[112,8] s> 0) * XmmReg1[112,8]);
+    XmmReg1[120,8] = (zext(psignsrc[120,8] s< 0) * (0 - XmmReg1[120,8])) | (zext(psignsrc[120,8] s> 0) * XmmReg1[120,8]);
+}
 
 :PSIGNW             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x09; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=psignw(XmmReg1,XmmReg2_m128); }
+{
+    local psignsrc:16 = XmmReg2_m128;
+    XmmReg1[0,16] = (zext(psignsrc[0,16] s< 0) * (0 - XmmReg1[0,16])) | (zext(psignsrc[0,16] s> 0) * XmmReg1[0,16]);
+    XmmReg1[16,16] = (zext(psignsrc[16,16] s< 0) * (0 - XmmReg1[16,16])) | (zext(psignsrc[16,16] s> 0) * XmmReg1[16,16]);
+    XmmReg1[32,16] = (zext(psignsrc[32,16] s< 0) * (0 - XmmReg1[32,16])) | (zext(psignsrc[32,16] s> 0) * XmmReg1[32,16]);
+    XmmReg1[48,16] = (zext(psignsrc[48,16] s< 0) * (0 - XmmReg1[48,16])) | (zext(psignsrc[48,16] s> 0) * XmmReg1[48,16]);
+    XmmReg1[64,16] = (zext(psignsrc[64,16] s< 0) * (0 - XmmReg1[64,16])) | (zext(psignsrc[64,16] s> 0) * XmmReg1[64,16]);
+    XmmReg1[80,16] = (zext(psignsrc[80,16] s< 0) * (0 - XmmReg1[80,16])) | (zext(psignsrc[80,16] s> 0) * XmmReg1[80,16]);
+    XmmReg1[96,16] = (zext(psignsrc[96,16] s< 0) * (0 - XmmReg1[96,16])) | (zext(psignsrc[96,16] s> 0) * XmmReg1[96,16]);
+    XmmReg1[112,16] = (zext(psignsrc[112,16] s< 0) * (0 - XmmReg1[112,16])) | (zext(psignsrc[112,16] s> 0) * XmmReg1[112,16]);
+}
 
 :PSIGND             XmmReg1, XmmReg2_m128  is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x38; byte=0x0a; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1=psignd(XmmReg1,XmmReg2_m128); }
+{
+    local psignsrc:16 = XmmReg2_m128;
+    XmmReg1[0,32] = (zext(psignsrc[0,32] s< 0) * (0 - XmmReg1[0,32])) | (zext(psignsrc[0,32] s> 0) * XmmReg1[0,32]);
+    XmmReg1[32,32] = (zext(psignsrc[32,32] s< 0) * (0 - XmmReg1[32,32])) | (zext(psignsrc[32,32] s> 0) * XmmReg1[32,32]);
+    XmmReg1[64,32] = (zext(psignsrc[64,32] s< 0) * (0 - XmmReg1[64,32])) | (zext(psignsrc[64,32] s> 0) * XmmReg1[64,32]);
+    XmmReg1[96,32] = (zext(psignsrc[96,32] s< 0) * (0 - XmmReg1[96,32])) | (zext(psignsrc[96,32] s> 0) * XmmReg1[96,32]);
+}
 
 #break into two 64-bit chunks so decompiler can follow constants
 :PSLLDQ         XmmReg2, imm8    is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x73; xmmmod = 3 & reg_opcode=7 & XmmReg2; imm8 
@@ -3071,13 +3399,54 @@ with : lockprefx=0 {
 :MPSADBW XmmReg1, XmmReg2, imm8 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x42; xmmmod=3 & XmmReg1 & XmmReg2; imm8 { mpsadbw128(XmmReg1, XmmReg2, imm8); }
 
 :PHMINPOSUW     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x41; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = phminposuw(XmmReg2_m128); }
+{
+    # Lowest unsigned word and its index, the first on ties.
+    local s:16 = XmmReg2_m128;
+    local min:2 = s[0,16];
+    local idx:2 = 0;
+    local less:1;
+    less = s[16,16] < min;
+    conditionalAssign(idx, less, 1:2, idx);
+    conditionalAssign(min, less, s[16,16], min);
+    less = s[32,16] < min;
+    conditionalAssign(idx, less, 2:2, idx);
+    conditionalAssign(min, less, s[32,16], min);
+    less = s[48,16] < min;
+    conditionalAssign(idx, less, 3:2, idx);
+    conditionalAssign(min, less, s[48,16], min);
+    less = s[64,16] < min;
+    conditionalAssign(idx, less, 4:2, idx);
+    conditionalAssign(min, less, s[64,16], min);
+    less = s[80,16] < min;
+    conditionalAssign(idx, less, 5:2, idx);
+    conditionalAssign(min, less, s[80,16], min);
+    less = s[96,16] < min;
+    conditionalAssign(idx, less, 6:2, idx);
+    conditionalAssign(min, less, s[96,16], min);
+    less = s[112,16] < min;
+    conditionalAssign(idx, less, 7:2, idx);
+    conditionalAssign(min, less, s[112,16], min);
+    XmmReg1 = zext(min) | (zext(idx) << 16);
+}
 
 :PMULDQ     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x28; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = pmuldq(XmmReg1, XmmReg2_m128); }
+{
+    local a:8 = sext(XmmReg1[0,32]);
+    local b:8 = sext(XmmReg2_m128[0,32]);
+    XmmReg1[0,64]  = a * b;
+    local c:8 = sext(XmmReg1[64,32]);
+    local d:8 = sext(XmmReg2_m128[64,32]);
+    XmmReg1[64,64] = c * d;
+}
 
 :PMULLD     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x40; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = pmulld(XmmReg1, XmmReg2_m128); }
+{
+    local m:16 = XmmReg2_m128;
+    XmmReg1[0,32] = XmmReg1[0,32] * m[0,32];
+    XmmReg1[32,32] = XmmReg1[32,32] * m[32,32];
+    XmmReg1[64,32] = XmmReg1[64,32] * m[64,32];
+    XmmReg1[96,32] = XmmReg1[96,32] * m[96,32];
+}
 
 :DPPS XmmReg, m128, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x40; XmmReg ... & m128; imm8 { dpps128(XmmReg, m128, imm8); }
 
@@ -3096,13 +3465,44 @@ with : lockprefx=0 {
 :BLENDPD XmmReg1, XmmReg2, imm8 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x0D; xmmmod=3 & XmmReg1 & XmmReg2; imm8 { blendpd128(XmmReg1, XmmReg2, imm8); }
 
 :BLENDVPS     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x14; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = blendvps(XmmReg1, XmmReg2_m128, XMM0); }
+{
+    local mask:16 = XMM0;
+    local src:16 = XmmReg2_m128;
+    conditionalAssign(XmmReg1[0,32], mask[31,1], src[0,32], XmmReg1[0,32]);
+    conditionalAssign(XmmReg1[32,32], mask[63,1], src[32,32], XmmReg1[32,32]);
+    conditionalAssign(XmmReg1[64,32], mask[95,1], src[64,32], XmmReg1[64,32]);
+    conditionalAssign(XmmReg1[96,32], mask[127,1], src[96,32], XmmReg1[96,32]);
+}
 
 :BLENDVPD     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x15; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = blendvpd(XmmReg1, XmmReg2_m128, XMM0); }
+{
+    local mask:16 = XMM0;
+    local src:16 = XmmReg2_m128;
+    conditionalAssign(XmmReg1[0,64], mask[63,1], src[0,64], XmmReg1[0,64]);
+    conditionalAssign(XmmReg1[64,64], mask[127,1], src[64,64], XmmReg1[64,64]);
+}
 
 :PBLENDVB     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x10; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = pblendvb(XmmReg1, XmmReg2_m128, XMM0); }
+{
+    local mask:16 = XMM0;
+    local src:16 = XmmReg2_m128;
+    conditionalAssign(XmmReg1[0,8], mask[7,1], src[0,8], XmmReg1[0,8]);
+    conditionalAssign(XmmReg1[8,8], mask[15,1], src[8,8], XmmReg1[8,8]);
+    conditionalAssign(XmmReg1[16,8], mask[23,1], src[16,8], XmmReg1[16,8]);
+    conditionalAssign(XmmReg1[24,8], mask[31,1], src[24,8], XmmReg1[24,8]);
+    conditionalAssign(XmmReg1[32,8], mask[39,1], src[32,8], XmmReg1[32,8]);
+    conditionalAssign(XmmReg1[40,8], mask[47,1], src[40,8], XmmReg1[40,8]);
+    conditionalAssign(XmmReg1[48,8], mask[55,1], src[48,8], XmmReg1[48,8]);
+    conditionalAssign(XmmReg1[56,8], mask[63,1], src[56,8], XmmReg1[56,8]);
+    conditionalAssign(XmmReg1[64,8], mask[71,1], src[64,8], XmmReg1[64,8]);
+    conditionalAssign(XmmReg1[72,8], mask[79,1], src[72,8], XmmReg1[72,8]);
+    conditionalAssign(XmmReg1[80,8], mask[87,1], src[80,8], XmmReg1[80,8]);
+    conditionalAssign(XmmReg1[88,8], mask[95,1], src[88,8], XmmReg1[88,8]);
+    conditionalAssign(XmmReg1[96,8], mask[103,1], src[96,8], XmmReg1[96,8]);
+    conditionalAssign(XmmReg1[104,8], mask[111,1], src[104,8], XmmReg1[104,8]);
+    conditionalAssign(XmmReg1[112,8], mask[119,1], src[112,8], XmmReg1[112,8]);
+    conditionalAssign(XmmReg1[120,8], mask[127,1], src[120,8], XmmReg1[120,8]);
+}
 
 :PBLENDW XmmReg, m128, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x0E; XmmReg ... & m128; imm8 { pblendw128(XmmReg, m128, imm8); }
 
@@ -3264,10 +3664,14 @@ with : lockprefx=0 {
     conditionalAssign(XmmReg[64,64],useHigh,rm64,XmmReg[64,64]);
 }
 
-:EXTRACTPS rm64, XmmReg, imm8  is $(LONGMODE_ON) & vexMode=0 & bit64=1 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x17; XmmReg ... & rm64; imm8 { local lane:4; extractps32(lane, XmmReg, imm8); rm64 = zext(lane); }
+# REX.W zero-extends the lane into the 64-bit register; the store is always
+# four bytes.
+:EXTRACTPS Rmr64, XmmReg, imm8  is $(LONGMODE_ON) & vexMode=0 & bit64=1 & $(PRE_66) & $(REX_W) & byte=0x0F; byte=0x3A; byte=0x17; mod=3 & XmmReg & Rmr64; imm8 { local lane:4; extractps32(lane, XmmReg, imm8); Rmr64 = zext(lane); }
 
 @endif
-:EXTRACTPS rm32, XmmReg, imm8  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x17; XmmReg ... & rm32 & check_rm32_dest ...; imm8 { extractps32(rm32, XmmReg, imm8); build check_rm32_dest; }
+:EXTRACTPS Rmr32, XmmReg, imm8  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x17; mod=3 & XmmReg & Rmr32 & check_Rmr32_dest; imm8 { local lane:4; extractps32(lane, XmmReg, imm8); Rmr32 = lane; build check_Rmr32_dest; }
+
+:EXTRACTPS Mem, XmmReg, imm8    is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x17; XmmReg ... & Mem; imm8 { local lane:4; extractps32(lane, XmmReg, imm8); *Mem = lane; }
 
 :PEXTRB Rmr32, XmmReg, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x14; mod=3 & XmmReg & Rmr32 & check_Rmr32_dest; imm8 
 { 
@@ -3323,53 +3727,189 @@ with : lockprefx=0 {
 }
 
 @endif
-:PMOVSXBW XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x20; XmmReg ... & m64 { XmmReg = pmovsxbw(XmmReg, m64); }
+:PMOVSXBW XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x20; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,16] = sext(src[0,8]);
+    XmmReg[16,16] = sext(src[8,8]);
+    XmmReg[32,16] = sext(src[16,8]);
+    XmmReg[48,16] = sext(src[24,8]);
+    XmmReg[64,16] = sext(src[32,8]);
+    XmmReg[80,16] = sext(src[40,8]);
+    XmmReg[96,16] = sext(src[48,8]);
+    XmmReg[112,16] = sext(src[56,8]);
+}
 
-:PMOVSXBW XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x20; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxbw(XmmReg1, XmmReg2); }
+:PMOVSXBW XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x20; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,16] = sext(src[0,8]);
+    XmmReg1[16,16] = sext(src[8,8]);
+    XmmReg1[32,16] = sext(src[16,8]);
+    XmmReg1[48,16] = sext(src[24,8]);
+    XmmReg1[64,16] = sext(src[32,8]);
+    XmmReg1[80,16] = sext(src[40,8]);
+    XmmReg1[96,16] = sext(src[48,8]);
+    XmmReg1[112,16] = sext(src[56,8]);
+}
 
-:PMOVSXBD XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x21; XmmReg ... & m32 { XmmReg = pmovsxbd(XmmReg, m32); }
+:PMOVSXBD XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x21; XmmReg ... & m32 {
+    local src:4 = m32;
+    XmmReg[0,32] = sext(src[0,8]);
+    XmmReg[32,32] = sext(src[8,8]);
+    XmmReg[64,32] = sext(src[16,8]);
+    XmmReg[96,32] = sext(src[24,8]);
+}
 
-:PMOVSXBD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x21; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxbd(XmmReg1, XmmReg2); }
+:PMOVSXBD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x21; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:4 = XmmReg2[0,32];
+    XmmReg1[0,32] = sext(src[0,8]);
+    XmmReg1[32,32] = sext(src[8,8]);
+    XmmReg1[64,32] = sext(src[16,8]);
+    XmmReg1[96,32] = sext(src[24,8]);
+}
 
-:PMOVSXBQ XmmReg, m16      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x22; XmmReg ... & m16 { XmmReg = pmovsxbq(XmmReg, m16); }
+:PMOVSXBQ XmmReg, m16      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x22; XmmReg ... & m16 {
+    local src:2 = m16;
+    XmmReg[0,64] = sext(src[0,8]);
+    XmmReg[64,64] = sext(src[8,8]);
+}
 
-:PMOVSXBQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x22; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxbq(XmmReg1, XmmReg2); }
+:PMOVSXBQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x22; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:2 = XmmReg2[0,16];
+    XmmReg1[0,64] = sext(src[0,8]);
+    XmmReg1[64,64] = sext(src[8,8]);
+}
 
-:PMOVSXWD XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x23; XmmReg ... & m64 { XmmReg = pmovsxwd(XmmReg, m64); }
+:PMOVSXWD XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x23; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,32] = sext(src[0,16]);
+    XmmReg[32,32] = sext(src[16,16]);
+    XmmReg[64,32] = sext(src[32,16]);
+    XmmReg[96,32] = sext(src[48,16]);
+}
 
-:PMOVSXWD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x23; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxwd(XmmReg1, XmmReg2); }
+:PMOVSXWD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x23; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,32] = sext(src[0,16]);
+    XmmReg1[32,32] = sext(src[16,16]);
+    XmmReg1[64,32] = sext(src[32,16]);
+    XmmReg1[96,32] = sext(src[48,16]);
+}
 
-:PMOVSXWQ XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x24; XmmReg ... & m32 { XmmReg = pmovsxwq(XmmReg, m32); }
+:PMOVSXWQ XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x24; XmmReg ... & m32 {
+    local src:4 = m32;
+    XmmReg[0,64] = sext(src[0,16]);
+    XmmReg[64,64] = sext(src[16,16]);
+}
 
-:PMOVSXWQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x24; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxwq(XmmReg1, XmmReg2); }
+:PMOVSXWQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x24; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:4 = XmmReg2[0,32];
+    XmmReg1[0,64] = sext(src[0,16]);
+    XmmReg1[64,64] = sext(src[16,16]);
+}
 
-:PMOVSXDQ XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x25; XmmReg ... & m64 { XmmReg = pmovsxdq(XmmReg, m64); }
+:PMOVSXDQ XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x25; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,64] = sext(src[0,32]);
+    XmmReg[64,64] = sext(src[32,32]);
+}
 
-:PMOVSXDQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x25; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovsxdq(XmmReg1, XmmReg2); }
+:PMOVSXDQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x25; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,64] = sext(src[0,32]);
+    XmmReg1[64,64] = sext(src[32,32]);
+}
 
-:PMOVZXBW XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x30; XmmReg ... & m64 { XmmReg = pmovzxbw(XmmReg, m64); }
+:PMOVZXBW XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x30; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,16] = zext(src[0,8]);
+    XmmReg[16,16] = zext(src[8,8]);
+    XmmReg[32,16] = zext(src[16,8]);
+    XmmReg[48,16] = zext(src[24,8]);
+    XmmReg[64,16] = zext(src[32,8]);
+    XmmReg[80,16] = zext(src[40,8]);
+    XmmReg[96,16] = zext(src[48,8]);
+    XmmReg[112,16] = zext(src[56,8]);
+}
 
-:PMOVZXBW XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x30; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxbw(XmmReg1, XmmReg2); }
+:PMOVZXBW XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x30; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,16] = zext(src[0,8]);
+    XmmReg1[16,16] = zext(src[8,8]);
+    XmmReg1[32,16] = zext(src[16,8]);
+    XmmReg1[48,16] = zext(src[24,8]);
+    XmmReg1[64,16] = zext(src[32,8]);
+    XmmReg1[80,16] = zext(src[40,8]);
+    XmmReg1[96,16] = zext(src[48,8]);
+    XmmReg1[112,16] = zext(src[56,8]);
+}
 
-:PMOVZXBD XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x31; XmmReg ... & m32 { XmmReg = pmovzxbd(XmmReg, m32); }
+:PMOVZXBD XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x31; XmmReg ... & m32 {
+    local src:4 = m32;
+    XmmReg[0,32] = zext(src[0,8]);
+    XmmReg[32,32] = zext(src[8,8]);
+    XmmReg[64,32] = zext(src[16,8]);
+    XmmReg[96,32] = zext(src[24,8]);
+}
 
-:PMOVZXBD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x31; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxbd(XmmReg1, XmmReg2); }
+:PMOVZXBD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x31; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:4 = XmmReg2[0,32];
+    XmmReg1[0,32] = zext(src[0,8]);
+    XmmReg1[32,32] = zext(src[8,8]);
+    XmmReg1[64,32] = zext(src[16,8]);
+    XmmReg1[96,32] = zext(src[24,8]);
+}
 
-:PMOVZXBQ XmmReg, m16      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x32; XmmReg ... & m16 { XmmReg = pmovzxbq(XmmReg, m16); }
+:PMOVZXBQ XmmReg, m16      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x32; XmmReg ... & m16 {
+    local src:2 = m16;
+    XmmReg[0,64] = zext(src[0,8]);
+    XmmReg[64,64] = zext(src[8,8]);
+}
 
-:PMOVZXBQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x32; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxbq(XmmReg1, XmmReg2); }
+:PMOVZXBQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x32; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:2 = XmmReg2[0,16];
+    XmmReg1[0,64] = zext(src[0,8]);
+    XmmReg1[64,64] = zext(src[8,8]);
+}
 
-:PMOVZXWD XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x33; XmmReg ... & m64 { XmmReg = pmovzxwd(XmmReg, m64); }
+:PMOVZXWD XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x33; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,32] = zext(src[0,16]);
+    XmmReg[32,32] = zext(src[16,16]);
+    XmmReg[64,32] = zext(src[32,16]);
+    XmmReg[96,32] = zext(src[48,16]);
+}
 
-:PMOVZXWD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x33; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxwd(XmmReg1, XmmReg2); }
+:PMOVZXWD XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x33; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,32] = zext(src[0,16]);
+    XmmReg1[32,32] = zext(src[16,16]);
+    XmmReg1[64,32] = zext(src[32,16]);
+    XmmReg1[96,32] = zext(src[48,16]);
+}
 
-:PMOVZXWQ XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x34; XmmReg ... & m32 { XmmReg = pmovzxwq(XmmReg, m32); }
+:PMOVZXWQ XmmReg, m32      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x34; XmmReg ... & m32 {
+    local src:4 = m32;
+    XmmReg[0,64] = zext(src[0,16]);
+    XmmReg[64,64] = zext(src[16,16]);
+}
 
-:PMOVZXWQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x34; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxwq(XmmReg1, XmmReg2); }
+:PMOVZXWQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x34; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:4 = XmmReg2[0,32];
+    XmmReg1[0,64] = zext(src[0,16]);
+    XmmReg1[64,64] = zext(src[16,16]);
+}
 
-:PMOVZXDQ XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x35; XmmReg ... & m64 { XmmReg = pmovzxdq(XmmReg, m64); }
+:PMOVZXDQ XmmReg, m64      is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x35; XmmReg ... & m64 {
+    local src:8 = m64;
+    XmmReg[0,64] = zext(src[0,32]);
+    XmmReg[64,64] = zext(src[32,32]);
+}
 
-:PMOVZXDQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x35; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1 = pmovzxdq(XmmReg1, XmmReg2); }
+:PMOVZXDQ XmmReg1, XmmReg2 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x35; xmmmod=3 & XmmReg1 & XmmReg2 {
+    local src:8 = XmmReg2[0,64];
+    XmmReg1[0,64] = zext(src[0,32]);
+    XmmReg1[64,64] = zext(src[32,32]);
+}
 
 :PTEST     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x17; XmmReg1 ... & XmmReg2_m128
 {
@@ -3392,9 +3932,21 @@ with : lockprefx=0 {
 }
 
 :PACKUSDW     XmmReg1, XmmReg2_m128  is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x2B; XmmReg1 ... & XmmReg2_m128
-{ XmmReg1 = packusdw(XmmReg1, XmmReg2_m128); }
+{
+    local a:16 = XmmReg1;
+    local b:16 = XmmReg2_m128;
+    local lane:2;
+    ssduw(a[0,32], lane); XmmReg1[0,16] = lane;
+    ssduw(a[32,32], lane); XmmReg1[16,16] = lane;
+    ssduw(a[64,32], lane); XmmReg1[32,16] = lane;
+    ssduw(a[96,32], lane); XmmReg1[48,16] = lane;
+    ssduw(b[0,32], lane); XmmReg1[64,16] = lane;
+    ssduw(b[32,32], lane); XmmReg1[80,16] = lane;
+    ssduw(b[64,32], lane); XmmReg1[96,16] = lane;
+    ssduw(b[96,32], lane); XmmReg1[112,16] = lane;
+}
 
-:MOVNTDQA XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x2A; XmmReg ... & m128 { XmmReg = movntdqa(XmmReg, m128); }
+:MOVNTDQA XmmReg, m128     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x2A; XmmReg ... & m128 { XmmReg = m128; }
 
 :PCMPESTRI XmmReg, m128, imm8     is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0x61; XmmReg ... & m128; imm8 { local ctl:1 = imm8; local ctl16:16 = zext(ctl); ECX = pcmpestri(XmmReg, m128, ctl16); }
 
