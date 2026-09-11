@@ -193,9 +193,12 @@ def emit():
         P(f"macro pcmpstr_mask_{W}(out, res, ctl) {{")
         P(f"    local c:1 = ctl;")
         P(f"    local r:2 = res;")
+        # Built with shifts and ORs: a bit-range write into a local inside a
+        # macro is lost by the lifter (every lane came out zero).
         P(f"    local expanded:16 = 0;")
+        P(f"    local lane:{w};")
         for j in range(n):
-            P(f"    expanded[{j*bits},{bits}] = 0 - zext(r[{j},1]);")
+            P(f"    lane = 0 - zext(r[{j},1]); expanded = expanded | (zext(lane) << {j*bits});")
         P(f"    local narrow:16 = zext(r);")
         P(f"    conditionalAssign(out, c[6,1], expanded, narrow);")
         P("}\n")
