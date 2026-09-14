@@ -4,12 +4,6 @@
 # macros the MMX forms share are defined in ia.sinc, which must be included
 # first; the AVX files reuse the same operands and come after.
 
-define pcodeop movdq2q;
-
-define pcodeop movmskpd;
-
-define pcodeop movmskps;
-
 define pcodeop paddusw;
 
 define pcodeop rcpps;
@@ -1480,6 +1474,15 @@ with : lockprefx=0 {
     sse_widen32(XmmReg1[64,64], tmp[32,32]);
 }
 
+:CVTPS2PI     mmxregop, m64         is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2D; mmxregop ... & m64
+{
+  local m:8 = m64;
+  local rc:1; sse_rc(rc);
+  sse_f32_to_i4(mmxregop[0,32], m[0,32], rc);
+  sse_f32_to_i4(mmxregop[32,32], m[32,32], rc);
+  FPUTagWord = 0x0000;         
+}
+
 :CVTPS2PI     mmxreg1op, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2D; xmmmod=3 & mmxreg1op & XmmReg2
 {
   local rc:1; sse_rc(rc);
@@ -1619,6 +1622,14 @@ with : lockprefx=0 {
   sse_f32_to_i4(XmmReg1[32,32], m[32,32], 3:1);
   sse_f32_to_i4(XmmReg1[64,32], m[64,32], 3:1);
   sse_f32_to_i4(XmmReg1[96,32], m[96,32], 3:1);
+}
+
+:CVTTPS2PI    mmxregop, m64         is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2C; mmxregop ... & m64
+{
+  local m:8 = m64;
+  sse_f32_to_i4(mmxregop[0,32], m[0,32], 3:1);
+  sse_f32_to_i4(mmxregop[32,32], m[32,32], 3:1);
+  FPUTagWord = 0x0000;         
 }
 
 :CVTTPS2PI    mmxreg1op, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2C; xmmmod=3 & mmxreg1op & XmmReg2
@@ -1908,7 +1919,7 @@ with : lockprefx=0 {
 
 :MOVDQU       XmmReg2, XmmReg1    is vexMode=0 &  $(PRE_F3) & byte=0x0F; byte=0x7F; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg2 = XmmReg1; }
 
-:MOVDQ2Q      mmxreg2dest, XmmReg1    is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xD6; XmmReg1 & mmxreg2dest { mmxreg2dest = movdq2q(mmxreg2dest, XmmReg1); }
+:MOVDQ2Q      mmxreg1op, XmmReg2    is vexMode=0 &  $(PRE_F2) & byte=0x0F; byte=0xD6; xmmmod=3 & mmxreg1op & XmmReg2 { mmxreg1op = XmmReg2[0,64]; }
 
 :MOVHLPS      XmmReg1, XmmReg2    is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x12; xmmmod=3 & XmmReg1 & XmmReg2 { XmmReg1[0,64] = XmmReg2[64,64]; }
 
@@ -1930,9 +1941,23 @@ with : lockprefx=0 {
 
 :MOVLPS       m64, XmmReg         is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x13; XmmReg ... & m64 { m64 = XmmReg[0,64]; }
 
-:MOVMSKPD     Reg32, XmmReg2      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x50; XmmReg2 & Reg32 { Reg32 = movmskpd(Reg32, XmmReg2); }
+:MOVMSKPD     Reg32, XmmReg2      is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0x50; XmmReg2 & Reg32 & check_Reg32_dest
+{
+    local b0:4 = zext(XmmReg2[63,1]);
+    local b1:4 = zext(XmmReg2[127,1]);
+    Reg32 = b0 | (b1 << 1);
+    build check_Reg32_dest;
+}
 
-:MOVMSKPS     Reg32, XmmReg2      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x50; XmmReg2 & Reg32 { Reg32 = movmskps(Reg32, XmmReg2); }
+:MOVMSKPS     Reg32, XmmReg2      is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x50; XmmReg2 & Reg32 & check_Reg32_dest
+{
+    local b0:4 = zext(XmmReg2[31,1]);
+    local b1:4 = zext(XmmReg2[63,1]);
+    local b2:4 = zext(XmmReg2[95,1]);
+    local b3:4 = zext(XmmReg2[127,1]);
+    Reg32 = b0 | (b1 << 1) | (b2 << 2) | (b3 << 3);
+    build check_Reg32_dest;
+}
 
 :MOVNTDQ      m128, XmmReg     is vexMode=0 &  $(PRE_66) & byte=0x0F; byte=0xE7; XmmReg ... & m128  { m128 = XmmReg; }
 

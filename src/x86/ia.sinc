@@ -5505,24 +5505,6 @@ CMPSS_OPERAND:           is imm8<8 { }
 CMPSS_OPERAND: ", "^imm8 is imm8   { }
 
 
-#@family mmx
-:CVTPS2PI     mmxregop, m64         is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2D; mmxregop ... & m64
-{
-  local m:8 = m64;
-  mmxregop[0,32] = round(m[0,32]);
-  mmxregop[32,32] = round(m[32,32]);
-  FPUTagWord = 0x0000;         
-}
-
-
-#@family mmx
-:CVTTPS2PI    mmxregop, m64         is vexMode=0 &  mandover=0 & byte=0x0F; byte=0x2C; mmxregop ... & m64
-{
-  local m:8 = m64;
-  mmxregop[0,32] = trunc(m[0,32]);
-  mmxregop[32,32] = trunc(m[32,32]);
-  FPUTagWord = 0x0000;         
-}
 
 
 #@family sse
