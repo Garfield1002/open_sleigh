@@ -170,6 +170,111 @@ def macro_library() -> str:
         out.append(select_macro(f"avx_maxs{w}", w, lambda x, y: f"{x} s> {y}"))
         out.append(select_macro(f"avx_minu{w}", w, lambda x, y: f"{x} < {y}"))
         out.append(select_macro(f"avx_maxu{w}", w, lambda x, y: f"{x} > {y}"))
+    out.append("\n# Unsigned 32x32->64 and signed 32x32->64 products of the even lanes.\n")
+    out.append("macro avx_muludq(dest, a, b) { local x:8 = a; local y:8 = b; "
+               "dest = zext(x[0,32]) * zext(y[0,32]); }\n")
+    out.append("macro avx_muldq(dest, a, b) { local x:8 = a; local y:8 = b; "
+               "dest = sext(x[0,32]) * sext(y[0,32]); }\n")
+    out.append("\n# Rounded, scaled signed 16-bit product: (a*b + 0x4000) >> 15.\n")
+    lines = ["    local x:8 = a; local y:8 = b; local r:8;"]
+    for i, sl in enumerate(lane_slices(16)):
+        lines.append(f"    local p{i}:4 = ((sext(x{sl}) * sext(y{sl})) + 0x4000) s>> 15;")
+        lines.append(f"    r{sl} = p{i}[0,16];")
+    lines.append("    dest = r;")
+    out.append("macro avx_mulhrs16(dest, a, b) {\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Absolute value and sign transfer.\n")
+    for w in (8, 16, 32):
+        out.append(qword_macro(f"avx_abs{w}", w,
+            lambda x, y: f"({x} ^ ({x} s>> {w-1})) - ({x} s>> {w-1})"))
+        # psign: b<0 -> -a; b==0 -> 0; b>0 -> a
+        out.append(qword_macro(f"avx_sign{w}", w,
+            lambda x, y, w=w: f"(({x} ^ ({y} s>> {w-1})) - ({y} s>> {w-1})) * zext({y} != 0)"))
+    out.append("\n# Sum of absolute byte differences into one qword.\n")
+    lines = ["    local x:8 = a; local y:8 = b; local s:8 = 0;"]
+    for sl in lane_slices(8):
+        lines.append(f"    local d{sl[1:-3].replace(',','_')}:1 = x{sl} - y{sl};")
+    for sl in lane_slices(8):
+        n = sl[1:-3].replace(',', '_')
+        lines.append(f"    s = s + zext((d{n} ^ (d{n} s>> 7)) - (d{n} s>> 7));")
+    lines.append("    dest = s;")
+    # keep byte differences unsigned: recompute with proper abs of unsigned lanes
+    lines = ["    local x:8 = a; local y:8 = b; local s:8 = 0;"]
+    for i, sl in enumerate(lane_slices(8)):
+        lines.append(f"    local gt{i}:1 = x{sl} > y{sl};")
+        lines.append(f"    local d{i}:1 = (x{sl} - y{sl}) * zext(gt{i}) + (y{sl} - x{sl}) * zext(!gt{i});")
+        lines.append(f"    s = s + zext(d{i});")
+    lines.append("    dest = s;")
+    out.append("macro avx_sadbw(dest, a, b) {\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Horizontal pairs within one qword: dest lanes = (a0+a1, a2+a3, ...).\n")
+    for w in (16, 32):
+        n = LANES[w]
+        lines = ["    local x:8 = a; local r:8;"]
+        for i in range(n // 2):
+            lines.append(f"    r[{i*w},{w}] = x[{2*i*w},{w}] + x[{(2*i+1)*w},{w}];")
+        for i in range(n // 2, n):
+            lines.append(f"    r[{i*w},{w}] = 0;")
+        lines.append("    dest = r;")
+        out.append(f"macro avx_hpair_add{w}(dest, a) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Shift every lane of a qword by one count; counts past the lane width\n"
+               "# clear the lane (or fill with the sign for arithmetic shifts).\n")
+    for w in (16, 32, 64):
+        for kind, op in (("sll", "<<"), ("srl", ">>"), ("sra", "s>>")):
+            lines = ["    local x:8 = a; local n:8 = count;",
+                     f"    local over:8 = zext(n > {w-1});",
+                     f"    local amount:8 = (n & (over - 1)) | (over * {w});"]
+            if w == 64:
+                lines.append(f"    dest = x {op} amount;")
+            else:
+                lines.append("    local r:8;")
+                for sl in lane_slices(w):
+                    lines.append(f"    r{sl} = x{sl} {op} amount;")
+                lines.append("    dest = r;")
+            out.append(f"macro avx_{kind}{w}(dest, a, count) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Per-lane variable shifts (AVX2): each lane has its own count.\n")
+    for w in (32, 64):
+        for kind, op in (("sllv", "<<"), ("srlv", ">>"), ("srav", "s>>")):
+            lines = ["    local x:8 = a; local c:8 = b; local r:8;"]
+            for sl in lane_slices(w):
+                lines.append(f"    local n{sl[1:-3].replace(',','_')}:8 = zext(c{sl});")
+            for sl in lane_slices(w):
+                n = sl[1:-3].replace(',', '_')
+                lines.append(f"    local over{n}:8 = zext(n{n} > {w-1});")
+                lines.append(f"    r{sl} = x{sl} {op} ((n{n} & (over{n} - 1)) | (over{n} * {w}));")
+            lines.append("    dest = r;")
+            out.append(f"macro avx_{kind}{w}(dest, a, b) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Interleave the low (or high) halves of two qwords: unpack.\n")
+    for w in (8, 16, 32):
+        n = LANES[w]
+        for half, base in (("lo", 0), ("hi", n // 2)):
+            lines = ["    local x:8 = a; local y:8 = b; local r:8;"]
+            for i in range(n // 2):
+                lines.append(f"    r[{(2*i)*w},{w}] = x[{(base+i)*w},{w}];")
+                lines.append(f"    r[{(2*i+1)*w},{w}] = y[{(base+i)*w},{w}];")
+            lines.append("    dest = r;")
+            out.append(f"macro avx_unpack{half}{w}(dest, a, b) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Saturating packs: a qword of 2w-bit lanes narrows to w-bit lanes.\n")
+    for name, sw, dw, signed, kind in (
+        ("avx_packss16", 16, 8, True, "s"), ("avx_packus16", 16, 8, False, "u"),
+        ("avx_packss32", 32, 16, True, "s"), ("avx_packus32", 32, 16, False, "u"),
+    ):
+        hi = (1 << (dw - 1)) - 1 if signed else (1 << dw) - 1
+        lo = -(1 << (dw - 1)) if signed else 0
+        lines = ["    local x:8 = a; local r:4;"]
+        for i, sl in enumerate(lane_slices(sw)):
+            v = f"x{sl}"
+            if signed:
+                lines.append(f"    local c{i}:{sw//8} = {v};")
+                lines.append(f"    local h{i}:1 = c{i} s> {hi};")
+                lines.append(f"    local l{i}:1 = c{i} s< {lo};")
+                lines.append(f"    local s{i}:{sw//8} = ({hi} * zext(h{i})) + ({lo & ((1<<sw)-1)} * zext(l{i})) + (c{i} * zext(!h{i} && !l{i}));")
+            else:
+                lines.append(f"    local c{i}:{sw//8} = {v};")
+                lines.append(f"    local h{i}:1 = c{i} s> {hi};")
+                lines.append(f"    local l{i}:1 = c{i} s< 0;")
+                lines.append(f"    local s{i}:{sw//8} = ({hi} * zext(h{i})) + (c{i} * zext(!h{i} && !l{i}));")
+            lines.append(f"    r[{i*dw},{dw}] = s{i}[0,{dw}];")
+        lines.append("    dest = r;")
+        out.append(f"macro {name}(dest, a) {{\n" + "\n".join(lines) + "\n}\n")
     out.append("\n# IEEE lanes, through the MXCSR-aware SSE scalar macros.\n")
     for w, sfx in ((32, "32"), (64, "64")):
         for op in ("add", "sub", "mul", "div", "min", "max"):
@@ -233,6 +338,87 @@ TABLE: dict[str, tuple[str, int]] = {
 SHAPE_3 = {"XmmReg1,vexVVVV_XmmReg,XmmReg2_m128", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"}
 SHAPE_2 = {"XmmReg1,XmmReg2_m128", "YmmReg1,YmmReg2_m256"}
 
+# Operations on one 128-bit lane at a time. The body template is given the
+# destination qwords `d0`/`d1`, first-source qwords `a0`/`a1`, and second-
+# source qwords `b0`/`b1` (locals for `a`/`b` so the two qwords of a source
+# can be read after the first destination qword is written).
+# A VEX.256 form applies the body to both halves; that is exactly how AVX2
+# defines every packed integer op and the in-lane shuffles.
+TABLE_128: dict[str, tuple[str, int]] = {
+    # unpack: low halves interleave the low qwords, high halves the high ones
+    "VPUNPCKLBW": ("avx_unpacklo8({d0}, {a0}, {b0}); avx_unpackhi8({d1}, {a0}, {b0});", 2),
+    "VPUNPCKHBW": ("avx_unpacklo8({d0}, {a1}, {b1}); avx_unpackhi8({d1}, {a1}, {b1});", 2),
+    "VPUNPCKLWD": ("avx_unpacklo16({d0}, {a0}, {b0}); avx_unpackhi16({d1}, {a0}, {b0});", 2),
+    "VPUNPCKHWD": ("avx_unpacklo16({d0}, {a1}, {b1}); avx_unpackhi16({d1}, {a1}, {b1});", 2),
+    "VPUNPCKLDQ": ("avx_unpacklo32({d0}, {a0}, {b0}); avx_unpackhi32({d1}, {a0}, {b0});", 2),
+    "VPUNPCKHDQ": ("avx_unpacklo32({d0}, {a1}, {b1}); avx_unpackhi32({d1}, {a1}, {b1});", 2),
+    "VPUNPCKLQDQ": ("{d0} = {a0}; {d1} = {b0};", 2),
+    "VPUNPCKHQDQ": ("{d0} = {a1}; {d1} = {b1};", 2),
+    "VUNPCKLPS": ("avx_unpacklo32({d0}, {a0}, {b0}); avx_unpackhi32({d1}, {a0}, {b0});", 2),
+    "VUNPCKHPS": ("avx_unpacklo32({d0}, {a1}, {b1}); avx_unpackhi32({d1}, {a1}, {b1});", 2),
+    "VUNPCKLPD": ("{d0} = {a0}; {d1} = {b0};", 2),
+    "VUNPCKHPD": ("{d0} = {a1}; {d1} = {b1};", 2),
+    # pack: a's four qwords... a lane narrows both qwords of a then of b
+    "VPACKSSWB": ("local pa0:4; avx_packss16(pa0, {a0}); local pa1:4; avx_packss16(pa1, {a1}); "
+                  "local pb0:4; avx_packss16(pb0, {b0}); local pb1:4; avx_packss16(pb1, {b1}); "
+                  "{d0} = (zext(pa1) << 32) | zext(pa0); {d1} = (zext(pb1) << 32) | zext(pb0);", 2),
+    "VPACKUSWB": ("local pa0:4; avx_packus16(pa0, {a0}); local pa1:4; avx_packus16(pa1, {a1}); "
+                  "local pb0:4; avx_packus16(pb0, {b0}); local pb1:4; avx_packus16(pb1, {b1}); "
+                  "{d0} = (zext(pa1) << 32) | zext(pa0); {d1} = (zext(pb1) << 32) | zext(pb0);", 2),
+    "VPACKSSDW": ("local pa0:4; avx_packss32(pa0, {a0}); local pa1:4; avx_packss32(pa1, {a1}); "
+                  "local pb0:4; avx_packss32(pb0, {b0}); local pb1:4; avx_packss32(pb1, {b1}); "
+                  "{d0} = (zext(pa1) << 32) | zext(pa0); {d1} = (zext(pb1) << 32) | zext(pb0);", 2),
+    "VPACKUSDW": ("local pa0:4; avx_packus32(pa0, {a0}); local pa1:4; avx_packus32(pa1, {a1}); "
+                  "local pb0:4; avx_packus32(pb0, {b0}); local pb1:4; avx_packus32(pb1, {b1}); "
+                  "{d0} = (zext(pa1) << 32) | zext(pa0); {d1} = (zext(pb1) << 32) | zext(pb0);", 2),
+    # horizontal add/sub: dest = (pairs of a, pairs of b)
+    "VPHADDW": ("local ha0:8; avx_hpair_add16(ha0, {a0}); local ha1:8; avx_hpair_add16(ha1, {a1}); "
+                "local hb0:8; avx_hpair_add16(hb0, {b0}); local hb1:8; avx_hpair_add16(hb1, {b1}); "
+                "{d0} = (ha1 << 32) | (ha0 & 0xffffffff); {d1} = (hb1 << 32) | (hb0 & 0xffffffff);", 2),
+    "VPHADDD": ("local ha0:8; avx_hpair_add32(ha0, {a0}); local ha1:8; avx_hpair_add32(ha1, {a1}); "
+                "local hb0:8; avx_hpair_add32(hb0, {b0}); local hb1:8; avx_hpair_add32(hb1, {b1}); "
+                "{d0} = (ha1 << 32) | (ha0 & 0xffffffff); {d1} = (hb1 << 32) | (hb0 & 0xffffffff);", 2),
+    # even-lane widening multiplies
+    "VPMULUDQ": ("avx_muludq({d0}, {a0}, {b0}); avx_muludq({d1}, {a1}, {b1});", 2),
+    "VPMULDQ": ("avx_muldq({d0}, {a0}, {b0}); avx_muldq({d1}, {a1}, {b1});", 2),
+    # sum of absolute differences per qword
+    "VPSADBW": ("avx_sadbw({d0}, {a0}, {b0}); avx_sadbw({d1}, {a1}, {b1});", 2),
+    # rounded scaled multiply
+    "VPMULHRSW": ("avx_mulhrs16({d0}, {a0}, {b0}); avx_mulhrs16({d1}, {a1}, {b1});", 2),
+    # abs / sign (unary uses only a)
+    "VPABSB": ("avx_abs8({d0}, {a0}, {a0}); avx_abs8({d1}, {a1}, {a1});", 1),
+    "VPABSW": ("avx_abs16({d0}, {a0}, {a0}); avx_abs16({d1}, {a1}, {a1});", 1),
+    "VPABSD": ("avx_abs32({d0}, {a0}, {a0}); avx_abs32({d1}, {a1}, {a1});", 1),
+    "VPSIGNB": ("avx_sign8({d0}, {a0}, {b0}); avx_sign8({d1}, {a1}, {b1});", 2),
+    "VPSIGNW": ("avx_sign16({d0}, {a0}, {b0}); avx_sign16({d1}, {a1}, {b1});", 2),
+    "VPSIGND": ("avx_sign32({d0}, {a0}, {b0}); avx_sign32({d1}, {a1}, {b1});", 2),
+    # addsub: even lanes subtract, odd lanes add
+    "VADDSUBPS": ("local q0:8; local q1:8; sse_sub32(q0[0,32], {a0}[0,32], {b0}[0,32]); sse_add32(q0[32,32], {a0}[32,32], {b0}[32,32]); "
+                  "sse_sub32(q1[0,32], {a1}[0,32], {b1}[0,32]); sse_add32(q1[32,32], {a1}[32,32], {b1}[32,32]); {d0} = q0; {d1} = q1;", 2),
+    "VADDSUBPD": ("sse_sub64({d0}, {a0}, {b0}); sse_add64({d1}, {a1}, {b1});", 2),
+    # horizontal float add/sub
+    "VHADDPS": ("local q0:8; local q1:8; sse_add32(q0[0,32], {a0}[0,32], {a0}[32,32]); sse_add32(q0[32,32], {a1}[0,32], {a1}[32,32]); "
+                "sse_add32(q1[0,32], {b0}[0,32], {b0}[32,32]); sse_add32(q1[32,32], {b1}[0,32], {b1}[32,32]); {d0} = q0; {d1} = q1;", 2),
+    "VHSUBPS": ("local q0:8; local q1:8; sse_sub32(q0[0,32], {a0}[0,32], {a0}[32,32]); sse_sub32(q0[32,32], {a1}[0,32], {a1}[32,32]); "
+                "sse_sub32(q1[0,32], {b0}[0,32], {b0}[32,32]); sse_sub32(q1[32,32], {b1}[0,32], {b1}[32,32]); {d0} = q0; {d1} = q1;", 2),
+    "VHADDPD": ("sse_add64({d0}, {a0}, {a1}); sse_add64({d1}, {b0}, {b1});", 2),
+    "VHSUBPD": ("sse_sub64({d0}, {a0}, {a1}); sse_sub64({d1}, {b0}, {b1});", 2),
+}
+
+# Shifts by a count in the low qword of an XMM/m128 operand, or an imm8.
+# name -> (lane macro, lane width)
+TABLE_SHIFT: dict[str, str] = {
+    "VPSLLW": "avx_sll16", "VPSLLD": "avx_sll32", "VPSLLQ": "avx_sll64",
+    "VPSRLW": "avx_srl16", "VPSRLD": "avx_srl32", "VPSRLQ": "avx_srl64",
+    "VPSRAW": "avx_sra16", "VPSRAD": "avx_sra32",
+}
+# AVX2 per-lane variable shifts, plain three-operand qword macros.
+TABLE_VSHIFT: dict[str, str] = {
+    "VPSLLVD": "avx_sllv32", "VPSLLVQ": "avx_sllv64",
+    "VPSRLVD": "avx_srlv32", "VPSRLVQ": "avx_srlv64",
+    "VPSRAVD": "avx_srav32",
+}
+
 
 def constructor_128(name: str, operands: str, pattern: str, macro: str, arity: int) -> str:
     pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
@@ -269,6 +455,100 @@ def constructor_256(name: str, operands: str, pattern: str, macro: str, arity: i
     return f":{name} {operands} is {pattern}\n{{\n{body}\n}}\n"
 
 
+_LANE_COUNTER = [0]
+
+
+def lane128_body(template: str, d: tuple[str, str], a: tuple[str, str], b: tuple[str, str] | None) -> str:
+    """Bind every source qword to a fresh local so a template may slice it
+    (`{a0}[0,32]`), since a bit range of a bit range is not SLEIGH."""
+    _LANE_COUNTER[0] += 1
+    k = _LANE_COUNTER[0]
+    lines = [f"    local a0_{k}:8 = {a[0]};", f"    local a1_{k}:8 = {a[1]};"]
+    kw = dict(d0=d[0], d1=d[1], a0=f"a0_{k}", a1=f"a1_{k}")
+    if b:
+        lines += [f"    local b0_{k}:8 = {b[0]};", f"    local b1_{k}:8 = {b[1]};"]
+        kw.update(b0=f"b0_{k}", b1=f"b1_{k}")
+    body = template.format(**kw)
+    # locals declared in a template must be unique per expansion too
+    body = re.sub(r"\blocal (\w+):", lambda m: f"local {m.group(1)}_{k}:", body)
+    for name in set(re.findall(r"local (\w+)_%d:" % k, body)):
+        body = re.sub(r"\b%s\b(?!_%d)" % (name, k), f"{name}_{k}", body)
+    lines.append("    " + body.replace("; ", ";\n    ").rstrip())
+    return "\n".join(lines)
+
+
+def constructor_128_lane(name: str, operands: str, pattern: str, template: str, arity: int) -> str:
+    pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
+    lines = ["    local m:16 = XmmReg2_m128;"]
+    if arity == 2:
+        lines.append("    local va:16 = vexVVVV_XmmReg;")
+        a = ("va[0,64]", "va[64,64]"); b = ("m[0,64]", "m[64,64]")
+    else:
+        a = ("m[0,64]", "m[64,64]"); b = None
+    lines.append(lane128_body(template, ("YmmReg1[0,64]", "YmmReg1[64,64]"), a, b))
+    lines.append("    avx_zero_upper(YmmReg1);")
+    return f":{name} {operands} is {pattern}\n{{\n" + "\n".join(lines) + "\n}\n"
+
+
+def constructor_256_lane(name: str, operands: str, pattern: str, template: str, arity: int) -> str:
+    pattern = pattern.replace("(YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+                              "(YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H")
+    if arity == 2:
+        pattern = pattern.replace("& vexVVVV_YmmReg;",
+                                  "& vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H;")
+    assert "YmmReg2_m256_L" in pattern, (name, pattern)
+    lines = ["    local lo:16 = YmmReg2_m256_L;", "    local hi:16 = YmmReg2_m256_H;"]
+    if arity == 2:
+        lines += ["    local vlo:16 = vexVVVV_YmmReg_L;", "    local vhi:16 = vexVVVV_YmmReg_H;"]
+        lines.append(lane128_body(template, ("YmmReg1[0,64]", "YmmReg1[64,64]"),
+                                  ("vlo[0,64]", "vlo[64,64]"), ("lo[0,64]", "lo[64,64]")))
+        lines.append(lane128_body(template, ("YmmReg1[128,64]", "YmmReg1[192,64]"),
+                                  ("vhi[0,64]", "vhi[64,64]"), ("hi[0,64]", "hi[64,64]")))
+    else:
+        lines.append(lane128_body(template, ("YmmReg1[0,64]", "YmmReg1[64,64]"),
+                                  ("lo[0,64]", "lo[64,64]"), None))
+        lines.append(lane128_body(template, ("YmmReg1[128,64]", "YmmReg1[192,64]"),
+                                  ("hi[0,64]", "hi[64,64]"), None))
+    return f":{name} {operands} is {pattern}\n{{\n" + "\n".join(lines) + "\n}\n"
+
+
+def constructor_shift(name: str, operands: str, pattern: str, macro: str, shape: str) -> str:
+    """Shift forms: `dst, vvvv, xmm/m128` (count in the low qword) at both
+    widths, and `vvvv, reg, imm8` where vvvv is the destination."""
+    if shape == "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128":
+        pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
+        body = ("    local m:16 = XmmReg2_m128;\n    local n:8 = m[0,64];\n"
+                f"    {macro}(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);\n"
+                f"    {macro}(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);\n"
+                "    avx_zero_upper(YmmReg1);")
+    elif shape == "YmmReg1,vexVVVV_YmmReg,XmmReg2_m128":
+        pattern = pattern.replace("(YmmReg1 & ZmmReg1)", "YmmReg1")
+        pattern = pattern.replace("& vexVVVV_YmmReg;", "& vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H;")
+        body = ("    local m:16 = XmmReg2_m128;\n    local n:8 = m[0,64];\n"
+                f"    {macro}(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);\n"
+                f"    {macro}(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);\n"
+                f"    {macro}(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);\n"
+                f"    {macro}(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);")
+    elif shape == "vexVVVV_XmmReg,XmmReg2,imm8":
+        # vvvv names the destination; write it as the YMM it sits in.
+        pattern = pattern.replace("& vexVVVV_XmmReg;", "& vexVVVV_XmmReg & vexVVVV_YmmReg;")
+        body = ("    local n:8 = zext(imm8);\n"
+                f"    {macro}(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);\n"
+                f"    {macro}(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);\n"
+                "    avx_zero_upper(vexVVVV_YmmReg);")
+    elif shape == "vexVVVV_YmmReg,YmmReg2,imm8":
+        pattern = pattern.replace("& YmmReg2)", "& YmmReg2 & YmmReg2_L & YmmReg2_H)")
+        body = ("    local n:8 = zext(imm8);\n"
+                "    local lo:16 = YmmReg2_L;\n    local hi:16 = YmmReg2_H;\n"
+                f"    {macro}(vexVVVV_YmmReg[0,64], lo[0,64], n);\n"
+                f"    {macro}(vexVVVV_YmmReg[64,64], lo[64,64], n);\n"
+                f"    {macro}(vexVVVV_YmmReg[128,64], hi[0,64], n);\n"
+                f"    {macro}(vexVVVV_YmmReg[192,64], hi[64,64], n);")
+    else:
+        raise AssertionError((name, shape))
+    return f":{name} {operands} is {pattern}\n{{\n{body}\n}}\n"
+
+
 def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
     out = [
         "#@family avx\n"
@@ -281,20 +561,34 @@ def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
     seen_headers: set[str] = set()
     for row in inventory:
         name = row["name"]
-        if name not in TABLE:
-            continue
-        macro, arity = TABLE[name]
         shape = re.sub(r"\s+", "", row["operands"])
-        expect = SHAPE_3 if arity == 2 else SHAPE_2
-        if shape not in expect:
-            continue
         key = (name, shape)
         if key in seen_headers:
             continue
+        text = None
+        if name in TABLE:
+            macro, arity = TABLE[name]
+            expect = SHAPE_3 if arity == 2 else SHAPE_2
+            if shape in expect:
+                gen = constructor_128 if shape.startswith("Xmm") else constructor_256
+                text = gen(name, row["operands"], row["pattern"], macro, arity)
+        elif name in TABLE_VSHIFT:
+            if shape in SHAPE_3:
+                gen = constructor_128 if shape.startswith("Xmm") else constructor_256
+                text = gen(name, row["operands"], row["pattern"], TABLE_VSHIFT[name], 2)
+        elif name in TABLE_128:
+            template, arity = TABLE_128[name]
+            expect = SHAPE_3 if arity == 2 else SHAPE_2
+            if shape in expect:
+                gen = constructor_128_lane if shape.startswith("Xmm") else constructor_256_lane
+                text = gen(name, row["operands"], row["pattern"], template, arity)
+        elif name in TABLE_SHIFT:
+            text = constructor_shift(name, row["operands"], row["pattern"], TABLE_SHIFT[name], shape)
+        if text is None:
+            continue
         seen_headers.add(key)
-        gen = constructor_128 if shape.startswith("Xmm") else constructor_256
         out.append(f"# {name}\n")
-        out.append(gen(name, row["operands"], row["pattern"], macro, arity))
+        out.append(text)
         out.append("\n")
         done.add(name)
     return "".join(out), done
@@ -311,7 +605,7 @@ def main() -> int:
         "# integer forms are generated into avx.sinc beside their 128-bit\n"
         "# siblings. Generated by scripts/avx_gen.py; do not edit.\n"
     )
-    missing = sorted(set(TABLE) - done)
+    missing = sorted((set(TABLE) | set(TABLE_128) | set(TABLE_SHIFT) | set(TABLE_VSHIFT)) - done)
     if missing:
         print("no inventory match for:", " ".join(missing), file=sys.stderr)
     print(f"generated {len(done)} mnemonics")

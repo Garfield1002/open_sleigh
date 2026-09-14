@@ -294,6 +294,390 @@ macro avx_maxu32(dest, a, b) {
     dest = (x & k) | (y & ~k);
 }
 
+# Unsigned 32x32->64 and signed 32x32->64 products of the even lanes.
+macro avx_muludq(dest, a, b) { local x:8 = a; local y:8 = b; dest = zext(x[0,32]) * zext(y[0,32]); }
+macro avx_muldq(dest, a, b) { local x:8 = a; local y:8 = b; dest = sext(x[0,32]) * sext(y[0,32]); }
+
+# Rounded, scaled signed 16-bit product: (a*b + 0x4000) >> 15.
+macro avx_mulhrs16(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    local p0:4 = ((sext(x[0,16]) * sext(y[0,16])) + 0x4000) s>> 15;
+    r[0,16] = p0[0,16];
+    local p1:4 = ((sext(x[16,16]) * sext(y[16,16])) + 0x4000) s>> 15;
+    r[16,16] = p1[0,16];
+    local p2:4 = ((sext(x[32,16]) * sext(y[32,16])) + 0x4000) s>> 15;
+    r[32,16] = p2[0,16];
+    local p3:4 = ((sext(x[48,16]) * sext(y[48,16])) + 0x4000) s>> 15;
+    r[48,16] = p3[0,16];
+    dest = r;
+}
+
+# Absolute value and sign transfer.
+macro avx_abs8(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,8] = (x[0,8] ^ (x[0,8] s>> 7)) - (x[0,8] s>> 7);
+    r[8,8] = (x[8,8] ^ (x[8,8] s>> 7)) - (x[8,8] s>> 7);
+    r[16,8] = (x[16,8] ^ (x[16,8] s>> 7)) - (x[16,8] s>> 7);
+    r[24,8] = (x[24,8] ^ (x[24,8] s>> 7)) - (x[24,8] s>> 7);
+    r[32,8] = (x[32,8] ^ (x[32,8] s>> 7)) - (x[32,8] s>> 7);
+    r[40,8] = (x[40,8] ^ (x[40,8] s>> 7)) - (x[40,8] s>> 7);
+    r[48,8] = (x[48,8] ^ (x[48,8] s>> 7)) - (x[48,8] s>> 7);
+    r[56,8] = (x[56,8] ^ (x[56,8] s>> 7)) - (x[56,8] s>> 7);
+    dest = r;
+}
+macro avx_sign8(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,8] = ((x[0,8] ^ (y[0,8] s>> 7)) - (y[0,8] s>> 7)) * zext(y[0,8] != 0);
+    r[8,8] = ((x[8,8] ^ (y[8,8] s>> 7)) - (y[8,8] s>> 7)) * zext(y[8,8] != 0);
+    r[16,8] = ((x[16,8] ^ (y[16,8] s>> 7)) - (y[16,8] s>> 7)) * zext(y[16,8] != 0);
+    r[24,8] = ((x[24,8] ^ (y[24,8] s>> 7)) - (y[24,8] s>> 7)) * zext(y[24,8] != 0);
+    r[32,8] = ((x[32,8] ^ (y[32,8] s>> 7)) - (y[32,8] s>> 7)) * zext(y[32,8] != 0);
+    r[40,8] = ((x[40,8] ^ (y[40,8] s>> 7)) - (y[40,8] s>> 7)) * zext(y[40,8] != 0);
+    r[48,8] = ((x[48,8] ^ (y[48,8] s>> 7)) - (y[48,8] s>> 7)) * zext(y[48,8] != 0);
+    r[56,8] = ((x[56,8] ^ (y[56,8] s>> 7)) - (y[56,8] s>> 7)) * zext(y[56,8] != 0);
+    dest = r;
+}
+macro avx_abs16(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,16] = (x[0,16] ^ (x[0,16] s>> 15)) - (x[0,16] s>> 15);
+    r[16,16] = (x[16,16] ^ (x[16,16] s>> 15)) - (x[16,16] s>> 15);
+    r[32,16] = (x[32,16] ^ (x[32,16] s>> 15)) - (x[32,16] s>> 15);
+    r[48,16] = (x[48,16] ^ (x[48,16] s>> 15)) - (x[48,16] s>> 15);
+    dest = r;
+}
+macro avx_sign16(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,16] = ((x[0,16] ^ (y[0,16] s>> 15)) - (y[0,16] s>> 15)) * zext(y[0,16] != 0);
+    r[16,16] = ((x[16,16] ^ (y[16,16] s>> 15)) - (y[16,16] s>> 15)) * zext(y[16,16] != 0);
+    r[32,16] = ((x[32,16] ^ (y[32,16] s>> 15)) - (y[32,16] s>> 15)) * zext(y[32,16] != 0);
+    r[48,16] = ((x[48,16] ^ (y[48,16] s>> 15)) - (y[48,16] s>> 15)) * zext(y[48,16] != 0);
+    dest = r;
+}
+macro avx_abs32(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,32] = (x[0,32] ^ (x[0,32] s>> 31)) - (x[0,32] s>> 31);
+    r[32,32] = (x[32,32] ^ (x[32,32] s>> 31)) - (x[32,32] s>> 31);
+    dest = r;
+}
+macro avx_sign32(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,32] = ((x[0,32] ^ (y[0,32] s>> 31)) - (y[0,32] s>> 31)) * zext(y[0,32] != 0);
+    r[32,32] = ((x[32,32] ^ (y[32,32] s>> 31)) - (y[32,32] s>> 31)) * zext(y[32,32] != 0);
+    dest = r;
+}
+
+# Sum of absolute byte differences into one qword.
+macro avx_sadbw(dest, a, b) {
+    local x:8 = a; local y:8 = b; local s:8 = 0;
+    local gt0:1 = x[0,8] > y[0,8];
+    local d0:1 = (x[0,8] - y[0,8]) * zext(gt0) + (y[0,8] - x[0,8]) * zext(!gt0);
+    s = s + zext(d0);
+    local gt1:1 = x[8,8] > y[8,8];
+    local d1:1 = (x[8,8] - y[8,8]) * zext(gt1) + (y[8,8] - x[8,8]) * zext(!gt1);
+    s = s + zext(d1);
+    local gt2:1 = x[16,8] > y[16,8];
+    local d2:1 = (x[16,8] - y[16,8]) * zext(gt2) + (y[16,8] - x[16,8]) * zext(!gt2);
+    s = s + zext(d2);
+    local gt3:1 = x[24,8] > y[24,8];
+    local d3:1 = (x[24,8] - y[24,8]) * zext(gt3) + (y[24,8] - x[24,8]) * zext(!gt3);
+    s = s + zext(d3);
+    local gt4:1 = x[32,8] > y[32,8];
+    local d4:1 = (x[32,8] - y[32,8]) * zext(gt4) + (y[32,8] - x[32,8]) * zext(!gt4);
+    s = s + zext(d4);
+    local gt5:1 = x[40,8] > y[40,8];
+    local d5:1 = (x[40,8] - y[40,8]) * zext(gt5) + (y[40,8] - x[40,8]) * zext(!gt5);
+    s = s + zext(d5);
+    local gt6:1 = x[48,8] > y[48,8];
+    local d6:1 = (x[48,8] - y[48,8]) * zext(gt6) + (y[48,8] - x[48,8]) * zext(!gt6);
+    s = s + zext(d6);
+    local gt7:1 = x[56,8] > y[56,8];
+    local d7:1 = (x[56,8] - y[56,8]) * zext(gt7) + (y[56,8] - x[56,8]) * zext(!gt7);
+    s = s + zext(d7);
+    dest = s;
+}
+
+# Horizontal pairs within one qword: dest lanes = (a0+a1, a2+a3, ...).
+macro avx_hpair_add16(dest, a) {
+    local x:8 = a; local r:8;
+    r[0,16] = x[0,16] + x[16,16];
+    r[16,16] = x[32,16] + x[48,16];
+    r[32,16] = 0;
+    r[48,16] = 0;
+    dest = r;
+}
+macro avx_hpair_add32(dest, a) {
+    local x:8 = a; local r:8;
+    r[0,32] = x[0,32] + x[32,32];
+    r[32,32] = 0;
+    dest = r;
+}
+
+# Shift every lane of a qword by one count; counts past the lane width
+# clear the lane (or fill with the sign for arithmetic shifts).
+macro avx_sll16(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    local r:8;
+    r[0,16] = x[0,16] << amount;
+    r[16,16] = x[16,16] << amount;
+    r[32,16] = x[32,16] << amount;
+    r[48,16] = x[48,16] << amount;
+    dest = r;
+}
+macro avx_srl16(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    local r:8;
+    r[0,16] = x[0,16] >> amount;
+    r[16,16] = x[16,16] >> amount;
+    r[32,16] = x[32,16] >> amount;
+    r[48,16] = x[48,16] >> amount;
+    dest = r;
+}
+macro avx_sra16(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 15);
+    local amount:8 = (n & (over - 1)) | (over * 16);
+    local r:8;
+    r[0,16] = x[0,16] s>> amount;
+    r[16,16] = x[16,16] s>> amount;
+    r[32,16] = x[32,16] s>> amount;
+    r[48,16] = x[48,16] s>> amount;
+    dest = r;
+}
+macro avx_sll32(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    local r:8;
+    r[0,32] = x[0,32] << amount;
+    r[32,32] = x[32,32] << amount;
+    dest = r;
+}
+macro avx_srl32(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    local r:8;
+    r[0,32] = x[0,32] >> amount;
+    r[32,32] = x[32,32] >> amount;
+    dest = r;
+}
+macro avx_sra32(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 31);
+    local amount:8 = (n & (over - 1)) | (over * 32);
+    local r:8;
+    r[0,32] = x[0,32] s>> amount;
+    r[32,32] = x[32,32] s>> amount;
+    dest = r;
+}
+macro avx_sll64(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    dest = x << amount;
+}
+macro avx_srl64(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    dest = x >> amount;
+}
+macro avx_sra64(dest, a, count) {
+    local x:8 = a; local n:8 = count;
+    local over:8 = zext(n > 63);
+    local amount:8 = (n & (over - 1)) | (over * 64);
+    dest = x s>> amount;
+}
+
+# Per-lane variable shifts (AVX2): each lane has its own count.
+macro avx_sllv32(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,32]);
+    local n32_:8 = zext(c[32,32]);
+    local over0_:8 = zext(n0_ > 31);
+    r[0,32] = x[0,32] << ((n0_ & (over0_ - 1)) | (over0_ * 32));
+    local over32_:8 = zext(n32_ > 31);
+    r[32,32] = x[32,32] << ((n32_ & (over32_ - 1)) | (over32_ * 32));
+    dest = r;
+}
+macro avx_srlv32(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,32]);
+    local n32_:8 = zext(c[32,32]);
+    local over0_:8 = zext(n0_ > 31);
+    r[0,32] = x[0,32] >> ((n0_ & (over0_ - 1)) | (over0_ * 32));
+    local over32_:8 = zext(n32_ > 31);
+    r[32,32] = x[32,32] >> ((n32_ & (over32_ - 1)) | (over32_ * 32));
+    dest = r;
+}
+macro avx_srav32(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,32]);
+    local n32_:8 = zext(c[32,32]);
+    local over0_:8 = zext(n0_ > 31);
+    r[0,32] = x[0,32] s>> ((n0_ & (over0_ - 1)) | (over0_ * 32));
+    local over32_:8 = zext(n32_ > 31);
+    r[32,32] = x[32,32] s>> ((n32_ & (over32_ - 1)) | (over32_ * 32));
+    dest = r;
+}
+macro avx_sllv64(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,64]);
+    local over0_:8 = zext(n0_ > 63);
+    r[0,64] = x[0,64] << ((n0_ & (over0_ - 1)) | (over0_ * 64));
+    dest = r;
+}
+macro avx_srlv64(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,64]);
+    local over0_:8 = zext(n0_ > 63);
+    r[0,64] = x[0,64] >> ((n0_ & (over0_ - 1)) | (over0_ * 64));
+    dest = r;
+}
+macro avx_srav64(dest, a, b) {
+    local x:8 = a; local c:8 = b; local r:8;
+    local n0_:8 = zext(c[0,64]);
+    local over0_:8 = zext(n0_ > 63);
+    r[0,64] = x[0,64] s>> ((n0_ & (over0_ - 1)) | (over0_ * 64));
+    dest = r;
+}
+
+# Interleave the low (or high) halves of two qwords: unpack.
+macro avx_unpacklo8(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,8] = x[0,8];
+    r[8,8] = y[0,8];
+    r[16,8] = x[8,8];
+    r[24,8] = y[8,8];
+    r[32,8] = x[16,8];
+    r[40,8] = y[16,8];
+    r[48,8] = x[24,8];
+    r[56,8] = y[24,8];
+    dest = r;
+}
+macro avx_unpackhi8(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,8] = x[32,8];
+    r[8,8] = y[32,8];
+    r[16,8] = x[40,8];
+    r[24,8] = y[40,8];
+    r[32,8] = x[48,8];
+    r[40,8] = y[48,8];
+    r[48,8] = x[56,8];
+    r[56,8] = y[56,8];
+    dest = r;
+}
+macro avx_unpacklo16(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,16] = x[0,16];
+    r[16,16] = y[0,16];
+    r[32,16] = x[16,16];
+    r[48,16] = y[16,16];
+    dest = r;
+}
+macro avx_unpackhi16(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,16] = x[32,16];
+    r[16,16] = y[32,16];
+    r[32,16] = x[48,16];
+    r[48,16] = y[48,16];
+    dest = r;
+}
+macro avx_unpacklo32(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,32] = x[0,32];
+    r[32,32] = y[0,32];
+    dest = r;
+}
+macro avx_unpackhi32(dest, a, b) {
+    local x:8 = a; local y:8 = b; local r:8;
+    r[0,32] = x[32,32];
+    r[32,32] = y[32,32];
+    dest = r;
+}
+
+# Saturating packs: a qword of 2w-bit lanes narrows to w-bit lanes.
+macro avx_packss16(dest, a) {
+    local x:8 = a; local r:4;
+    local c0:2 = x[0,16];
+    local h0:1 = c0 s> 127;
+    local l0:1 = c0 s< -128;
+    local s0:2 = (127 * zext(h0)) + (65408 * zext(l0)) + (c0 * zext(!h0 && !l0));
+    r[0,8] = s0[0,8];
+    local c1:2 = x[16,16];
+    local h1:1 = c1 s> 127;
+    local l1:1 = c1 s< -128;
+    local s1:2 = (127 * zext(h1)) + (65408 * zext(l1)) + (c1 * zext(!h1 && !l1));
+    r[8,8] = s1[0,8];
+    local c2:2 = x[32,16];
+    local h2:1 = c2 s> 127;
+    local l2:1 = c2 s< -128;
+    local s2:2 = (127 * zext(h2)) + (65408 * zext(l2)) + (c2 * zext(!h2 && !l2));
+    r[16,8] = s2[0,8];
+    local c3:2 = x[48,16];
+    local h3:1 = c3 s> 127;
+    local l3:1 = c3 s< -128;
+    local s3:2 = (127 * zext(h3)) + (65408 * zext(l3)) + (c3 * zext(!h3 && !l3));
+    r[24,8] = s3[0,8];
+    dest = r;
+}
+macro avx_packus16(dest, a) {
+    local x:8 = a; local r:4;
+    local c0:2 = x[0,16];
+    local h0:1 = c0 s> 255;
+    local l0:1 = c0 s< 0;
+    local s0:2 = (255 * zext(h0)) + (c0 * zext(!h0 && !l0));
+    r[0,8] = s0[0,8];
+    local c1:2 = x[16,16];
+    local h1:1 = c1 s> 255;
+    local l1:1 = c1 s< 0;
+    local s1:2 = (255 * zext(h1)) + (c1 * zext(!h1 && !l1));
+    r[8,8] = s1[0,8];
+    local c2:2 = x[32,16];
+    local h2:1 = c2 s> 255;
+    local l2:1 = c2 s< 0;
+    local s2:2 = (255 * zext(h2)) + (c2 * zext(!h2 && !l2));
+    r[16,8] = s2[0,8];
+    local c3:2 = x[48,16];
+    local h3:1 = c3 s> 255;
+    local l3:1 = c3 s< 0;
+    local s3:2 = (255 * zext(h3)) + (c3 * zext(!h3 && !l3));
+    r[24,8] = s3[0,8];
+    dest = r;
+}
+macro avx_packss32(dest, a) {
+    local x:8 = a; local r:4;
+    local c0:4 = x[0,32];
+    local h0:1 = c0 s> 32767;
+    local l0:1 = c0 s< -32768;
+    local s0:4 = (32767 * zext(h0)) + (4294934528 * zext(l0)) + (c0 * zext(!h0 && !l0));
+    r[0,16] = s0[0,16];
+    local c1:4 = x[32,32];
+    local h1:1 = c1 s> 32767;
+    local l1:1 = c1 s< -32768;
+    local s1:4 = (32767 * zext(h1)) + (4294934528 * zext(l1)) + (c1 * zext(!h1 && !l1));
+    r[16,16] = s1[0,16];
+    dest = r;
+}
+macro avx_packus32(dest, a) {
+    local x:8 = a; local r:4;
+    local c0:4 = x[0,32];
+    local h0:1 = c0 s> 65535;
+    local l0:1 = c0 s< 0;
+    local s0:4 = (65535 * zext(h0)) + (c0 * zext(!h0 && !l0));
+    r[0,16] = s0[0,16];
+    local c1:4 = x[32,32];
+    local h1:1 = c1 s> 65535;
+    local l1:1 = c1 s< 0;
+    local s1:4 = (65535 * zext(h1)) + (c1 * zext(!h1 && !l1));
+    r[16,16] = s1[0,16];
+    dest = r;
+}
+
 # IEEE lanes, through the MXCSR-aware SSE scalar macros.
 macro avx_fadd32(dest, a, b) {
     local x:8 = a; local y:8 = b; local r:8;

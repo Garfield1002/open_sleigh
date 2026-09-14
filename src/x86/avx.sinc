@@ -44,6 +44,94 @@
     avx_fadd32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VADDSUBPD
+:VADDSUBPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD0; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_1:8 = va[0,64];
+    local a1_1:8 = va[64,64];
+    local b0_1:8 = m[0,64];
+    local b1_1:8 = m[64,64];
+    sse_sub64(YmmReg1[0,64], a0_1, b0_1);
+    sse_add64(YmmReg1[64,64], a1_1, b1_1);
+    avx_zero_upper(YmmReg1);
+}
+
+# VADDSUBPD
+:VADDSUBPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xD0; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_2:8 = vlo[0,64];
+    local a1_2:8 = vlo[64,64];
+    local b0_2:8 = lo[0,64];
+    local b1_2:8 = lo[64,64];
+    sse_sub64(YmmReg1[0,64], a0_2, b0_2);
+    sse_add64(YmmReg1[64,64], a1_2, b1_2);
+    local a0_3:8 = vhi[0,64];
+    local a1_3:8 = vhi[64,64];
+    local b0_3:8 = hi[0,64];
+    local b1_3:8 = hi[64,64];
+    sse_sub64(YmmReg1[128,64], a0_3, b0_3);
+    sse_add64(YmmReg1[192,64], a1_3, b1_3);
+}
+
+# VADDSUBPS
+:VADDSUBPS XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD0; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_4:8 = va[0,64];
+    local a1_4:8 = va[64,64];
+    local b0_4:8 = m[0,64];
+    local b1_4:8 = m[64,64];
+    local q0_4:8;
+    local q1_4:8;
+    sse_sub32(q0_4[0,32], a0_4[0,32], b0_4[0,32]);
+    sse_add32(q0_4[32,32], a0_4[32,32], b0_4[32,32]);
+    sse_sub32(q1_4[0,32], a1_4[0,32], b1_4[0,32]);
+    sse_add32(q1_4[32,32], a1_4[32,32], b1_4[32,32]);
+    YmmReg1[0,64] = q0_4;
+    YmmReg1[64,64] = q1_4;
+    avx_zero_upper(YmmReg1);
+}
+
+# VADDSUBPS
+:VADDSUBPS YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xD0; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_5:8 = vlo[0,64];
+    local a1_5:8 = vlo[64,64];
+    local b0_5:8 = lo[0,64];
+    local b1_5:8 = lo[64,64];
+    local q0_5:8;
+    local q1_5:8;
+    sse_sub32(q0_5[0,32], a0_5[0,32], b0_5[0,32]);
+    sse_add32(q0_5[32,32], a0_5[32,32], b0_5[32,32]);
+    sse_sub32(q1_5[0,32], a1_5[0,32], b1_5[0,32]);
+    sse_add32(q1_5[32,32], a1_5[32,32], b1_5[32,32]);
+    YmmReg1[0,64] = q0_5;
+    YmmReg1[64,64] = q1_5;
+    local a0_6:8 = vhi[0,64];
+    local a1_6:8 = vhi[64,64];
+    local b0_6:8 = hi[0,64];
+    local b1_6:8 = hi[64,64];
+    local q0_6:8;
+    local q1_6:8;
+    sse_sub32(q0_6[0,32], a0_6[0,32], b0_6[0,32]);
+    sse_add32(q0_6[32,32], a0_6[32,32], b0_6[32,32]);
+    sse_sub32(q1_6[0,32], a1_6[0,32], b1_6[0,32]);
+    sse_add32(q1_6[32,32], a1_6[32,32], b1_6[32,32]);
+    YmmReg1[128,64] = q0_6;
+    YmmReg1[192,64] = q1_6;
+}
+
 # VANDPD
 :VANDPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x54; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
 {
@@ -162,6 +250,182 @@
     avx_fdiv32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
     avx_fdiv32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
     avx_fdiv32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VHADDPD
+:VHADDPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7C; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_7:8 = va[0,64];
+    local a1_7:8 = va[64,64];
+    local b0_7:8 = m[0,64];
+    local b1_7:8 = m[64,64];
+    sse_add64(YmmReg1[0,64], a0_7, a1_7);
+    sse_add64(YmmReg1[64,64], b0_7, b1_7);
+    avx_zero_upper(YmmReg1);
+}
+
+# VHADDPD
+:VHADDPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x7C; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_8:8 = vlo[0,64];
+    local a1_8:8 = vlo[64,64];
+    local b0_8:8 = lo[0,64];
+    local b1_8:8 = lo[64,64];
+    sse_add64(YmmReg1[0,64], a0_8, a1_8);
+    sse_add64(YmmReg1[64,64], b0_8, b1_8);
+    local a0_9:8 = vhi[0,64];
+    local a1_9:8 = vhi[64,64];
+    local b0_9:8 = hi[0,64];
+    local b1_9:8 = hi[64,64];
+    sse_add64(YmmReg1[128,64], a0_9, a1_9);
+    sse_add64(YmmReg1[192,64], b0_9, b1_9);
+}
+
+# VHADDPS
+:VHADDPS XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7C; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_10:8 = va[0,64];
+    local a1_10:8 = va[64,64];
+    local b0_10:8 = m[0,64];
+    local b1_10:8 = m[64,64];
+    local q0_10:8;
+    local q1_10:8;
+    sse_add32(q0_10[0,32], a0_10[0,32], a0_10[32,32]);
+    sse_add32(q0_10[32,32], a1_10[0,32], a1_10[32,32]);
+    sse_add32(q1_10[0,32], b0_10[0,32], b0_10[32,32]);
+    sse_add32(q1_10[32,32], b1_10[0,32], b1_10[32,32]);
+    YmmReg1[0,64] = q0_10;
+    YmmReg1[64,64] = q1_10;
+    avx_zero_upper(YmmReg1);
+}
+
+# VHADDPS
+:VHADDPS YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x7C; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_11:8 = vlo[0,64];
+    local a1_11:8 = vlo[64,64];
+    local b0_11:8 = lo[0,64];
+    local b1_11:8 = lo[64,64];
+    local q0_11:8;
+    local q1_11:8;
+    sse_add32(q0_11[0,32], a0_11[0,32], a0_11[32,32]);
+    sse_add32(q0_11[32,32], a1_11[0,32], a1_11[32,32]);
+    sse_add32(q1_11[0,32], b0_11[0,32], b0_11[32,32]);
+    sse_add32(q1_11[32,32], b1_11[0,32], b1_11[32,32]);
+    YmmReg1[0,64] = q0_11;
+    YmmReg1[64,64] = q1_11;
+    local a0_12:8 = vhi[0,64];
+    local a1_12:8 = vhi[64,64];
+    local b0_12:8 = hi[0,64];
+    local b1_12:8 = hi[64,64];
+    local q0_12:8;
+    local q1_12:8;
+    sse_add32(q0_12[0,32], a0_12[0,32], a0_12[32,32]);
+    sse_add32(q0_12[32,32], a1_12[0,32], a1_12[32,32]);
+    sse_add32(q1_12[0,32], b0_12[0,32], b0_12[32,32]);
+    sse_add32(q1_12[32,32], b1_12[0,32], b1_12[32,32]);
+    YmmReg1[128,64] = q0_12;
+    YmmReg1[192,64] = q1_12;
+}
+
+# VHSUBPD
+:VHSUBPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_13:8 = va[0,64];
+    local a1_13:8 = va[64,64];
+    local b0_13:8 = m[0,64];
+    local b1_13:8 = m[64,64];
+    sse_sub64(YmmReg1[0,64], a0_13, a1_13);
+    sse_sub64(YmmReg1[64,64], b0_13, b1_13);
+    avx_zero_upper(YmmReg1);
+}
+
+# VHSUBPD
+:VHSUBPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x7D; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_14:8 = vlo[0,64];
+    local a1_14:8 = vlo[64,64];
+    local b0_14:8 = lo[0,64];
+    local b1_14:8 = lo[64,64];
+    sse_sub64(YmmReg1[0,64], a0_14, a1_14);
+    sse_sub64(YmmReg1[64,64], b0_14, b1_14);
+    local a0_15:8 = vhi[0,64];
+    local a1_15:8 = vhi[64,64];
+    local b0_15:8 = hi[0,64];
+    local b1_15:8 = hi[64,64];
+    sse_sub64(YmmReg1[128,64], a0_15, a1_15);
+    sse_sub64(YmmReg1[192,64], b0_15, b1_15);
+}
+
+# VHSUBPS
+:VHSUBPS XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_16:8 = va[0,64];
+    local a1_16:8 = va[64,64];
+    local b0_16:8 = m[0,64];
+    local b1_16:8 = m[64,64];
+    local q0_16:8;
+    local q1_16:8;
+    sse_sub32(q0_16[0,32], a0_16[0,32], a0_16[32,32]);
+    sse_sub32(q0_16[32,32], a1_16[0,32], a1_16[32,32]);
+    sse_sub32(q1_16[0,32], b0_16[0,32], b0_16[32,32]);
+    sse_sub32(q1_16[32,32], b1_16[0,32], b1_16[32,32]);
+    YmmReg1[0,64] = q0_16;
+    YmmReg1[64,64] = q1_16;
+    avx_zero_upper(YmmReg1);
+}
+
+# VHSUBPS
+:VHSUBPS YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x7D; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_17:8 = vlo[0,64];
+    local a1_17:8 = vlo[64,64];
+    local b0_17:8 = lo[0,64];
+    local b1_17:8 = lo[64,64];
+    local q0_17:8;
+    local q1_17:8;
+    sse_sub32(q0_17[0,32], a0_17[0,32], a0_17[32,32]);
+    sse_sub32(q0_17[32,32], a1_17[0,32], a1_17[32,32]);
+    sse_sub32(q1_17[0,32], b0_17[0,32], b0_17[32,32]);
+    sse_sub32(q1_17[32,32], b1_17[0,32], b1_17[32,32]);
+    YmmReg1[0,64] = q0_17;
+    YmmReg1[64,64] = q1_17;
+    local a0_18:8 = vhi[0,64];
+    local a1_18:8 = vhi[64,64];
+    local b0_18:8 = hi[0,64];
+    local b1_18:8 = hi[64,64];
+    local q0_18:8;
+    local q1_18:8;
+    sse_sub32(q0_18[0,32], a0_18[0,32], a0_18[32,32]);
+    sse_sub32(q0_18[32,32], a1_18[0,32], a1_18[32,32]);
+    sse_sub32(q1_18[0,32], b0_18[0,32], b0_18[32,32]);
+    sse_sub32(q1_18[32,32], b1_18[0,32], b1_18[32,32]);
+    YmmReg1[128,64] = q0_18;
+    YmmReg1[192,64] = q1_18;
 }
 
 # VMAXPD
@@ -322,6 +586,127 @@
     avx_or(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
     avx_or(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
     avx_or(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPABSB
+:VPABSB XmmReg1, XmmReg2_m128 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1C; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local a0_19:8 = m[0,64];
+    local a1_19:8 = m[64,64];
+    avx_abs8(YmmReg1[0,64], a0_19, a0_19);
+    avx_abs8(YmmReg1[64,64], a1_19, a1_19);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPABSW
+:VPABSW XmmReg1, XmmReg2_m128 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local a0_20:8 = m[0,64];
+    local a1_20:8 = m[64,64];
+    avx_abs16(YmmReg1[0,64], a0_20, a0_20);
+    avx_abs16(YmmReg1[64,64], a1_20, a1_20);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPABSD
+:VPABSD XmmReg1, XmmReg2_m128 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1E; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local a0_21:8 = m[0,64];
+    local a1_21:8 = m[64,64];
+    avx_abs32(YmmReg1[0,64], a0_21, a0_21);
+    avx_abs32(YmmReg1[64,64], a1_21, a1_21);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPACKSSWB
+:VPACKSSWB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x63; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_22:8 = va[0,64];
+    local a1_22:8 = va[64,64];
+    local b0_22:8 = m[0,64];
+    local b1_22:8 = m[64,64];
+    local pa0_22:4;
+    avx_packss16(pa0_22, a0_22);
+    local pa1_22:4;
+    avx_packss16(pa1_22, a1_22);
+    local pb0_22:4;
+    avx_packss16(pb0_22, b0_22);
+    local pb1_22:4;
+    avx_packss16(pb1_22, b1_22);
+    YmmReg1[0,64] = (zext(pa1_22) << 32) | zext(pa0_22);
+    YmmReg1[64,64] = (zext(pb1_22) << 32) | zext(pb0_22);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPACKSSDW
+:VPACKSSDW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6B; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_23:8 = va[0,64];
+    local a1_23:8 = va[64,64];
+    local b0_23:8 = m[0,64];
+    local b1_23:8 = m[64,64];
+    local pa0_23:4;
+    avx_packss32(pa0_23, a0_23);
+    local pa1_23:4;
+    avx_packss32(pa1_23, a1_23);
+    local pb0_23:4;
+    avx_packss32(pb0_23, b0_23);
+    local pb1_23:4;
+    avx_packss32(pb1_23, b1_23);
+    YmmReg1[0,64] = (zext(pa1_23) << 32) | zext(pa0_23);
+    YmmReg1[64,64] = (zext(pb1_23) << 32) | zext(pb0_23);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPACKUSDW
+:VPACKUSDW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_XmmReg; byte=0x2B; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_24:8 = va[0,64];
+    local a1_24:8 = va[64,64];
+    local b0_24:8 = m[0,64];
+    local b1_24:8 = m[64,64];
+    local pa0_24:4;
+    avx_packus32(pa0_24, a0_24);
+    local pa1_24:4;
+    avx_packus32(pa1_24, a1_24);
+    local pb0_24:4;
+    avx_packus32(pb0_24, b0_24);
+    local pb1_24:4;
+    avx_packus32(pb1_24, b1_24);
+    YmmReg1[0,64] = (zext(pa1_24) << 32) | zext(pa0_24);
+    YmmReg1[64,64] = (zext(pb1_24) << 32) | zext(pb0_24);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPACKUSWB
+:VPACKUSWB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x67; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_25:8 = va[0,64];
+    local a1_25:8 = va[64,64];
+    local b0_25:8 = m[0,64];
+    local b1_25:8 = m[64,64];
+    local pa0_25:4;
+    avx_packus16(pa0_25, a0_25);
+    local pa1_25:4;
+    avx_packus16(pa1_25, a1_25);
+    local pb0_25:4;
+    avx_packus16(pb0_25, b0_25);
+    local pb1_25:4;
+    avx_packus16(pb1_25, b1_25);
+    YmmReg1[0,64] = (zext(pa1_25) << 32) | zext(pa0_25);
+    YmmReg1[64,64] = (zext(pb1_25) << 32) | zext(pb0_25);
+    avx_zero_upper(YmmReg1);
 }
 
 # VPADDB
@@ -495,6 +880,50 @@
     avx_zero_upper(YmmReg1);
 }
 
+# VPHADDW
+:VPHADDW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x01; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_26:8 = va[0,64];
+    local a1_26:8 = va[64,64];
+    local b0_26:8 = m[0,64];
+    local b1_26:8 = m[64,64];
+    local ha0_26:8;
+    avx_hpair_add16(ha0_26, a0_26);
+    local ha1_26:8;
+    avx_hpair_add16(ha1_26, a1_26);
+    local hb0_26:8;
+    avx_hpair_add16(hb0_26, b0_26);
+    local hb1_26:8;
+    avx_hpair_add16(hb1_26, b1_26);
+    YmmReg1[0,64] = (ha1_26 << 32) | (ha0_26 & 0xffffffff);
+    YmmReg1[64,64] = (hb1_26 << 32) | (hb0_26 & 0xffffffff);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPHADDD
+:VPHADDD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x02; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_27:8 = va[0,64];
+    local a1_27:8 = va[64,64];
+    local b0_27:8 = m[0,64];
+    local b1_27:8 = m[64,64];
+    local ha0_27:8;
+    avx_hpair_add32(ha0_27, a0_27);
+    local ha1_27:8;
+    avx_hpair_add32(ha1_27, a1_27);
+    local hb0_27:8;
+    avx_hpair_add32(hb0_27, b0_27);
+    local hb1_27:8;
+    avx_hpair_add32(hb1_27, b1_27);
+    YmmReg1[0,64] = (ha1_27 << 32) | (ha0_27 & 0xffffffff);
+    YmmReg1[64,64] = (hb1_27 << 32) | (hb0_27 & 0xffffffff);
+    avx_zero_upper(YmmReg1);
+}
+
 # VPMADDWD
 :VPMADDWD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF5; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
 {
@@ -612,6 +1041,34 @@
     avx_zero_upper(YmmReg1);
 }
 
+# VPMULDQ
+:VPMULDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x28; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_28:8 = va[0,64];
+    local a1_28:8 = va[64,64];
+    local b0_28:8 = m[0,64];
+    local b1_28:8 = m[64,64];
+    avx_muldq(YmmReg1[0,64], a0_28, b0_28);
+    avx_muldq(YmmReg1[64,64], a1_28, b1_28);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPMULHRSW
+:VPMULHRSW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0B; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_29:8 = va[0,64];
+    local a1_29:8 = va[64,64];
+    local b0_29:8 = m[0,64];
+    local b1_29:8 = m[64,64];
+    avx_mulhrs16(YmmReg1[0,64], a0_29, b0_29);
+    avx_mulhrs16(YmmReg1[64,64], a1_29, b1_29);
+    avx_zero_upper(YmmReg1);
+}
+
 # VPMULHUW
 :VPMULHUW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE4; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
 {
@@ -648,6 +1105,20 @@
     avx_zero_upper(YmmReg1);
 }
 
+# VPMULUDQ
+:VPMULUDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF4; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_30:8 = va[0,64];
+    local a1_30:8 = va[64,64];
+    local b0_30:8 = m[0,64];
+    local b1_30:8 = m[64,64];
+    avx_muludq(YmmReg1[0,64], a0_30, b0_30);
+    avx_muludq(YmmReg1[64,64], a1_30, b1_30);
+    avx_zero_upper(YmmReg1);
+}
+
 # VPOR
 :VPOR XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xEB; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
 {
@@ -655,6 +1126,214 @@
     avx_or(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
     avx_or(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
     avx_zero_upper(YmmReg1);
+}
+
+# VPSADBW
+:VPSADBW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF6; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_31:8 = va[0,64];
+    local a1_31:8 = va[64,64];
+    local b0_31:8 = m[0,64];
+    local b1_31:8 = m[64,64];
+    avx_sadbw(YmmReg1[0,64], a0_31, b0_31);
+    avx_sadbw(YmmReg1[64,64], a1_31, b1_31);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSIGNB
+:VPSIGNB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x08; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_32:8 = va[0,64];
+    local a1_32:8 = va[64,64];
+    local b0_32:8 = m[0,64];
+    local b1_32:8 = m[64,64];
+    avx_sign8(YmmReg1[0,64], a0_32, b0_32);
+    avx_sign8(YmmReg1[64,64], a1_32, b1_32);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSIGNW
+:VPSIGNW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x09; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_33:8 = va[0,64];
+    local a1_33:8 = va[64,64];
+    local b0_33:8 = m[0,64];
+    local b1_33:8 = m[64,64];
+    avx_sign16(YmmReg1[0,64], a0_33, b0_33);
+    avx_sign16(YmmReg1[64,64], a1_33, b1_33);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSIGND
+:VPSIGND XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0A; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_34:8 = va[0,64];
+    local a1_34:8 = va[64,64];
+    local b0_34:8 = m[0,64];
+    local b1_34:8 = m[64,64];
+    avx_sign32(YmmReg1[0,64], a0_34, b0_34);
+    avx_sign32(YmmReg1[64,64], a1_34, b1_34);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLW
+:VPSLLW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF1; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll16(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_sll16(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLW
+:VPSLLW vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x71; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_sll16(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_sll16(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSLLD
+:VPSLLD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF2; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_sll32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLD
+:VPSLLD vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x72; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_sll32(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_sll32(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSLLQ
+:VPSLLQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF3; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll64(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_sll64(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLQ
+:VPSLLQ vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x73; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_sll64(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_sll64(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSRAW
+:VPSRAW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE1; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sra16(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_sra16(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRAW
+:VPSRAW vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x71; reg_opcode=4 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_sra16(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_sra16(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSRAD
+:VPSRAD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE2; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sra32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_sra32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRAD
+:VPSRAD vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x72; reg_opcode=4 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_sra32(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_sra32(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSRLW
+:VPSRLW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD1; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl16(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_srl16(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRLW
+:VPSRLW vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x71; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_srl16(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_srl16(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSRLD
+:VPSRLD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD2; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_srl32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRLD
+:VPSRLD vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x72; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_srl32(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_srl32(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
+}
+
+# VPSRLQ
+:VPSRLQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD3; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl64(YmmReg1[0,64], vexVVVV_XmmReg[0,64], n);
+    avx_srl64(YmmReg1[64,64], vexVVVV_XmmReg[64,64], n);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRLQ
+:VPSRLQ vexVVVV_XmmReg, XmmReg2, imm8 is $(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg & vexVVVV_YmmReg; byte=0x73; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8
+{
+    local n:8 = zext(imm8);
+    avx_srl64(vexVVVV_YmmReg[0,64], XmmReg2[0,64], n);
+    avx_srl64(vexVVVV_YmmReg[64,64], XmmReg2[64,64], n);
+    avx_zero_upper(vexVVVV_YmmReg);
 }
 
 # VPSUBB
@@ -726,6 +1405,118 @@
     local m:16 = XmmReg2_m128;
     avx_subus16(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
     avx_subus16(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKHBW
+:VPUNPCKHBW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x68; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_35:8 = va[0,64];
+    local a1_35:8 = va[64,64];
+    local b0_35:8 = m[0,64];
+    local b1_35:8 = m[64,64];
+    avx_unpacklo8(YmmReg1[0,64], a1_35, b1_35);
+    avx_unpackhi8(YmmReg1[64,64], a1_35, b1_35);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKHWD
+:VPUNPCKHWD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x69; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_36:8 = va[0,64];
+    local a1_36:8 = va[64,64];
+    local b0_36:8 = m[0,64];
+    local b1_36:8 = m[64,64];
+    avx_unpacklo16(YmmReg1[0,64], a1_36, b1_36);
+    avx_unpackhi16(YmmReg1[64,64], a1_36, b1_36);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKHDQ
+:VPUNPCKHDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6A; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_37:8 = va[0,64];
+    local a1_37:8 = va[64,64];
+    local b0_37:8 = m[0,64];
+    local b1_37:8 = m[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a1_37, b1_37);
+    avx_unpackhi32(YmmReg1[64,64], a1_37, b1_37);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKHQDQ
+:VPUNPCKHQDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_38:8 = va[0,64];
+    local a1_38:8 = va[64,64];
+    local b0_38:8 = m[0,64];
+    local b1_38:8 = m[64,64];
+    YmmReg1[0,64] = a1_38;
+    YmmReg1[64,64] = b1_38;
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKLBW
+:VPUNPCKLBW XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x60; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_39:8 = va[0,64];
+    local a1_39:8 = va[64,64];
+    local b0_39:8 = m[0,64];
+    local b1_39:8 = m[64,64];
+    avx_unpacklo8(YmmReg1[0,64], a0_39, b0_39);
+    avx_unpackhi8(YmmReg1[64,64], a0_39, b0_39);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKLWD
+:VPUNPCKLWD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x61; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_40:8 = va[0,64];
+    local a1_40:8 = va[64,64];
+    local b0_40:8 = m[0,64];
+    local b1_40:8 = m[64,64];
+    avx_unpacklo16(YmmReg1[0,64], a0_40, b0_40);
+    avx_unpackhi16(YmmReg1[64,64], a0_40, b0_40);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKLDQ
+:VPUNPCKLDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x62; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_41:8 = va[0,64];
+    local a1_41:8 = va[64,64];
+    local b0_41:8 = m[0,64];
+    local b1_41:8 = m[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a0_41, b0_41);
+    avx_unpackhi32(YmmReg1[64,64], a0_41, b0_41);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPUNPCKLQDQ
+:VPUNPCKLQDQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6C; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_42:8 = va[0,64];
+    local a1_42:8 = va[64,64];
+    local b0_42:8 = m[0,64];
+    local b1_42:8 = m[64,64];
+    YmmReg1[0,64] = a0_42;
+    YmmReg1[64,64] = b0_42;
     avx_zero_upper(YmmReg1);
 }
 
@@ -818,6 +1609,146 @@
     avx_fsub32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VUNPCKHPD
+:VUNPCKHPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x15; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_43:8 = va[0,64];
+    local a1_43:8 = va[64,64];
+    local b0_43:8 = m[0,64];
+    local b1_43:8 = m[64,64];
+    YmmReg1[0,64] = a1_43;
+    YmmReg1[64,64] = b1_43;
+    avx_zero_upper(YmmReg1);
+}
+
+# VUNPCKHPD
+:VUNPCKHPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x15; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_44:8 = vlo[0,64];
+    local a1_44:8 = vlo[64,64];
+    local b0_44:8 = lo[0,64];
+    local b1_44:8 = lo[64,64];
+    YmmReg1[0,64] = a1_44;
+    YmmReg1[64,64] = b1_44;
+    local a0_45:8 = vhi[0,64];
+    local a1_45:8 = vhi[64,64];
+    local b0_45:8 = hi[0,64];
+    local b1_45:8 = hi[64,64];
+    YmmReg1[128,64] = a1_45;
+    YmmReg1[192,64] = b1_45;
+}
+
+# VUNPCKHPS
+:VUNPCKHPS XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x15; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_46:8 = va[0,64];
+    local a1_46:8 = va[64,64];
+    local b0_46:8 = m[0,64];
+    local b1_46:8 = m[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a1_46, b1_46);
+    avx_unpackhi32(YmmReg1[64,64], a1_46, b1_46);
+    avx_zero_upper(YmmReg1);
+}
+
+# VUNPCKHPS
+:VUNPCKHPS YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x15; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_47:8 = vlo[0,64];
+    local a1_47:8 = vlo[64,64];
+    local b0_47:8 = lo[0,64];
+    local b1_47:8 = lo[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a1_47, b1_47);
+    avx_unpackhi32(YmmReg1[64,64], a1_47, b1_47);
+    local a0_48:8 = vhi[0,64];
+    local a1_48:8 = vhi[64,64];
+    local b0_48:8 = hi[0,64];
+    local b1_48:8 = hi[64,64];
+    avx_unpacklo32(YmmReg1[128,64], a1_48, b1_48);
+    avx_unpackhi32(YmmReg1[192,64], a1_48, b1_48);
+}
+
+# VUNPCKLPD
+:VUNPCKLPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x14; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_49:8 = va[0,64];
+    local a1_49:8 = va[64,64];
+    local b0_49:8 = m[0,64];
+    local b1_49:8 = m[64,64];
+    YmmReg1[0,64] = a0_49;
+    YmmReg1[64,64] = b0_49;
+    avx_zero_upper(YmmReg1);
+}
+
+# VUNPCKLPD
+:VUNPCKLPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x14; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_50:8 = vlo[0,64];
+    local a1_50:8 = vlo[64,64];
+    local b0_50:8 = lo[0,64];
+    local b1_50:8 = lo[64,64];
+    YmmReg1[0,64] = a0_50;
+    YmmReg1[64,64] = b0_50;
+    local a0_51:8 = vhi[0,64];
+    local a1_51:8 = vhi[64,64];
+    local b0_51:8 = hi[0,64];
+    local b1_51:8 = hi[64,64];
+    YmmReg1[128,64] = a0_51;
+    YmmReg1[192,64] = b0_51;
+}
+
+# VUNPCKLPS
+:VUNPCKLPS XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x14; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local va:16 = vexVVVV_XmmReg;
+    local a0_52:8 = va[0,64];
+    local a1_52:8 = va[64,64];
+    local b0_52:8 = m[0,64];
+    local b1_52:8 = m[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a0_52, b0_52);
+    avx_unpackhi32(YmmReg1[64,64], a0_52, b0_52);
+    avx_zero_upper(YmmReg1);
+}
+
+# VUNPCKLPS
+:VUNPCKLPS YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x14; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_53:8 = vlo[0,64];
+    local a1_53:8 = vlo[64,64];
+    local b0_53:8 = lo[0,64];
+    local b1_53:8 = lo[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a0_53, b0_53);
+    avx_unpackhi32(YmmReg1[64,64], a0_53, b0_53);
+    local a0_54:8 = vhi[0,64];
+    local a1_54:8 = vhi[64,64];
+    local b0_54:8 = hi[0,64];
+    local b1_54:8 = hi[64,64];
+    avx_unpacklo32(YmmReg1[128,64], a0_54, b0_54);
+    avx_unpackhi32(YmmReg1[192,64], a0_54, b0_54);
+}
+
 # VXORPD
 :VXORPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x57; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
 {
@@ -856,6 +1787,199 @@
     avx_xor(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
     avx_xor(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
     avx_xor(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPABSB
+:VPABSB YmmReg1, YmmReg2_m256 is $(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1C; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local a0_55:8 = lo[0,64];
+    local a1_55:8 = lo[64,64];
+    avx_abs8(YmmReg1[0,64], a0_55, a0_55);
+    avx_abs8(YmmReg1[64,64], a1_55, a1_55);
+    local a0_56:8 = hi[0,64];
+    local a1_56:8 = hi[64,64];
+    avx_abs8(YmmReg1[128,64], a0_56, a0_56);
+    avx_abs8(YmmReg1[192,64], a1_56, a1_56);
+}
+
+# VPABSW
+:VPABSW YmmReg1, YmmReg2_m256 is $(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1D; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local a0_57:8 = lo[0,64];
+    local a1_57:8 = lo[64,64];
+    avx_abs16(YmmReg1[0,64], a0_57, a0_57);
+    avx_abs16(YmmReg1[64,64], a1_57, a1_57);
+    local a0_58:8 = hi[0,64];
+    local a1_58:8 = hi[64,64];
+    avx_abs16(YmmReg1[128,64], a0_58, a0_58);
+    avx_abs16(YmmReg1[192,64], a1_58, a1_58);
+}
+
+# VPABSD
+:VPABSD YmmReg1, YmmReg2_m256 is $(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1E; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local a0_59:8 = lo[0,64];
+    local a1_59:8 = lo[64,64];
+    avx_abs32(YmmReg1[0,64], a0_59, a0_59);
+    avx_abs32(YmmReg1[64,64], a1_59, a1_59);
+    local a0_60:8 = hi[0,64];
+    local a1_60:8 = hi[64,64];
+    avx_abs32(YmmReg1[128,64], a0_60, a0_60);
+    avx_abs32(YmmReg1[192,64], a1_60, a1_60);
+}
+
+# VPACKSSWB
+:VPACKSSWB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x63; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_61:8 = vlo[0,64];
+    local a1_61:8 = vlo[64,64];
+    local b0_61:8 = lo[0,64];
+    local b1_61:8 = lo[64,64];
+    local pa0_61:4;
+    avx_packss16(pa0_61, a0_61);
+    local pa1_61:4;
+    avx_packss16(pa1_61, a1_61);
+    local pb0_61:4;
+    avx_packss16(pb0_61, b0_61);
+    local pb1_61:4;
+    avx_packss16(pb1_61, b1_61);
+    YmmReg1[0,64] = (zext(pa1_61) << 32) | zext(pa0_61);
+    YmmReg1[64,64] = (zext(pb1_61) << 32) | zext(pb0_61);
+    local a0_62:8 = vhi[0,64];
+    local a1_62:8 = vhi[64,64];
+    local b0_62:8 = hi[0,64];
+    local b1_62:8 = hi[64,64];
+    local pa0_62:4;
+    avx_packss16(pa0_62, a0_62);
+    local pa1_62:4;
+    avx_packss16(pa1_62, a1_62);
+    local pb0_62:4;
+    avx_packss16(pb0_62, b0_62);
+    local pb1_62:4;
+    avx_packss16(pb1_62, b1_62);
+    YmmReg1[128,64] = (zext(pa1_62) << 32) | zext(pa0_62);
+    YmmReg1[192,64] = (zext(pb1_62) << 32) | zext(pb0_62);
+}
+
+# VPACKSSDW
+:VPACKSSDW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x6B; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_63:8 = vlo[0,64];
+    local a1_63:8 = vlo[64,64];
+    local b0_63:8 = lo[0,64];
+    local b1_63:8 = lo[64,64];
+    local pa0_63:4;
+    avx_packss32(pa0_63, a0_63);
+    local pa1_63:4;
+    avx_packss32(pa1_63, a1_63);
+    local pb0_63:4;
+    avx_packss32(pb0_63, b0_63);
+    local pb1_63:4;
+    avx_packss32(pb1_63, b1_63);
+    YmmReg1[0,64] = (zext(pa1_63) << 32) | zext(pa0_63);
+    YmmReg1[64,64] = (zext(pb1_63) << 32) | zext(pb0_63);
+    local a0_64:8 = vhi[0,64];
+    local a1_64:8 = vhi[64,64];
+    local b0_64:8 = hi[0,64];
+    local b1_64:8 = hi[64,64];
+    local pa0_64:4;
+    avx_packss32(pa0_64, a0_64);
+    local pa1_64:4;
+    avx_packss32(pa1_64, a1_64);
+    local pb0_64:4;
+    avx_packss32(pb0_64, b0_64);
+    local pb1_64:4;
+    avx_packss32(pb1_64, b1_64);
+    YmmReg1[128,64] = (zext(pa1_64) << 32) | zext(pa0_64);
+    YmmReg1[192,64] = (zext(pb1_64) << 32) | zext(pb0_64);
+}
+
+# VPACKUSDW
+:VPACKUSDW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x2B; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_65:8 = vlo[0,64];
+    local a1_65:8 = vlo[64,64];
+    local b0_65:8 = lo[0,64];
+    local b1_65:8 = lo[64,64];
+    local pa0_65:4;
+    avx_packus32(pa0_65, a0_65);
+    local pa1_65:4;
+    avx_packus32(pa1_65, a1_65);
+    local pb0_65:4;
+    avx_packus32(pb0_65, b0_65);
+    local pb1_65:4;
+    avx_packus32(pb1_65, b1_65);
+    YmmReg1[0,64] = (zext(pa1_65) << 32) | zext(pa0_65);
+    YmmReg1[64,64] = (zext(pb1_65) << 32) | zext(pb0_65);
+    local a0_66:8 = vhi[0,64];
+    local a1_66:8 = vhi[64,64];
+    local b0_66:8 = hi[0,64];
+    local b1_66:8 = hi[64,64];
+    local pa0_66:4;
+    avx_packus32(pa0_66, a0_66);
+    local pa1_66:4;
+    avx_packus32(pa1_66, a1_66);
+    local pb0_66:4;
+    avx_packus32(pb0_66, b0_66);
+    local pb1_66:4;
+    avx_packus32(pb1_66, b1_66);
+    YmmReg1[128,64] = (zext(pa1_66) << 32) | zext(pa0_66);
+    YmmReg1[192,64] = (zext(pb1_66) << 32) | zext(pb0_66);
+}
+
+# VPACKUSWB
+:VPACKUSWB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x67; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_67:8 = vlo[0,64];
+    local a1_67:8 = vlo[64,64];
+    local b0_67:8 = lo[0,64];
+    local b1_67:8 = lo[64,64];
+    local pa0_67:4;
+    avx_packus16(pa0_67, a0_67);
+    local pa1_67:4;
+    avx_packus16(pa1_67, a1_67);
+    local pb0_67:4;
+    avx_packus16(pb0_67, b0_67);
+    local pb1_67:4;
+    avx_packus16(pb1_67, b1_67);
+    YmmReg1[0,64] = (zext(pa1_67) << 32) | zext(pa0_67);
+    YmmReg1[64,64] = (zext(pb1_67) << 32) | zext(pb0_67);
+    local a0_68:8 = vhi[0,64];
+    local a1_68:8 = vhi[64,64];
+    local b0_68:8 = hi[0,64];
+    local b1_68:8 = hi[64,64];
+    local pa0_68:4;
+    avx_packus16(pa0_68, a0_68);
+    local pa1_68:4;
+    avx_packus16(pa1_68, a1_68);
+    local pb0_68:4;
+    avx_packus16(pb0_68, b0_68);
+    local pb1_68:4;
+    avx_packus16(pb1_68, b1_68);
+    YmmReg1[128,64] = (zext(pa1_68) << 32) | zext(pa0_68);
+    YmmReg1[192,64] = (zext(pb1_68) << 32) | zext(pb0_68);
 }
 
 # VPADDB
@@ -1067,6 +2191,80 @@
     avx_cmpgt64(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VPHADDW
+:VPHADDW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x01; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_69:8 = vlo[0,64];
+    local a1_69:8 = vlo[64,64];
+    local b0_69:8 = lo[0,64];
+    local b1_69:8 = lo[64,64];
+    local ha0_69:8;
+    avx_hpair_add16(ha0_69, a0_69);
+    local ha1_69:8;
+    avx_hpair_add16(ha1_69, a1_69);
+    local hb0_69:8;
+    avx_hpair_add16(hb0_69, b0_69);
+    local hb1_69:8;
+    avx_hpair_add16(hb1_69, b1_69);
+    YmmReg1[0,64] = (ha1_69 << 32) | (ha0_69 & 0xffffffff);
+    YmmReg1[64,64] = (hb1_69 << 32) | (hb0_69 & 0xffffffff);
+    local a0_70:8 = vhi[0,64];
+    local a1_70:8 = vhi[64,64];
+    local b0_70:8 = hi[0,64];
+    local b1_70:8 = hi[64,64];
+    local ha0_70:8;
+    avx_hpair_add16(ha0_70, a0_70);
+    local ha1_70:8;
+    avx_hpair_add16(ha1_70, a1_70);
+    local hb0_70:8;
+    avx_hpair_add16(hb0_70, b0_70);
+    local hb1_70:8;
+    avx_hpair_add16(hb1_70, b1_70);
+    YmmReg1[128,64] = (ha1_70 << 32) | (ha0_70 & 0xffffffff);
+    YmmReg1[192,64] = (hb1_70 << 32) | (hb0_70 & 0xffffffff);
+}
+
+# VPHADDD
+:VPHADDD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x02; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_71:8 = vlo[0,64];
+    local a1_71:8 = vlo[64,64];
+    local b0_71:8 = lo[0,64];
+    local b1_71:8 = lo[64,64];
+    local ha0_71:8;
+    avx_hpair_add32(ha0_71, a0_71);
+    local ha1_71:8;
+    avx_hpair_add32(ha1_71, a1_71);
+    local hb0_71:8;
+    avx_hpair_add32(hb0_71, b0_71);
+    local hb1_71:8;
+    avx_hpair_add32(hb1_71, b1_71);
+    YmmReg1[0,64] = (ha1_71 << 32) | (ha0_71 & 0xffffffff);
+    YmmReg1[64,64] = (hb1_71 << 32) | (hb0_71 & 0xffffffff);
+    local a0_72:8 = vhi[0,64];
+    local a1_72:8 = vhi[64,64];
+    local b0_72:8 = hi[0,64];
+    local b1_72:8 = hi[64,64];
+    local ha0_72:8;
+    avx_hpair_add32(ha0_72, a0_72);
+    local ha1_72:8;
+    avx_hpair_add32(ha1_72, a1_72);
+    local hb0_72:8;
+    avx_hpair_add32(hb0_72, b0_72);
+    local hb1_72:8;
+    avx_hpair_add32(hb1_72, b1_72);
+    YmmReg1[128,64] = (ha1_72 << 32) | (ha0_72 & 0xffffffff);
+    YmmReg1[192,64] = (hb1_72 << 32) | (hb0_72 & 0xffffffff);
+}
+
 # VPMADDWD
 :VPMADDWD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF5; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
 {
@@ -1210,6 +2408,48 @@
     avx_minu32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VPMULDQ
+:VPMULDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x28; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_73:8 = vlo[0,64];
+    local a1_73:8 = vlo[64,64];
+    local b0_73:8 = lo[0,64];
+    local b1_73:8 = lo[64,64];
+    avx_muldq(YmmReg1[0,64], a0_73, b0_73);
+    avx_muldq(YmmReg1[64,64], a1_73, b1_73);
+    local a0_74:8 = vhi[0,64];
+    local a1_74:8 = vhi[64,64];
+    local b0_74:8 = hi[0,64];
+    local b1_74:8 = hi[64,64];
+    avx_muldq(YmmReg1[128,64], a0_74, b0_74);
+    avx_muldq(YmmReg1[192,64], a1_74, b1_74);
+}
+
+# VPMULHRSW
+:VPMULHRSW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x0B; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_75:8 = vlo[0,64];
+    local a1_75:8 = vlo[64,64];
+    local b0_75:8 = lo[0,64];
+    local b1_75:8 = lo[64,64];
+    avx_mulhrs16(YmmReg1[0,64], a0_75, b0_75);
+    avx_mulhrs16(YmmReg1[64,64], a1_75, b1_75);
+    local a0_76:8 = vhi[0,64];
+    local a1_76:8 = vhi[64,64];
+    local b0_76:8 = hi[0,64];
+    local b1_76:8 = hi[64,64];
+    avx_mulhrs16(YmmReg1[128,64], a0_76, b0_76);
+    avx_mulhrs16(YmmReg1[192,64], a1_76, b1_76);
+}
+
 # VPMULHUW
 :VPMULHUW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xE4; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
 {
@@ -1254,6 +2494,27 @@
     avx_mullo16(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VPMULUDQ
+:VPMULUDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF4; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_77:8 = vlo[0,64];
+    local a1_77:8 = vlo[64,64];
+    local b0_77:8 = lo[0,64];
+    local b1_77:8 = lo[64,64];
+    avx_muludq(YmmReg1[0,64], a0_77, b0_77);
+    avx_muludq(YmmReg1[64,64], a1_77, b1_77);
+    local a0_78:8 = vhi[0,64];
+    local a1_78:8 = vhi[64,64];
+    local b0_78:8 = hi[0,64];
+    local b1_78:8 = hi[64,64];
+    avx_muludq(YmmReg1[128,64], a0_78, b0_78);
+    avx_muludq(YmmReg1[192,64], a1_78, b1_78);
+}
+
 # VPOR
 :VPOR YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xEB; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
 {
@@ -1263,6 +2524,274 @@
     avx_or(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
     avx_or(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
     avx_or(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSADBW
+:VPSADBW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF6; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_79:8 = vlo[0,64];
+    local a1_79:8 = vlo[64,64];
+    local b0_79:8 = lo[0,64];
+    local b1_79:8 = lo[64,64];
+    avx_sadbw(YmmReg1[0,64], a0_79, b0_79);
+    avx_sadbw(YmmReg1[64,64], a1_79, b1_79);
+    local a0_80:8 = vhi[0,64];
+    local a1_80:8 = vhi[64,64];
+    local b0_80:8 = hi[0,64];
+    local b1_80:8 = hi[64,64];
+    avx_sadbw(YmmReg1[128,64], a0_80, b0_80);
+    avx_sadbw(YmmReg1[192,64], a1_80, b1_80);
+}
+
+# VPSIGNB
+:VPSIGNB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x08; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_81:8 = vlo[0,64];
+    local a1_81:8 = vlo[64,64];
+    local b0_81:8 = lo[0,64];
+    local b1_81:8 = lo[64,64];
+    avx_sign8(YmmReg1[0,64], a0_81, b0_81);
+    avx_sign8(YmmReg1[64,64], a1_81, b1_81);
+    local a0_82:8 = vhi[0,64];
+    local a1_82:8 = vhi[64,64];
+    local b0_82:8 = hi[0,64];
+    local b1_82:8 = hi[64,64];
+    avx_sign8(YmmReg1[128,64], a0_82, b0_82);
+    avx_sign8(YmmReg1[192,64], a1_82, b1_82);
+}
+
+# VPSIGNW
+:VPSIGNW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x09; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_83:8 = vlo[0,64];
+    local a1_83:8 = vlo[64,64];
+    local b0_83:8 = lo[0,64];
+    local b1_83:8 = lo[64,64];
+    avx_sign16(YmmReg1[0,64], a0_83, b0_83);
+    avx_sign16(YmmReg1[64,64], a1_83, b1_83);
+    local a0_84:8 = vhi[0,64];
+    local a1_84:8 = vhi[64,64];
+    local b0_84:8 = hi[0,64];
+    local b1_84:8 = hi[64,64];
+    avx_sign16(YmmReg1[128,64], a0_84, b0_84);
+    avx_sign16(YmmReg1[192,64], a1_84, b1_84);
+}
+
+# VPSIGND
+:VPSIGND YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x0A; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_85:8 = vlo[0,64];
+    local a1_85:8 = vlo[64,64];
+    local b0_85:8 = lo[0,64];
+    local b1_85:8 = lo[64,64];
+    avx_sign32(YmmReg1[0,64], a0_85, b0_85);
+    avx_sign32(YmmReg1[64,64], a1_85, b1_85);
+    local a0_86:8 = vhi[0,64];
+    local a1_86:8 = vhi[64,64];
+    local b0_86:8 = hi[0,64];
+    local b1_86:8 = hi[64,64];
+    avx_sign32(YmmReg1[128,64], a0_86, b0_86);
+    avx_sign32(YmmReg1[192,64], a1_86, b1_86);
+}
+
+# VPSLLW
+:VPSLLW YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF1; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll16(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_sll16(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_sll16(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_sll16(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSLLW
+:VPSLLW vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=6 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_sll16(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_sll16(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_sll16(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_sll16(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSLLD
+:VPSLLD YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF2; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_sll32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_sll32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_sll32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSLLD
+:VPSLLD vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=6 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_sll32(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_sll32(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_sll32(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_sll32(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSLLQ
+:VPSLLQ YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xF3; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sll64(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_sll64(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_sll64(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_sll64(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSLLQ
+:VPSLLQ vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=6 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_sll64(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_sll64(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_sll64(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_sll64(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSRAW
+:VPSRAW YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xE1; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sra16(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_sra16(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_sra16(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_sra16(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSRAW
+:VPSRAW vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=4 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_sra16(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_sra16(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_sra16(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_sra16(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSRAD
+:VPSRAD YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xE2; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_sra32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_sra32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_sra32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_sra32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSRAD
+:VPSRAD vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=4 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_sra32(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_sra32(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_sra32(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_sra32(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSRLW
+:VPSRLW YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xD1; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl16(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_srl16(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_srl16(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_srl16(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSRLW
+:VPSRLW vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=2 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_srl16(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_srl16(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_srl16(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_srl16(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSRLD
+:VPSRLD YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xD2; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_srl32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_srl32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_srl32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSRLD
+:VPSRLD vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=2 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_srl32(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_srl32(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_srl32(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_srl32(vexVVVV_YmmReg[192,64], hi[64,64], n);
+}
+
+# VPSRLQ
+:VPSRLQ YmmReg1, vexVVVV_YmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xD3; YmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local n:8 = m[0,64];
+    avx_srl64(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], n);
+    avx_srl64(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], n);
+    avx_srl64(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], n);
+    avx_srl64(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], n);
+}
+
+# VPSRLQ
+:VPSRLQ vexVVVV_YmmReg, YmmReg2, imm8 is $(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=2 & (mod=0x3 & YmmReg2 & YmmReg2_L & YmmReg2_H); imm8
+{
+    local n:8 = zext(imm8);
+    local lo:16 = YmmReg2_L;
+    local hi:16 = YmmReg2_H;
+    avx_srl64(vexVVVV_YmmReg[0,64], lo[0,64], n);
+    avx_srl64(vexVVVV_YmmReg[64,64], lo[64,64], n);
+    avx_srl64(vexVVVV_YmmReg[128,64], hi[0,64], n);
+    avx_srl64(vexVVVV_YmmReg[192,64], hi[64,64], n);
 }
 
 # VPSUBB
@@ -1353,6 +2882,174 @@
     avx_subus16(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
+# VPUNPCKHBW
+:VPUNPCKHBW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x68; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_87:8 = vlo[0,64];
+    local a1_87:8 = vlo[64,64];
+    local b0_87:8 = lo[0,64];
+    local b1_87:8 = lo[64,64];
+    avx_unpacklo8(YmmReg1[0,64], a1_87, b1_87);
+    avx_unpackhi8(YmmReg1[64,64], a1_87, b1_87);
+    local a0_88:8 = vhi[0,64];
+    local a1_88:8 = vhi[64,64];
+    local b0_88:8 = hi[0,64];
+    local b1_88:8 = hi[64,64];
+    avx_unpacklo8(YmmReg1[128,64], a1_88, b1_88);
+    avx_unpackhi8(YmmReg1[192,64], a1_88, b1_88);
+}
+
+# VPUNPCKHWD
+:VPUNPCKHWD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x69; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_89:8 = vlo[0,64];
+    local a1_89:8 = vlo[64,64];
+    local b0_89:8 = lo[0,64];
+    local b1_89:8 = lo[64,64];
+    avx_unpacklo16(YmmReg1[0,64], a1_89, b1_89);
+    avx_unpackhi16(YmmReg1[64,64], a1_89, b1_89);
+    local a0_90:8 = vhi[0,64];
+    local a1_90:8 = vhi[64,64];
+    local b0_90:8 = hi[0,64];
+    local b1_90:8 = hi[64,64];
+    avx_unpacklo16(YmmReg1[128,64], a1_90, b1_90);
+    avx_unpackhi16(YmmReg1[192,64], a1_90, b1_90);
+}
+
+# VPUNPCKHDQ
+:VPUNPCKHDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x6A; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_91:8 = vlo[0,64];
+    local a1_91:8 = vlo[64,64];
+    local b0_91:8 = lo[0,64];
+    local b1_91:8 = lo[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a1_91, b1_91);
+    avx_unpackhi32(YmmReg1[64,64], a1_91, b1_91);
+    local a0_92:8 = vhi[0,64];
+    local a1_92:8 = vhi[64,64];
+    local b0_92:8 = hi[0,64];
+    local b1_92:8 = hi[64,64];
+    avx_unpacklo32(YmmReg1[128,64], a1_92, b1_92);
+    avx_unpackhi32(YmmReg1[192,64], a1_92, b1_92);
+}
+
+# VPUNPCKHQDQ
+:VPUNPCKHQDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x6D; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_93:8 = vlo[0,64];
+    local a1_93:8 = vlo[64,64];
+    local b0_93:8 = lo[0,64];
+    local b1_93:8 = lo[64,64];
+    YmmReg1[0,64] = a1_93;
+    YmmReg1[64,64] = b1_93;
+    local a0_94:8 = vhi[0,64];
+    local a1_94:8 = vhi[64,64];
+    local b0_94:8 = hi[0,64];
+    local b1_94:8 = hi[64,64];
+    YmmReg1[128,64] = a1_94;
+    YmmReg1[192,64] = b1_94;
+}
+
+# VPUNPCKLBW
+:VPUNPCKLBW YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x60; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_95:8 = vlo[0,64];
+    local a1_95:8 = vlo[64,64];
+    local b0_95:8 = lo[0,64];
+    local b1_95:8 = lo[64,64];
+    avx_unpacklo8(YmmReg1[0,64], a0_95, b0_95);
+    avx_unpackhi8(YmmReg1[64,64], a0_95, b0_95);
+    local a0_96:8 = vhi[0,64];
+    local a1_96:8 = vhi[64,64];
+    local b0_96:8 = hi[0,64];
+    local b1_96:8 = hi[64,64];
+    avx_unpacklo8(YmmReg1[128,64], a0_96, b0_96);
+    avx_unpackhi8(YmmReg1[192,64], a0_96, b0_96);
+}
+
+# VPUNPCKLWD
+:VPUNPCKLWD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x61; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_97:8 = vlo[0,64];
+    local a1_97:8 = vlo[64,64];
+    local b0_97:8 = lo[0,64];
+    local b1_97:8 = lo[64,64];
+    avx_unpacklo16(YmmReg1[0,64], a0_97, b0_97);
+    avx_unpackhi16(YmmReg1[64,64], a0_97, b0_97);
+    local a0_98:8 = vhi[0,64];
+    local a1_98:8 = vhi[64,64];
+    local b0_98:8 = hi[0,64];
+    local b1_98:8 = hi[64,64];
+    avx_unpacklo16(YmmReg1[128,64], a0_98, b0_98);
+    avx_unpackhi16(YmmReg1[192,64], a0_98, b0_98);
+}
+
+# VPUNPCKLDQ
+:VPUNPCKLDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x62; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_99:8 = vlo[0,64];
+    local a1_99:8 = vlo[64,64];
+    local b0_99:8 = lo[0,64];
+    local b1_99:8 = lo[64,64];
+    avx_unpacklo32(YmmReg1[0,64], a0_99, b0_99);
+    avx_unpackhi32(YmmReg1[64,64], a0_99, b0_99);
+    local a0_100:8 = vhi[0,64];
+    local a1_100:8 = vhi[64,64];
+    local b0_100:8 = hi[0,64];
+    local b1_100:8 = hi[64,64];
+    avx_unpacklo32(YmmReg1[128,64], a0_100, b0_100);
+    avx_unpackhi32(YmmReg1[192,64], a0_100, b0_100);
+}
+
+# VPUNPCKLQDQ
+:VPUNPCKLQDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x6C; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    local a0_101:8 = vlo[0,64];
+    local a1_101:8 = vlo[64,64];
+    local b0_101:8 = lo[0,64];
+    local b1_101:8 = lo[64,64];
+    YmmReg1[0,64] = a0_101;
+    YmmReg1[64,64] = b0_101;
+    local a0_102:8 = vhi[0,64];
+    local a1_102:8 = vhi[64,64];
+    local b0_102:8 = hi[0,64];
+    local b1_102:8 = hi[64,64];
+    YmmReg1[128,64] = a0_102;
+    YmmReg1[192,64] = b0_102;
+}
+
 # VPXOR
 :VPXOR YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xEF; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
 {
@@ -1362,6 +3059,106 @@
     avx_xor(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
     avx_xor(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
     avx_xor(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSLLVD
+:VPSLLVD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x47; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    avx_sllv32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
+    avx_sllv32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLVQ
+:VPSLLVQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x47; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    avx_sllv64(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
+    avx_sllv64(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSLLVD
+:VPSLLVD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x47; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    avx_sllv32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], lo[0,64]);
+    avx_sllv32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
+    avx_sllv32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
+    avx_sllv32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSLLVQ
+:VPSLLVQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x47; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    avx_sllv64(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], lo[0,64]);
+    avx_sllv64(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
+    avx_sllv64(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
+    avx_sllv64(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSRAVD
+:VPSRAVD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x46; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    avx_srav32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
+    avx_srav32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRAVD
+:VPSRAVD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x46; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    avx_srav32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], lo[0,64]);
+    avx_srav32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
+    avx_srav32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
+    avx_srav32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSRLVD
+:VPSRLVD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x45; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    avx_srlv32(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
+    avx_srlv32(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRLVQ
+:VPSRLVQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x45; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    avx_srlv64(YmmReg1[0,64], vexVVVV_XmmReg[0,64], m[0,64]);
+    avx_srlv64(YmmReg1[64,64], vexVVVV_XmmReg[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+# VPSRLVD
+:VPSRLVD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x45; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    avx_srlv32(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], lo[0,64]);
+    avx_srlv32(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
+    avx_srlv32(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
+    avx_srlv32(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
+}
+
+# VPSRLVQ
+:VPSRLVQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x45; (YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    avx_srlv64(YmmReg1[0,64], vexVVVV_YmmReg_L[0,64], lo[0,64]);
+    avx_srlv64(YmmReg1[64,64], vexVVVV_YmmReg_L[64,64], lo[64,64]);
+    avx_srlv64(YmmReg1[128,64], vexVVVV_YmmReg_H[0,64], hi[0,64]);
+    avx_srlv64(YmmReg1[192,64], vexVVVV_YmmReg_H[64,64], hi[64,64]);
 }
 
 # VPCMPEQQ
