@@ -447,6 +447,8 @@ define context contextreg
   vexVVVV_r64=(25,28)   # value of vex byte for matching a normal 64 bit register
   vexVVVV_XmmReg=(25,28)       # value of vex byte for matching XmmReg
   vexVVVV_YmmReg=(25,28)       # value of vex byte for matching YmmReg
+  vexVVVV_YmmReg_L=(25,28)     # low 128 bits of the vvvv YMM register
+  vexVVVV_YmmReg_H=(25,28)     # high 128 bits of the vvvv YMM register
   vexVVVV_ZmmReg=(25,28)       # value of vex byte for matching ZmmReg
 
     vexHighV=(25,25)
@@ -585,6 +587,8 @@ define token modrm (8)
   xmmreg2       = (0,2)
   ymmreg2       = (0,2)
   zmmreg2       = (0,2)
+  ymmreg1_h     = (3,5)
+  ymmreg2_h     = (0,2)
 
   xmmreg_x      = (3,5)
   ymmreg_x      = (3,5)
@@ -601,6 +605,8 @@ define token modrm (8)
   xmmreg2_b     = (0,2)
   ymmreg2_b     = (0,2)
   zmmreg2_b     = (0,2)
+  ymmreg1_xh    = (3,5)
+  ymmreg2_bh    = (0,2)
   xmmreg2_x     = (0,2)
   ymmreg2_x     = (0,2)
   zmmreg2_x     = (0,2)
@@ -720,6 +726,8 @@ attach variables [ xmmreg1_rx xmmreg2_bx ] [ XMM24 XMM25 XMM26 XMM27 XMM28 XMM29
 attach variables [ vexVVVV_XmmReg Xmm_imm8_7_4 ] [ XMM0 XMM1 XMM2 XMM3 XMM4 XMM5 XMM6 XMM7 XMM8 XMM9 XMM10 XMM11 XMM12 XMM13 XMM14 XMM15 ];
 
 attach variables [ vexVVVV_YmmReg Ymm_imm8_7_4 ] [ YMM0 YMM1 YMM2 YMM3 YMM4 YMM5 YMM6 YMM7 YMM8 YMM9 YMM10 YMM11 YMM12 YMM13 YMM14 YMM15 ];
+attach variables [ vexVVVV_YmmReg_L ] [ XMM0 XMM1 XMM2 XMM3 XMM4 XMM5 XMM6 XMM7 XMM8 XMM9 XMM10 XMM11 XMM12 XMM13 XMM14 XMM15 ];
+attach variables [ vexVVVV_YmmReg_H ] [ YMM0_H YMM1_H YMM2_H YMM3_H YMM4_H YMM5_H YMM6_H YMM7_H YMM8_H YMM9_H YMM10_H YMM11_H YMM12_H YMM13_H YMM14_H YMM15_H ];
 
 attach variables [ vexVVVV_ZmmReg ] [ ZMM0  ZMM1  ZMM2  ZMM3  ZMM4  ZMM5  ZMM6  ZMM7  ZMM8  ZMM9  ZMM10 ZMM11 ZMM12 ZMM13 ZMM14 ZMM15 ];
 
@@ -743,6 +751,8 @@ attach variables [ evexOpmask opmaskreg opmaskrm evexVopmask ] [ K0  K1  K2  K3 
 
 attach variables [ ymmreg ymmreg1 ymmreg2 ymm_vsib ]			[ YMM0 YMM1  YMM2  YMM3  YMM4  YMM5  YMM6  YMM7 ];
 attach variables [ ymmreg_x ymmreg1_x ymmreg2_b ymm_vsib_x ]	[ YMM8 YMM9 YMM10 YMM11 YMM12 YMM13 YMM14 YMM15 ];
+attach variables [ ymmreg1_h ymmreg2_h ]	[ YMM0_H YMM1_H  YMM2_H  YMM3_H  YMM4_H  YMM5_H  YMM6_H  YMM7_H ];
+attach variables [ ymmreg1_xh ymmreg2_bh ]	[ YMM8_H YMM9_H YMM10_H YMM11_H YMM12_H YMM13_H YMM14_H YMM15_H ];
 attach variables [ ymmreg1_r ymmreg2_x ]						[ YMM16 YMM17  YMM18  YMM19  YMM20  YMM21  YMM22  YMM23 ];
 attach variables [ ymmreg1_rx ymmreg2_bx ]						[ YMM24 YMM25  YMM26  YMM27  YMM28  YMM29  YMM30  YMM31 ];
 

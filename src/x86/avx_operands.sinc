@@ -1,0 +1,24 @@
+# Half-width views of the VEX 256-bit operands, so a YMM instruction can be
+# written as lane operations on two 16-byte halves and never materialises a
+# 32-byte value. See avx_macros.sinc.
+#
+#   YmmReg2_m256_L / _H   the r/m operand's low and high 128 bits
+#   vexVVVV_YmmReg_L / _H the vvvv operand's low and high 128 bits
+#   YmmReg1_H             the destination's high 128 bits, when it must be
+#                         read (the low half is the XMM register itself)
+
+m256_L: "ymmword ptr" Mem    is Mem  { export *:16 Mem; }
+m256_H: "ymmword ptr" Mem    is Mem  { local hi:$(SIZE) = Mem + 16; export *:16 hi; }
+
+YmmReg2_L: xmmreg2    is rexBprefix=0 & xmmreg2    { export xmmreg2; }
+YmmReg2_L: xmmreg2_b  is rexBprefix=1 & xmmreg2_b  { export xmmreg2_b; }
+YmmReg2_H: ymmreg2_h  is rexBprefix=0 & ymmreg2_h  { export ymmreg2_h; }
+YmmReg2_H: ymmreg2_bh is rexBprefix=1 & ymmreg2_bh { export ymmreg2_bh; }
+
+YmmReg1_H: ymmreg1_h  is rexRprefix=0 & ymmreg1_h  { export ymmreg1_h; }
+YmmReg1_H: ymmreg1_xh is rexRprefix=1 & ymmreg1_xh { export ymmreg1_xh; }
+
+YmmReg2_m256_L: YmmReg2_L  is mod=3 & YmmReg2_L  { export YmmReg2_L; }
+YmmReg2_m256_L: m256_L     is m256_L             { export m256_L; }
+YmmReg2_m256_H: YmmReg2_H  is mod=3 & YmmReg2_H  { export YmmReg2_H; }
+YmmReg2_m256_H: m256_H     is m256_H             { export m256_H; }

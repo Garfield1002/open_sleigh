@@ -3,6 +3,8 @@
 @include "sse.sinc"
 @include "lockable.sinc"
 with : lockprefx=0 {
+@include "avx_operands.sinc"
+@include "avx_macros.sinc"
 @include "avx.sinc"
 @include "avx_manual.sinc"
 @include "avx2.sinc"
