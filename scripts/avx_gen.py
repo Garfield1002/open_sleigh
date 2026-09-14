@@ -419,6 +419,60 @@ def macro_library() -> str:
                    f"    local ix:8 = zext(i) & {2*per-1};\n    local lo:8 = s0; local hi:8 = s1;\n"
                    f"    local src:8 = (lo * zext(ix < {per})) | (hi * zext(ix >= {per}));\n"
                    f"    local sh:8 = src >> ((ix & {per-1}) * {w});\n    dest = sh[0,{w}];\n}}\n")
+    out.append("\n# The 32 VCMP predicates on one lane, straight from the SDM table. Three\n"
+               "# 32-bit constants encode, per predicate, the relation index, the NaN\n"
+               "# result and the quiet-NaN signalling; the lane extracts its own bit.\n")
+    # (relation, nan_result, signalling) indexed by predicate; relations are
+    # EQ=0 LT=1 LE=2 GT=3 GE=4 NEQ=5 F=6 T=7
+    # ordered relation, result when unordered, signals on quiet NaN
+    table = [
+        ("EQ", 0, 0), ("LT", 0, 1), ("LE", 0, 1), ("F", 1, 0),      # 00 EQ_OQ  LT_OS  LE_OS  UNORD_Q
+        ("NEQ", 1, 0), ("GE", 1, 1), ("GT", 1, 1), ("T", 0, 0),     # 04 NEQ_UQ NLT_US NLE_US ORD_Q
+        ("EQ", 1, 0), ("LT", 1, 1), ("LE", 1, 1), ("F", 0, 0),      # 08 EQ_UQ  NGE_US NGT_US FALSE_OQ
+        ("NEQ", 0, 0), ("GE", 0, 1), ("GT", 0, 1), ("T", 1, 0),     # 0c NEQ_OQ GE_OS  GT_OS  TRUE_UQ
+        ("EQ", 0, 1), ("LT", 0, 0), ("LE", 0, 0), ("F", 1, 1),      # 10 EQ_OS  LT_OQ  LE_OQ  UNORD_S
+        ("NEQ", 1, 1), ("GE", 1, 0), ("GT", 1, 0), ("T", 0, 1),     # 14 NEQ_US NLT_UQ NLE_UQ ORD_S
+        ("EQ", 1, 1), ("LT", 1, 0), ("LE", 1, 0), ("F", 0, 1),      # 18 EQ_US  NGE_UQ NGT_UQ FALSE_OS
+        ("NEQ", 0, 1), ("GE", 0, 0), ("GT", 0, 0), ("T", 1, 1),     # 1c NEQ_OS GE_OQ  GT_OQ  TRUE_US
+    ]
+    rel_index = {"EQ": 0, "LT": 1, "LE": 2, "GT": 3, "GE": 4, "NEQ": 5, "F": 6, "T": 7}
+    nan_mask = sum(n << k for k, (_, n, _) in enumerate(table))
+    sig_mask = sum(g << k for k, (_, _, g) in enumerate(table))
+    # relation index packed 3 bits per predicate into a 96-bit... too wide; use
+    # eight 32-bit masks, one per relation, each with a bit per predicate.
+    rel_masks = {r: sum((1 if rel_index[rr] == rel_index[r] else 0) << k for k, (rr, _, _) in enumerate(table)) for r in rel_index}
+    for w, nan in ((32, "((v[23,8] == 0xff) && (v[0,23] != 0))"), (64, "((v[52,11] == 0x7ff) && (v[0,52] != 0))")):
+        sz = w // 8
+        lines = [
+            f"    local a:{sz} = x; local b:{sz} = y; local p:4 = zext(pred & 0x1f);",
+            f"    local v:{sz} = a; local a_nan:1 = {nan};",
+            f"    v = b; local b_nan:1 = {nan};",
+            "    local unord:1 = a_nan || b_nan;",
+            f"    local is_eq:1 = ((0x{rel_masks['EQ']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_lt:1 = ((0x{rel_masks['LT']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_le:1 = ((0x{rel_masks['LE']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_gt:1 = ((0x{rel_masks['GT']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_ge:1 = ((0x{rel_masks['GE']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_ne:1 = ((0x{rel_masks['NEQ']:08x}:4 >> p) & 1) != 0;",
+            f"    local is_t:1 = ((0x{rel_masks['T']:08x}:4 >> p) & 1) != 0;",
+            f"    local n:1 = ((0x{nan_mask:08x}:4 >> p) & 1) != 0;",
+            f"    local strict:1 = ((0x{sig_mask:08x}:4 >> p) & 1) != 0;",
+            "    local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;",
+            "    local gt:1 = b f< a; local ge:1 = b f<= a;",
+            "    local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;",
+            "    local res:1 = (o && !unord) || (n && unord);",
+            f"    sse_compare{w}(a, b, strict);",
+            "    dest = 0 - zext(res);",
+        ]
+        out.append(f"macro avx_cmp{w}(dest, x, y, pred) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# PHMINPOSUW on one 128-bit lane: the minimum unsigned word and its index.\n")
+    lines = ["    local s:16 = src; local min:2 = s[0,16]; local idx:2 = 0; local less:1;"]
+    for i in range(1, 8):
+        lines.append(f"    less = s[{i*16},16] < min;")
+        lines.append(f"    conditionalAssign(idx, less, {i}:2, idx);")
+        lines.append(f"    conditionalAssign(min, less, s[{i*16},16], min);")
+    lines.append("    dest = (zext(idx) << 16) | zext(min);")
+    out.append("macro phminposuw128(dest, src) {\n" + "\n".join(lines) + "\n}\n")
     out.append("\n# IEEE lanes, through the MXCSR-aware SSE scalar macros.\n")
     for w, sfx in ((32, "32"), (64, "64")):
         for op in ("add", "sub", "mul", "div", "min", "max"):
@@ -1113,6 +1167,47 @@ MANUAL[("VPERMPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256")] = MANUAL[("VPERMD", "
 MANUAL[("VPERMPD", "YmmReg1,YmmReg2_m256,imm8")] = MANUAL[("VPERMQ", "YmmReg1,YmmReg2_m256,imm8")]
 
 
+# The SSE 128-bit helpers compute into a 16-byte local which is then copied
+# out as two qwords; a 256-bit form runs them once per half.
+def _via128(macro, args128, with_imm):
+    imm = ", imm8:1" if with_imm else ""
+    return macro, imm
+
+MANUAL.update({
+    # The SSE dot-product and MPSADBW helpers write lanes of their first
+    # argument in place, which must be a register (a bit-range write into a
+    # local through a macro parameter is dropped). The destination XMM, or the
+    # YMM's high 16-byte register, is loaded with the vvvv source first.
+    ("VDPPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    XmmReg1 = vexVVVV_XmmReg;\n    dpps128(XmmReg1, m, imm8:1);\n    avx_zero_upper(YmmReg1);",
+    ("VDPPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    XmmReg1 = vlo;\n    dpps128(XmmReg1, lo, imm8:1);\n    YmmReg1_H = vhi;\n    dpps128(YmmReg1_H, hi, imm8:1);",
+    ("VDPPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    XmmReg1 = vexVVVV_XmmReg;\n    dppd128(XmmReg1, m, imm8:1);\n    avx_zero_upper(YmmReg1);",
+    ("VMPSADBW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    XmmReg1 = vexVVVV_XmmReg;\n    mpsadbw128(XmmReg1, m, imm8:1);\n    avx_zero_upper(YmmReg1);",
+    ("VMPSADBW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    # the high lane uses imm8 bits 5:3 the way the low lane uses 2:0\n"
+        "    XmmReg1 = vlo;\n    mpsadbw128(XmmReg1, lo, imm8:1);\n    local c:1 = imm8 >> 3;\n    YmmReg1_H = vhi;\n    mpsadbw128(YmmReg1_H, hi, c);",
+    ("VPHMINPOSUW", "XmmReg1,XmmReg2_m128"):
+        "    local r:16;\n    phminposuw128(r, m);\n    YmmReg1[0,64] = r[0,64];\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    # approximations stay as user-ops (out of the corpus's scope) but on lanes
+    ("VRCPPS", "XmmReg1,XmmReg2_m128"): "    local x:16 = XmmReg1;\n    local r:16 = rcpps(x, m);\n    YmmReg1[0,64] = r[0,64];\n    YmmReg1[64,64] = r[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VRCPPS", "YmmReg1,YmmReg2_m256"): "    local xl:16 = XmmReg1;\n    local xh:16 = YmmReg1_H;\n    local r0:16 = rcpps(xl, lo);\n    local r1:16 = rcpps(xh, hi);\n    YmmReg1[0,64] = r0[0,64];\n    YmmReg1[64,64] = r0[64,64];\n    YmmReg1[128,64] = r1[0,64];\n    YmmReg1[192,64] = r1[64,64];",
+    ("VRSQRTPS", "XmmReg1,XmmReg2_m128"): "    local x:16 = XmmReg1;\n    local r:16 = rsqrtps(x, m);\n    YmmReg1[0,64] = r[0,64];\n    YmmReg1[64,64] = r[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VRSQRTPS", "YmmReg1,YmmReg2_m256"): "    local xl:16 = XmmReg1;\n    local xh:16 = YmmReg1_H;\n    local r0:16 = rsqrtps(xl, lo);\n    local r1:16 = rsqrtps(xh, hi);\n    YmmReg1[0,64] = r0[0,64];\n    YmmReg1[64,64] = r0[64,64];\n    YmmReg1[128,64] = r1[0,64];\n    YmmReg1[192,64] = r1[64,64];",
+    ("VRCPSS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m32"): "    local va:16 = vexVVVV_XmmReg;\n    local r:16 = rcpss(va, m);\n    YmmReg1[0,32] = r[0,32];\n    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VRSQRTSS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m32"): "    local va:16 = vexVVVV_XmmReg;\n    local r:16 = rsqrtss(va, m);\n    YmmReg1[0,32] = r[0,32];\n    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    # F16C: no half-float support in the emulator yet, so user-ops on lanes
+    ("VCVTPH2PS", "XmmReg1,XmmReg2_m64"): "    local r:16 = vcvtph2ps(m);\n    YmmReg1[0,64] = r[0,64];\n    YmmReg1[64,64] = r[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTPH2PS", "YmmReg1,XmmReg2_m128"): "    local r0:16 = vcvtph2ps(m[0,64]);\n    local r1:16 = vcvtph2ps(m[64,64]);\n    YmmReg1[0,64] = r0[0,64];\n    YmmReg1[64,64] = r0[64,64];\n    YmmReg1[128,64] = r1[0,64];\n    YmmReg1[192,64] = r1[64,64];",
+    ("VCVTPS2PH", "XmmReg2_m64,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    XmmReg2_m64 = vcvtps2ph(x, imm8:1);",
+    ("VCVTPS2PH", "XmmReg2_m128,YmmReg1,imm8"): "SPLIT_EXTRACT",
+    ("VCVTPS2PH", "XmmReg2,YmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n    local r0:8 = vcvtps2ph(x, imm8:1);\n    local r1:8 = vcvtps2ph(y, imm8:1);\n    YmmReg2[0,64] = r0;\n    YmmReg2[64,64] = r1;\n    avx_zero_upper(YmmReg2);",
+    ("VCVTPS2PH", "m128,YmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n    local r0:8 = vcvtps2ph(x, imm8:1);\n    local r1:8 = vcvtps2ph(y, imm8:1);\n    m128 = (zext(r1) << 64) | zext(r0);",
+})
+
+
 def constructor_manual(name: str, operands: str, pattern: str, shape: str, body: str) -> str:
     pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
     pattern = pattern.replace("(YmmReg1 & ZmmReg1)", "YmmReg1")
@@ -1120,9 +1215,9 @@ def constructor_manual(name: str, operands: str, pattern: str, shape: str, body:
     if "YmmReg2_m256" in shape:
         pattern = pattern.replace("... & YmmReg2_m256", "... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H")
         pre += ["    local lo:16 = YmmReg2_m256_L;", "    local hi:16 = YmmReg2_m256_H;"]
-    elif "XmmReg2_m128" in shape:
+    elif "XmmReg2_m128" in shape and not shape.startswith("XmmReg2_m128"):
         pre.append("    local m:16 = XmmReg2_m128;")
-    elif "XmmReg2_m64" in shape:
+    elif "XmmReg2_m64" in shape and not shape.startswith("XmmReg2_m64"):
         pre.append("    local m:8 = XmmReg2_m64;")
     elif "XmmReg2_m32" in shape:
         pre.append("    local m:4 = XmmReg2_m32;")
@@ -1264,6 +1359,8 @@ def constructor_shift(name: str, operands: str, pattern: str, macro: str, shape:
 def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
     out = [
         "#@family avx\n"
+        "define pcodeop vcvtph2ps;\n"
+        "define pcodeop vcvtps2ph;\n"
         "# The regular three-operand packed AVX and AVX2 forms, on 64-bit lanes.\n"
         "# Generated by scripts/avx_gen.py; do not edit. The lane macros live in\n"
         "# avx_macros.sinc, the half-width operands in avx_operands.sinc, and the\n"
@@ -1325,11 +1422,66 @@ def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
     return "".join(out), done
 
 
+def vcmp_file() -> str:
+    """The VCMP families: the predicate is resolved at run time from imm8 so
+    all 32 spellings share one body per width."""
+    hdr = lambda mon, op, pre, L: (f":^{mon} {{ops}} is $(VEX_NDS) & $(VEX_L{L}) & $({pre}) & $(VEX_0F) & $(VEX_WIG) & {{vv}}; byte=0xC2; {{rm}}; {mon} & {op}")
+    out = ["\n# VCMP{PS,PD,SS,SD}: hand-written, one runtime-predicate body per width.\n"]
+    # VCMPPS 128
+    out.append(hdr("VCMPPS_mon", "VCMPPS_op", "VEX_PRE_NONE", 128).format(ops="XmmReg1, vexVVVV_XmmReg, XmmReg2_m128^VCMPPS_op", vv="vexVVVV_XmmReg", rm="(XmmReg1 & YmmReg1) ... & XmmReg2_m128") + "\n{\n"
+               "    local m:16 = XmmReg2_m128;\n    local va:16 = vexVVVV_XmmReg;\n    local p:1 = VCMPPS_op;\n"
+               "    avx_cmp32(YmmReg1[0,32], va[0,32], m[0,32], p);\n    avx_cmp32(YmmReg1[32,32], va[32,32], m[32,32], p);\n"
+               "    avx_cmp32(YmmReg1[64,32], va[64,32], m[64,32], p);\n    avx_cmp32(YmmReg1[96,32], va[96,32], m[96,32], p);\n"
+               "    avx_zero_upper(YmmReg1);\n}\n\n")
+    out.append(hdr("VCMPPS_mon", "VCMPPS_op", "VEX_PRE_NONE", 256).format(ops="YmmReg1, vexVVVV_YmmReg, YmmReg2_m256^VCMPPS_op", vv="vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H", rm="(YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H") + "\n{\n"
+               "    local lo:16 = YmmReg2_m256_L;\n    local hi:16 = YmmReg2_m256_H;\n    local vlo:16 = vexVVVV_YmmReg_L;\n    local vhi:16 = vexVVVV_YmmReg_H;\n    local p:1 = VCMPPS_op;\n"
+               "    avx_cmp32(YmmReg1[0,32], vlo[0,32], lo[0,32], p);\n    avx_cmp32(YmmReg1[32,32], vlo[32,32], lo[32,32], p);\n"
+               "    avx_cmp32(YmmReg1[64,32], vlo[64,32], lo[64,32], p);\n    avx_cmp32(YmmReg1[96,32], vlo[96,32], lo[96,32], p);\n"
+               "    avx_cmp32(YmmReg1[128,32], vhi[0,32], hi[0,32], p);\n    avx_cmp32(YmmReg1[160,32], vhi[32,32], hi[32,32], p);\n"
+               "    avx_cmp32(YmmReg1[192,32], vhi[64,32], hi[64,32], p);\n    avx_cmp32(YmmReg1[224,32], vhi[96,32], hi[96,32], p);\n}\n\n")
+    out.append(hdr("VCMPPD_mon", "VCMPPD_op", "VEX_PRE_66", 128).format(ops="XmmReg1, vexVVVV_XmmReg, XmmReg2_m128^VCMPPD_op", vv="vexVVVV_XmmReg", rm="(XmmReg1 & YmmReg1) ... & XmmReg2_m128") + "\n{\n"
+               "    local m:16 = XmmReg2_m128;\n    local va:16 = vexVVVV_XmmReg;\n    local p:1 = VCMPPD_op;\n"
+               "    avx_cmp64(YmmReg1[0,64], va[0,64], m[0,64], p);\n    avx_cmp64(YmmReg1[64,64], va[64,64], m[64,64], p);\n    avx_zero_upper(YmmReg1);\n}\n\n")
+    out.append(hdr("VCMPPD_mon", "VCMPPD_op", "VEX_PRE_66", 256).format(ops="YmmReg1, vexVVVV_YmmReg, YmmReg2_m256^VCMPPD_op", vv="vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H", rm="(YmmReg1 & YmmReg2_m256) ... & YmmReg2_m256_L & YmmReg2_m256_H") + "\n{\n"
+               "    local lo:16 = YmmReg2_m256_L;\n    local hi:16 = YmmReg2_m256_H;\n    local vlo:16 = vexVVVV_YmmReg_L;\n    local vhi:16 = vexVVVV_YmmReg_H;\n    local p:1 = VCMPPD_op;\n"
+               "    avx_cmp64(YmmReg1[0,64], vlo[0,64], lo[0,64], p);\n    avx_cmp64(YmmReg1[64,64], vlo[64,64], lo[64,64], p);\n"
+               "    avx_cmp64(YmmReg1[128,64], vhi[0,64], hi[0,64], p);\n    avx_cmp64(YmmReg1[192,64], vhi[64,64], hi[64,64], p);\n}\n\n")
+    out.append(":^VCMPSS_mon XmmReg1, vexVVVV_XmmReg, XmmReg2_m32^VCMPSS_op is $(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xC2; (XmmReg1 & YmmReg1) ... & XmmReg2_m32; VCMPSS_mon & VCMPSS_op\n{\n"
+               "    local m:4 = XmmReg2_m32;\n    local va:16 = vexVVVV_XmmReg;\n    local p:1 = VCMPSS_op;\n"
+               "    avx_cmp32(YmmReg1[0,32], va[0,32], m, p);\n    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);\n}\n\n")
+    out.append(":^VCMPSD_mon XmmReg1, vexVVVV_XmmReg, XmmReg2_m64^VCMPSD_op is $(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xC2; (XmmReg1 & YmmReg1) ... & XmmReg2_m64; VCMPSD_mon & VCMPSD_op\n{\n"
+               "    local m:8 = XmmReg2_m64;\n    local va:16 = vexVVVV_XmmReg;\n    local p:1 = VCMPSD_op;\n"
+               "    avx_cmp64(YmmReg1[0,64], va[0,64], m, p);\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);\n}\n\n")
+    return "".join(out)
+
+
+def pcmpstr_file(inventory: list[dict]) -> str:
+    """VPCMP{E,I}STR{I,M}: the SSE bodies (generated by scripts/pcmpstr_gen.py
+    and validated against hardware) are reused verbatim under the VEX headers;
+    the M forms additionally clear YMM0's upper half."""
+    sse = (X86 / "sse.sinc").read_text()
+    out = ["\n# VPCMP{E,I}STR{I,M}: the SSE bodies under VEX headers.\n"]
+    for name in ("PCMPESTRM", "PCMPESTRI", "PCMPISTRM", "PCMPISTRI"):
+        m = re.search(r"^:%s [^\n]*\n\{(.*?)\n\}" % name, sse, re.S | re.M)
+        assert m, name
+        body = m.group(1)
+        row = next(r for r in inventory if r["name"] == "V" + name)
+        pattern = row["pattern"]
+        if name.endswith("I"):
+            pattern = pattern.replace("XmmReg1 ... & XmmReg2_m128", "(check_ECX_dest & XmmReg1) ... & XmmReg2_m128")
+        if name.endswith("M"):
+            body = body.replace("    XMM0 = out;", "    XMM0 = out;\n    avx_zero_upper(YMM0);")
+        out.append(f":V{name} {row['operands']} is {pattern}\n{{{body}\n}}\n\n")
+    return "".join(out)
+
+
 def main() -> int:
     inventory = json.loads(INVENTORY.read_text())
     (X86 / "avx_macros.sinc").write_text(macro_library())
     packed, done = packed_file(inventory)
-    (X86 / "avx.sinc").write_text(packed)
+    (X86 / "avx.sinc").write_text(packed + vcmp_file() + pcmpstr_file(inventory))
+    done |= {"VCMPPS", "VCMPPD", "VCMPSS", "VCMPSD",
+             "VPCMPESTRI", "VPCMPESTRM", "VPCMPISTRI", "VPCMPISTRM"}
     (X86 / "avx2.sinc").write_text(
         "#@family avx\n"
         "# Reserved for AVX2-only forms that need their own file. The 256-bit\n"

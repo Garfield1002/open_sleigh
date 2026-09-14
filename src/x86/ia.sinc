@@ -259,38 +259,38 @@ define register offset=0x1200 size=4   [
 	XMM31_Da  XMM31_Db  XMM31_Dc  XMM31_Dd  YMM31_De  YMM31_Df  YMM31_Dg  YMM31_Dh  _ _ _ _ _ _ _ _
 ];
 define register offset=0x1200 size=2   [
-	XMM0_Wa  XMM0_Wb  XMM0_Wc  XMM0_Wd  XMM0_We  XMM0_Wf  XMM0_Wg  XMM0_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM1_Wa  XMM1_Wb  XMM1_Wc  XMM1_Wd  XMM1_We  XMM1_Wf  XMM1_Wg  XMM1_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM2_Wa  XMM2_Wb  XMM2_Wc  XMM2_Wd  XMM2_We  XMM2_Wf  XMM2_Wg  XMM2_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM3_Wa  XMM3_Wb  XMM3_Wc  XMM3_Wd  XMM3_We  XMM3_Wf  XMM3_Wg  XMM3_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM4_Wa  XMM4_Wb  XMM4_Wc  XMM4_Wd  XMM4_We  XMM4_Wf  XMM4_Wg  XMM4_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM5_Wa  XMM5_Wb  XMM5_Wc  XMM5_Wd  XMM5_We  XMM5_Wf  XMM5_Wg  XMM5_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM6_Wa  XMM6_Wb  XMM6_Wc  XMM6_Wd  XMM6_We  XMM6_Wf  XMM6_Wg  XMM6_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM7_Wa  XMM7_Wb  XMM7_Wc  XMM7_Wd  XMM7_We  XMM7_Wf  XMM7_Wg  XMM7_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM8_Wa  XMM8_Wb  XMM8_Wc  XMM8_Wd  XMM8_We  XMM8_Wf  XMM8_Wg  XMM8_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM9_Wa  XMM9_Wb  XMM9_Wc  XMM9_Wd  XMM9_We  XMM9_Wf  XMM9_Wg  XMM9_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM10_Wa XMM10_Wb XMM10_Wc XMM10_Wd XMM10_We XMM10_Wf XMM10_Wg XMM10_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM11_Wa XMM11_Wb XMM11_Wc XMM11_Wd XMM11_We XMM11_Wf XMM11_Wg XMM11_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM12_Wa XMM12_Wb XMM12_Wc XMM12_Wd XMM12_We XMM12_Wf XMM12_Wg XMM12_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM13_Wa XMM13_Wb XMM13_Wc XMM13_Wd XMM13_We XMM13_Wf XMM13_Wg XMM13_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM14_Wa XMM14_Wb XMM14_Wc XMM14_Wd XMM14_We XMM14_Wf XMM14_Wg XMM14_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM15_Wa XMM15_Wb XMM15_Wc XMM15_Wd XMM15_We XMM15_Wf XMM15_Wg XMM15_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM16_Wa XMM16_Wb XMM16_Wc XMM16_Wd XMM16_We XMM16_Wf XMM16_Wg XMM16_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM17_Wa XMM17_Wb XMM17_Wc XMM17_Wd XMM17_We XMM17_Wf XMM17_Wg XMM17_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM18_Wa XMM18_Wb XMM18_Wc XMM18_Wd XMM18_We XMM18_Wf XMM18_Wg XMM18_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM19_Wa XMM19_Wb XMM19_Wc XMM19_Wd XMM19_We XMM19_Wf XMM19_Wg XMM19_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM20_Wa XMM20_Wb XMM20_Wc XMM20_Wd XMM20_We XMM20_Wf XMM20_Wg XMM20_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM21_Wa XMM21_Wb XMM21_Wc XMM21_Wd XMM21_We XMM21_Wf XMM21_Wg XMM21_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM22_Wa XMM22_Wb XMM22_Wc XMM22_Wd XMM22_We XMM22_Wf XMM22_Wg XMM22_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM23_Wa XMM23_Wb XMM23_Wc XMM23_Wd XMM23_We XMM23_Wf XMM23_Wg XMM23_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM24_Wa XMM24_Wb XMM24_Wc XMM24_Wd XMM24_We XMM24_Wf XMM24_Wg XMM24_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM25_Wa XMM25_Wb XMM25_Wc XMM25_Wd XMM25_We XMM25_Wf XMM25_Wg XMM25_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM26_Wa XMM26_Wb XMM26_Wc XMM26_Wd XMM26_We XMM26_Wf XMM26_Wg XMM26_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM27_Wa XMM27_Wb XMM27_Wc XMM27_Wd XMM27_We XMM27_Wf XMM27_Wg XMM27_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM28_Wa XMM28_Wb XMM28_Wc XMM28_Wd XMM28_We XMM28_Wf XMM28_Wg XMM28_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM29_Wa XMM29_Wb XMM29_Wc XMM29_Wd XMM29_We XMM29_Wf XMM29_Wg XMM29_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM30_Wa XMM30_Wb XMM30_Wc XMM30_Wd XMM30_We XMM30_Wf XMM30_Wg XMM30_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-	XMM31_Wa XMM31_Wb XMM31_Wc XMM31_Wd XMM31_We XMM31_Wf XMM31_Wg XMM31_Wh _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM0_Wa XMM0_Wb XMM0_Wc XMM0_Wd XMM0_We XMM0_Wf XMM0_Wg XMM0_Wh YMM0_Wi YMM0_Wj YMM0_Wk YMM0_Wl YMM0_Wm YMM0_Wn YMM0_Wo YMM0_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM1_Wa XMM1_Wb XMM1_Wc XMM1_Wd XMM1_We XMM1_Wf XMM1_Wg XMM1_Wh YMM1_Wi YMM1_Wj YMM1_Wk YMM1_Wl YMM1_Wm YMM1_Wn YMM1_Wo YMM1_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM2_Wa XMM2_Wb XMM2_Wc XMM2_Wd XMM2_We XMM2_Wf XMM2_Wg XMM2_Wh YMM2_Wi YMM2_Wj YMM2_Wk YMM2_Wl YMM2_Wm YMM2_Wn YMM2_Wo YMM2_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM3_Wa XMM3_Wb XMM3_Wc XMM3_Wd XMM3_We XMM3_Wf XMM3_Wg XMM3_Wh YMM3_Wi YMM3_Wj YMM3_Wk YMM3_Wl YMM3_Wm YMM3_Wn YMM3_Wo YMM3_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM4_Wa XMM4_Wb XMM4_Wc XMM4_Wd XMM4_We XMM4_Wf XMM4_Wg XMM4_Wh YMM4_Wi YMM4_Wj YMM4_Wk YMM4_Wl YMM4_Wm YMM4_Wn YMM4_Wo YMM4_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM5_Wa XMM5_Wb XMM5_Wc XMM5_Wd XMM5_We XMM5_Wf XMM5_Wg XMM5_Wh YMM5_Wi YMM5_Wj YMM5_Wk YMM5_Wl YMM5_Wm YMM5_Wn YMM5_Wo YMM5_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM6_Wa XMM6_Wb XMM6_Wc XMM6_Wd XMM6_We XMM6_Wf XMM6_Wg XMM6_Wh YMM6_Wi YMM6_Wj YMM6_Wk YMM6_Wl YMM6_Wm YMM6_Wn YMM6_Wo YMM6_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM7_Wa XMM7_Wb XMM7_Wc XMM7_Wd XMM7_We XMM7_Wf XMM7_Wg XMM7_Wh YMM7_Wi YMM7_Wj YMM7_Wk YMM7_Wl YMM7_Wm YMM7_Wn YMM7_Wo YMM7_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM8_Wa XMM8_Wb XMM8_Wc XMM8_Wd XMM8_We XMM8_Wf XMM8_Wg XMM8_Wh YMM8_Wi YMM8_Wj YMM8_Wk YMM8_Wl YMM8_Wm YMM8_Wn YMM8_Wo YMM8_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM9_Wa XMM9_Wb XMM9_Wc XMM9_Wd XMM9_We XMM9_Wf XMM9_Wg XMM9_Wh YMM9_Wi YMM9_Wj YMM9_Wk YMM9_Wl YMM9_Wm YMM9_Wn YMM9_Wo YMM9_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM10_Wa XMM10_Wb XMM10_Wc XMM10_Wd XMM10_We XMM10_Wf XMM10_Wg XMM10_Wh YMM10_Wi YMM10_Wj YMM10_Wk YMM10_Wl YMM10_Wm YMM10_Wn YMM10_Wo YMM10_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM11_Wa XMM11_Wb XMM11_Wc XMM11_Wd XMM11_We XMM11_Wf XMM11_Wg XMM11_Wh YMM11_Wi YMM11_Wj YMM11_Wk YMM11_Wl YMM11_Wm YMM11_Wn YMM11_Wo YMM11_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM12_Wa XMM12_Wb XMM12_Wc XMM12_Wd XMM12_We XMM12_Wf XMM12_Wg XMM12_Wh YMM12_Wi YMM12_Wj YMM12_Wk YMM12_Wl YMM12_Wm YMM12_Wn YMM12_Wo YMM12_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM13_Wa XMM13_Wb XMM13_Wc XMM13_Wd XMM13_We XMM13_Wf XMM13_Wg XMM13_Wh YMM13_Wi YMM13_Wj YMM13_Wk YMM13_Wl YMM13_Wm YMM13_Wn YMM13_Wo YMM13_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM14_Wa XMM14_Wb XMM14_Wc XMM14_Wd XMM14_We XMM14_Wf XMM14_Wg XMM14_Wh YMM14_Wi YMM14_Wj YMM14_Wk YMM14_Wl YMM14_Wm YMM14_Wn YMM14_Wo YMM14_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM15_Wa XMM15_Wb XMM15_Wc XMM15_Wd XMM15_We XMM15_Wf XMM15_Wg XMM15_Wh YMM15_Wi YMM15_Wj YMM15_Wk YMM15_Wl YMM15_Wm YMM15_Wn YMM15_Wo YMM15_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM16_Wa XMM16_Wb XMM16_Wc XMM16_Wd XMM16_We XMM16_Wf XMM16_Wg XMM16_Wh YMM16_Wi YMM16_Wj YMM16_Wk YMM16_Wl YMM16_Wm YMM16_Wn YMM16_Wo YMM16_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM17_Wa XMM17_Wb XMM17_Wc XMM17_Wd XMM17_We XMM17_Wf XMM17_Wg XMM17_Wh YMM17_Wi YMM17_Wj YMM17_Wk YMM17_Wl YMM17_Wm YMM17_Wn YMM17_Wo YMM17_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM18_Wa XMM18_Wb XMM18_Wc XMM18_Wd XMM18_We XMM18_Wf XMM18_Wg XMM18_Wh YMM18_Wi YMM18_Wj YMM18_Wk YMM18_Wl YMM18_Wm YMM18_Wn YMM18_Wo YMM18_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM19_Wa XMM19_Wb XMM19_Wc XMM19_Wd XMM19_We XMM19_Wf XMM19_Wg XMM19_Wh YMM19_Wi YMM19_Wj YMM19_Wk YMM19_Wl YMM19_Wm YMM19_Wn YMM19_Wo YMM19_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM20_Wa XMM20_Wb XMM20_Wc XMM20_Wd XMM20_We XMM20_Wf XMM20_Wg XMM20_Wh YMM20_Wi YMM20_Wj YMM20_Wk YMM20_Wl YMM20_Wm YMM20_Wn YMM20_Wo YMM20_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM21_Wa XMM21_Wb XMM21_Wc XMM21_Wd XMM21_We XMM21_Wf XMM21_Wg XMM21_Wh YMM21_Wi YMM21_Wj YMM21_Wk YMM21_Wl YMM21_Wm YMM21_Wn YMM21_Wo YMM21_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM22_Wa XMM22_Wb XMM22_Wc XMM22_Wd XMM22_We XMM22_Wf XMM22_Wg XMM22_Wh YMM22_Wi YMM22_Wj YMM22_Wk YMM22_Wl YMM22_Wm YMM22_Wn YMM22_Wo YMM22_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM23_Wa XMM23_Wb XMM23_Wc XMM23_Wd XMM23_We XMM23_Wf XMM23_Wg XMM23_Wh YMM23_Wi YMM23_Wj YMM23_Wk YMM23_Wl YMM23_Wm YMM23_Wn YMM23_Wo YMM23_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM24_Wa XMM24_Wb XMM24_Wc XMM24_Wd XMM24_We XMM24_Wf XMM24_Wg XMM24_Wh YMM24_Wi YMM24_Wj YMM24_Wk YMM24_Wl YMM24_Wm YMM24_Wn YMM24_Wo YMM24_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM25_Wa XMM25_Wb XMM25_Wc XMM25_Wd XMM25_We XMM25_Wf XMM25_Wg XMM25_Wh YMM25_Wi YMM25_Wj YMM25_Wk YMM25_Wl YMM25_Wm YMM25_Wn YMM25_Wo YMM25_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM26_Wa XMM26_Wb XMM26_Wc XMM26_Wd XMM26_We XMM26_Wf XMM26_Wg XMM26_Wh YMM26_Wi YMM26_Wj YMM26_Wk YMM26_Wl YMM26_Wm YMM26_Wn YMM26_Wo YMM26_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM27_Wa XMM27_Wb XMM27_Wc XMM27_Wd XMM27_We XMM27_Wf XMM27_Wg XMM27_Wh YMM27_Wi YMM27_Wj YMM27_Wk YMM27_Wl YMM27_Wm YMM27_Wn YMM27_Wo YMM27_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM28_Wa XMM28_Wb XMM28_Wc XMM28_Wd XMM28_We XMM28_Wf XMM28_Wg XMM28_Wh YMM28_Wi YMM28_Wj YMM28_Wk YMM28_Wl YMM28_Wm YMM28_Wn YMM28_Wo YMM28_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM29_Wa XMM29_Wb XMM29_Wc XMM29_Wd XMM29_We XMM29_Wf XMM29_Wg XMM29_Wh YMM29_Wi YMM29_Wj YMM29_Wk YMM29_Wl YMM29_Wm YMM29_Wn YMM29_Wo YMM29_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM30_Wa XMM30_Wb XMM30_Wc XMM30_Wd XMM30_We XMM30_Wf XMM30_Wg XMM30_Wh YMM30_Wi YMM30_Wj YMM30_Wk YMM30_Wl YMM30_Wm YMM30_Wn YMM30_Wo YMM30_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+	XMM31_Wa XMM31_Wb XMM31_Wc XMM31_Wd XMM31_We XMM31_Wf XMM31_Wg XMM31_Wh YMM31_Wi YMM31_Wj YMM31_Wk YMM31_Wl YMM31_Wm YMM31_Wn YMM31_Wo YMM31_Wp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 ];
 define register offset=0x1200 size=1   [
 	XMM0_Ba  XMM0_Bb  XMM0_Bc  XMM0_Bd  XMM0_Be  XMM0_Bf  XMM0_Bg  XMM0_Bh  XMM0_Bi  XMM0_Bj  XMM0_Bk  XMM0_Bl  XMM0_Bm  XMM0_Bn  XMM0_Bo  XMM0_Bp  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _

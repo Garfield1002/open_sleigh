@@ -1008,6 +1008,79 @@ macro avx_extract16(dest, s0, s1, i) {
     dest = sh[0,16];
 }
 
+# The 32 VCMP predicates on one lane, straight from the SDM table. Three
+# 32-bit constants encode, per predicate, the relation index, the NaN
+# result and the quiet-NaN signalling; the lane extracts its own bit.
+macro avx_cmp32(dest, x, y, pred) {
+    local a:4 = x; local b:4 = y; local p:4 = zext(pred & 0x1f);
+    local v:4 = a; local a_nan:1 = ((v[23,8] == 0xff) && (v[0,23] != 0));
+    v = b; local b_nan:1 = ((v[23,8] == 0xff) && (v[0,23] != 0));
+    local unord:1 = a_nan || b_nan;
+    local is_eq:1 = ((0x01010101:4 >> p) & 1) != 0;
+    local is_lt:1 = ((0x02020202:4 >> p) & 1) != 0;
+    local is_le:1 = ((0x04040404:4 >> p) & 1) != 0;
+    local is_gt:1 = ((0x40404040:4 >> p) & 1) != 0;
+    local is_ge:1 = ((0x20202020:4 >> p) & 1) != 0;
+    local is_ne:1 = ((0x10101010:4 >> p) & 1) != 0;
+    local is_t:1 = ((0x80808080:4 >> p) & 1) != 0;
+    local n:1 = ((0x87788778:4 >> p) & 1) != 0;
+    local strict:1 = ((0x99996666:4 >> p) & 1) != 0;
+    local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;
+    local gt:1 = b f< a; local ge:1 = b f<= a;
+    local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;
+    local res:1 = (o && !unord) || (n && unord);
+    sse_compare32(a, b, strict);
+    dest = 0 - zext(res);
+}
+macro avx_cmp64(dest, x, y, pred) {
+    local a:8 = x; local b:8 = y; local p:4 = zext(pred & 0x1f);
+    local v:8 = a; local a_nan:1 = ((v[52,11] == 0x7ff) && (v[0,52] != 0));
+    v = b; local b_nan:1 = ((v[52,11] == 0x7ff) && (v[0,52] != 0));
+    local unord:1 = a_nan || b_nan;
+    local is_eq:1 = ((0x01010101:4 >> p) & 1) != 0;
+    local is_lt:1 = ((0x02020202:4 >> p) & 1) != 0;
+    local is_le:1 = ((0x04040404:4 >> p) & 1) != 0;
+    local is_gt:1 = ((0x40404040:4 >> p) & 1) != 0;
+    local is_ge:1 = ((0x20202020:4 >> p) & 1) != 0;
+    local is_ne:1 = ((0x10101010:4 >> p) & 1) != 0;
+    local is_t:1 = ((0x80808080:4 >> p) & 1) != 0;
+    local n:1 = ((0x87788778:4 >> p) & 1) != 0;
+    local strict:1 = ((0x99996666:4 >> p) & 1) != 0;
+    local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;
+    local gt:1 = b f< a; local ge:1 = b f<= a;
+    local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;
+    local res:1 = (o && !unord) || (n && unord);
+    sse_compare64(a, b, strict);
+    dest = 0 - zext(res);
+}
+
+# PHMINPOSUW on one 128-bit lane: the minimum unsigned word and its index.
+macro phminposuw128(dest, src) {
+    local s:16 = src; local min:2 = s[0,16]; local idx:2 = 0; local less:1;
+    less = s[16,16] < min;
+    conditionalAssign(idx, less, 1:2, idx);
+    conditionalAssign(min, less, s[16,16], min);
+    less = s[32,16] < min;
+    conditionalAssign(idx, less, 2:2, idx);
+    conditionalAssign(min, less, s[32,16], min);
+    less = s[48,16] < min;
+    conditionalAssign(idx, less, 3:2, idx);
+    conditionalAssign(min, less, s[48,16], min);
+    less = s[64,16] < min;
+    conditionalAssign(idx, less, 4:2, idx);
+    conditionalAssign(min, less, s[64,16], min);
+    less = s[80,16] < min;
+    conditionalAssign(idx, less, 5:2, idx);
+    conditionalAssign(min, less, s[80,16], min);
+    less = s[96,16] < min;
+    conditionalAssign(idx, less, 6:2, idx);
+    conditionalAssign(min, less, s[96,16], min);
+    less = s[112,16] < min;
+    conditionalAssign(idx, less, 7:2, idx);
+    conditionalAssign(min, less, s[112,16], min);
+    dest = (zext(idx) << 16) | zext(min);
+}
+
 # IEEE lanes, through the MXCSR-aware SSE scalar macros.
 macro avx_fadd32(dest, a, b) {
     local x:8 = a; local y:8 = b; local r:8;
