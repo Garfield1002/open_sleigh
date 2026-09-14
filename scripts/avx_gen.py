@@ -326,6 +326,99 @@ def macro_library() -> str:
             lines.append(f"    r{sl} = x;")
         lines.append("    dest = r;")
         out.append(f"macro avx_bcast{w}(dest, a) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Lane selection by a 2-bit field: one dword from a 128-bit source\n"
+               "# (given as two qwords) or one qword from a 256-bit one (four qwords).\n")
+    out.append("macro avx_sel_dword(dest, sel, s0, s1) {\n"
+               "    local i:8 = zext(sel) & 3;\n"
+               "    local lo:8 = s0; local hi:8 = s1;\n"
+               "    local src:8 = (lo * zext(i < 2)) | (hi * zext(i >= 2));\n"
+               "    local sh:8 = src >> ((i & 1) * 32);\n"
+               "    dest = sh[0,32];\n}\n")
+    out.append("macro avx_sel_qword(dest, sel, s0, s1, s2, s3) {\n"
+               "    local i:8 = zext(sel) & 3;\n"
+               "    local a:8 = s0; local b:8 = s1; local c:8 = s2; local d:8 = s3;\n"
+               "    dest = (a * zext(i == 0)) | (b * zext(i == 1)) | (c * zext(i == 2)) | (d * zext(i == 3));\n}\n")
+    out.append("\n# Shuffle the four words of a qword by a byte of 2-bit selectors.\n")
+    out.append("macro avx_shufw(dest, a, sel) {\n"
+               "    local x:8 = a; local s:8 = zext(sel); local r:8;\n"
+               "    local w0:8 = x >> ((s & 3) * 16);\n"
+               "    local w1:8 = x >> (((s >> 2) & 3) * 16);\n"
+               "    local w2:8 = x >> (((s >> 4) & 3) * 16);\n"
+               "    local w3:8 = x >> (((s >> 6) & 3) * 16);\n"
+               "    r[0,16] = w0[0,16]; r[16,16] = w1[0,16]; r[32,16] = w2[0,16]; r[48,16] = w3[0,16];\n"
+               "    dest = r;\n}\n")
+    out.append("\n# Byte shuffle: each destination byte picks a byte of the 16-byte source by\n"
+               "# the low nibble of the selector, or zero when the selector's bit 7 is set.\n")
+    lines = ["    local lo:8 = s0; local hi:8 = s1; local m:8 = sel; local r:8;"]
+    for i in range(8):
+        lines.append(f"    local i{i}:8 = zext(m[{i*8},4]);")
+        lines.append(f"    local src{i}:8 = (lo * zext(i{i} < 8)) | (hi * zext(i{i} >= 8));")
+        lines.append(f"    local b{i}:8 = src{i} >> ((i{i} & 7) * 8);")
+        lines.append(f"    r[{i*8},8] = b{i}[0,8] * zext(!m[{i*8+7},1]);")
+    lines.append("    dest = r;")
+    out.append("macro avx_shufb(dest, s0, s1, sel) {\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# One qword of a 32-byte concatenation (hi:lo) shifted right by n bytes:\n"
+               "# the PALIGNR building block. `q0..q3` are the four qwords low to high.\n")
+    out.append("macro avx_byteshift_q(dest, n, q0, q1, q2, q3) {\n"
+               "    local sh:8 = n;\n"
+               "    local a:8 = q0; local b:8 = q1; local c:8 = q2; local d:8 = q3;\n"
+               "    local qi:8 = sh >> 3;\n    local bi:8 = (sh & 7) * 8;\n"
+               "    local lo:8 = (a * zext(qi == 0)) | (b * zext(qi == 1)) | (c * zext(qi == 2)) | (d * zext(qi == 3));\n"
+               "    local hi:8 = (b * zext(qi == 0)) | (c * zext(qi == 1)) | (d * zext(qi == 2));\n"
+               "    local up:8 = (hi << (64 - bi)) * zext(bi != 0);\n"
+               "    dest = ((lo >> bi) | up) * zext(sh < 32);\n}\n")
+    out.append("\n# Saturating horizontal pairs and the unsigned-byte times signed-byte\n"
+               "# multiply-add, through the SSE user-ops on a qword.\n")
+    for name, op in (("avx_hadds16", "+"), ("avx_hsubs16", "-")):
+        lines = ["    local x:8 = a; local y:8 = b; local r:8; local wide:4; local lane:2;"]
+        for k, (src, i) in enumerate([("x", 0), ("x", 1), ("y", 0), ("y", 1)]):
+            lines.append(f"    wide = sext({src}[{2*i*16},16]) {op} sext({src}[{(2*i+1)*16},16]);")
+            lines.append("    ssdsw(wide, lane);")
+            lines.append(f"    r[{k*16},16] = lane;")
+        lines.append("    dest = r;")
+        out.append(f"macro {name}(dest, a, b) {{\n" + "\n".join(lines) + "\n}\n")
+    lines = ["    local x:8 = a; local y:8 = b; local r:8; local sum:4; local lane:2;"]
+    for k in range(4):
+        lines.append(f"    sum = zext(x[{2*k*8},8]) * sext(y[{2*k*8},8]) + zext(x[{(2*k+1)*8},8]) * sext(y[{(2*k+1)*8},8]);")
+        lines.append("    ssdsw(sum, lane);")
+        lines.append(f"    r[{k*16},16] = lane;")
+    lines.append("    dest = r;")
+    out.append("macro avx_maddubs(dest, a, b) {\n" + "\n".join(lines) + "\n}\n")
+    for w in (16, 32):
+        n = LANES[w]
+        lines = ["    local x:8 = a; local y:8 = b; local r:8;"]
+        for i in range(n // 2):
+            lines.append(f"    r[{i*w},{w}] = x[{2*i*w},{w}] - x[{(2*i+1)*w},{w}];")
+        for i in range(n // 2):
+            j = n // 2 + i
+            lines.append(f"    r[{j*w},{w}] = y[{2*i*w},{w}] - y[{(2*i+1)*w},{w}];")
+        lines.append("    dest = r;")
+        out.append(f"macro avx_hsub{w}(dest, a, b) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# VPERMD: each dword of the destination qword picks any of the eight\n"
+               "# source dwords by the low 3 bits of its index dword.\n")
+    out.append("macro avx_permd(dest, idx, s0, s1, s2, s3) {\n"
+               "    local ix:8 = idx; local r:8;\n"
+               "    local i0:8 = zext(ix[0,3]); local i1:8 = zext(ix[32,3]);\n"
+               "    local a:8 = s0; local b:8 = s1; local c:8 = s2; local d:8 = s3;\n"
+               "    local q0:8 = (a * zext(i0 < 2)) | (b * zext((i0 >= 2) && (i0 < 4))) | (c * zext((i0 >= 4) && (i0 < 6))) | (d * zext(i0 >= 6));\n"
+               "    local q1:8 = (a * zext(i1 < 2)) | (b * zext((i1 >= 2) && (i1 < 4))) | (c * zext((i1 >= 4) && (i1 < 6))) | (d * zext(i1 >= 6));\n"
+               "    local v0:8 = q0 >> ((i0 & 1) * 32);\n    local v1:8 = q1 >> ((i1 & 1) * 32);\n"
+               "    r[0,32] = v0[0,32]; r[32,32] = v1[0,32];\n    dest = r;\n}\n")
+    out.append("\n# Insert one lane at index i (relative to this qword; out of range leaves\n"
+               "# the qword unchanged) and extract one lane from a 16-byte value.\n")
+    for w in (8, 16, 32):
+        n = LANES[w]
+        lines = [f"    local x:8 = a; local v:{w//8} = val; local ix:8 = i; local r:8;"]
+        for k, sl in enumerate(lane_slices(w)):
+            lines.append(f"    r{sl} = (v * zext(ix == {k})) | (x{sl} * zext(ix != {k}));")
+        lines.append("    dest = r;")
+        out.append(f"macro avx_insert{w}(dest, a, val, i) {{\n" + "\n".join(lines) + "\n}\n")
+    for w in (8, 16):
+        per = 64 // w
+        out.append(f"macro avx_extract{w}(dest, s0, s1, i) {{\n"
+                   f"    local ix:8 = zext(i) & {2*per-1};\n    local lo:8 = s0; local hi:8 = s1;\n"
+                   f"    local src:8 = (lo * zext(ix < {per})) | (hi * zext(ix >= {per}));\n"
+                   f"    local sh:8 = src >> ((ix & {per-1}) * {w});\n    dest = sh[0,{w}];\n}}\n")
     out.append("\n# IEEE lanes, through the MXCSR-aware SSE scalar macros.\n")
     for w, sfx in ((32, "32"), (64, "64")):
         for op in ("add", "sub", "mul", "div", "min", "max"):
@@ -823,6 +916,203 @@ for _n, _w in (("VPMASKMOVD", 32), ("VPMASKMOVQ", 64)):
             MANUAL[(_n, _k[1])] = _b
 
 
+def _shufps(dst, va, m, sel_shift):
+    # lanes 0,1 from va by imm[1:0],imm[3:2]; lanes 2,3 from m by imm[5:4],imm[7:6]
+    return (f"    avx_sel_dword({dst}[0,32], s{sel_shift}, {va}[0,64], {va}[64,64]);\n"
+            f"    avx_sel_dword({dst}[32,32], s{sel_shift} >> 2, {va}[0,64], {va}[64,64]);\n"
+            f"    avx_sel_dword({dst}[64,32], s{sel_shift} >> 4, {m}[0,64], {m}[64,64]);\n"
+            f"    avx_sel_dword({dst}[96,32], s{sel_shift} >> 6, {m}[0,64], {m}[64,64]);")
+
+
+def _pshufd(dst, m, base):
+    return (f"    avx_sel_dword({dst}[{base},32], s, {m}[0,64], {m}[64,64]);\n"
+            f"    avx_sel_dword({dst}[{base+32},32], s >> 2, {m}[0,64], {m}[64,64]);\n"
+            f"    avx_sel_dword({dst}[{base+64},32], s >> 4, {m}[0,64], {m}[64,64]);\n"
+            f"    avx_sel_dword({dst}[{base+96},32], s >> 6, {m}[0,64], {m}[64,64]);")
+
+
+MANUAL.update({
+    ("VSHUFPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n" + _shufps("YmmReg1", "va", "m", "") + "\n    avx_zero_upper(YmmReg1);",
+    ("VSHUFPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    local s:1 = imm8;\n" + _shufps("YmmReg1", "vlo", "lo", "") + "\n"
+        + _shufps("YmmReg1", "vhi", "hi", "").replace("YmmReg1[0,32]", "YmmReg1[128,32]").replace("YmmReg1[32,32]", "YmmReg1[160,32]").replace("YmmReg1[64,32]", "YmmReg1[192,32]").replace("YmmReg1[96,32]", "YmmReg1[224,32]"),
+    ("VSHUFPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n"
+        "    avx_sel_qword(YmmReg1[0,64], s & 1, va[0,64], va[64,64], va[0,64], va[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], (s >> 1) & 1, m[0,64], m[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VSHUFPD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    local s:1 = imm8;\n"
+        "    avx_sel_qword(YmmReg1[0,64], s & 1, vlo[0,64], vlo[64,64], vlo[0,64], vlo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], (s >> 1) & 1, lo[0,64], lo[64,64], lo[0,64], lo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[128,64], (s >> 2) & 1, vhi[0,64], vhi[64,64], vhi[0,64], vhi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[192,64], (s >> 3) & 1, hi[0,64], hi[64,64], hi[0,64], hi[64,64]);",
+    ("VPSHUFD", "XmmReg1,XmmReg2_m128,imm8"): "    local s:1 = imm8;\n" + _pshufd("YmmReg1", "m", 0) + "\n    avx_zero_upper(YmmReg1);",
+    ("VPSHUFD", "YmmReg1,YmmReg2_m256,imm8"): "    local s:1 = imm8;\n" + _pshufd("YmmReg1", "lo", 0) + "\n" + _pshufd("YmmReg1", "hi", 128),
+    ("VPSHUFHW", "XmmReg1,XmmReg2_m128,imm8"): "    YmmReg1[0,64] = m[0,64];\n    avx_shufw(YmmReg1[64,64], m[64,64], imm8:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPSHUFHW", "YmmReg1,YmmReg2_m256,imm8"): "    YmmReg1[0,64] = lo[0,64];\n    avx_shufw(YmmReg1[64,64], lo[64,64], imm8:1);\n    YmmReg1[128,64] = hi[0,64];\n    avx_shufw(YmmReg1[192,64], hi[64,64], imm8:1);",
+    ("VPSHUFLW", "XmmReg1,XmmReg2_m128,imm8"): "    avx_shufw(YmmReg1[0,64], m[0,64], imm8:1);\n    YmmReg1[64,64] = m[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VPSHUFLW", "YmmReg1,YmmReg2_m256,imm8"): "    avx_shufw(YmmReg1[0,64], lo[0,64], imm8:1);\n    YmmReg1[64,64] = lo[64,64];\n    avx_shufw(YmmReg1[128,64], hi[0,64], imm8:1);\n    YmmReg1[192,64] = hi[64,64];",
+    ("VPSHUFB", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"):
+        "    local va:16 = vexVVVV_XmmReg;\n    avx_shufb(YmmReg1[0,64], va[0,64], va[64,64], m[0,64]);\n    avx_shufb(YmmReg1[64,64], va[0,64], va[64,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPSHUFB", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"):
+        "    avx_shufb(YmmReg1[0,64], vlo[0,64], vlo[64,64], lo[0,64]);\n    avx_shufb(YmmReg1[64,64], vlo[0,64], vlo[64,64], lo[64,64]);\n"
+        "    avx_shufb(YmmReg1[128,64], vhi[0,64], vhi[64,64], hi[0,64]);\n    avx_shufb(YmmReg1[192,64], vhi[0,64], vhi[64,64], hi[64,64]);",
+    # palignr: (va:m) >> imm8 bytes, per 128-bit lane; m is the low half
+    ("VPALIGNR", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(YmmReg1[0,64], n, m[0,64], m[64,64], va[0,64], va[64,64]);\n"
+        "    avx_byteshift_q(YmmReg1[64,64], n + 8, m[0,64], m[64,64], va[0,64], va[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPALIGNR", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(YmmReg1[0,64], n, lo[0,64], lo[64,64], vlo[0,64], vlo[64,64]);\n"
+        "    avx_byteshift_q(YmmReg1[64,64], n + 8, lo[0,64], lo[64,64], vlo[0,64], vlo[64,64]);\n"
+        "    avx_byteshift_q(YmmReg1[128,64], n, hi[0,64], hi[64,64], vhi[0,64], vhi[64,64]);\n"
+        "    avx_byteshift_q(YmmReg1[192,64], n + 8, hi[0,64], hi[64,64], vhi[0,64], vhi[64,64]);",
+    # whole-lane byte shifts (vvvv is the destination)
+    ("VPSLLDQ", "vexVVVV_XmmReg,XmmReg2,imm8"):
+        "    local x:16 = XmmReg2;\n    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[0,64], 16 - n, 0:8, 0:8, x[0,64], x[64,64]);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[64,64], 24 - n, 0:8, 0:8, x[0,64], x[64,64]);\n    avx_zero_upper(vexVVVV_YmmReg);",
+    ("VPSLLDQ", "vexVVVV_YmmReg,YmmReg2,imm8"):
+        "    local x:16 = YmmReg2_L;\n    local y:16 = YmmReg2_H;\n    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[0,64], 16 - n, 0:8, 0:8, x[0,64], x[64,64]);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[64,64], 24 - n, 0:8, 0:8, x[0,64], x[64,64]);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[128,64], 16 - n, 0:8, 0:8, y[0,64], y[64,64]);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[192,64], 24 - n, 0:8, 0:8, y[0,64], y[64,64]);",
+    ("VPSRLDQ", "vexVVVV_XmmReg,XmmReg2,imm8"):
+        "    local x:16 = XmmReg2;\n    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[0,64], n, x[0,64], x[64,64], 0:8, 0:8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[64,64], n + 8, x[0,64], x[64,64], 0:8, 0:8);\n    avx_zero_upper(vexVVVV_YmmReg);",
+    ("VPSRLDQ", "vexVVVV_YmmReg,YmmReg2,imm8"):
+        "    local x:16 = YmmReg2_L;\n    local y:16 = YmmReg2_H;\n    local n:8 = zext(imm8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[0,64], n, x[0,64], x[64,64], 0:8, 0:8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[64,64], n + 8, x[0,64], x[64,64], 0:8, 0:8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[128,64], n, y[0,64], y[64,64], 0:8, 0:8);\n"
+        "    avx_byteshift_q(vexVVVV_YmmReg[192,64], n + 8, y[0,64], y[64,64], 0:8, 0:8);",
+    # in-lane permutes: control from a register (per lane) or an imm8
+    ("VPERMILPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"):
+        "    local va:16 = vexVVVV_XmmReg;\n"
+        "    avx_sel_dword(YmmReg1[0,32], m[0,2], va[0,64], va[64,64]);\n    avx_sel_dword(YmmReg1[32,32], m[32,2], va[0,64], va[64,64]);\n"
+        "    avx_sel_dword(YmmReg1[64,32], m[64,2], va[0,64], va[64,64]);\n    avx_sel_dword(YmmReg1[96,32], m[96,2], va[0,64], va[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPERMILPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"):
+        "    avx_sel_dword(YmmReg1[0,32], lo[0,2], vlo[0,64], vlo[64,64]);\n    avx_sel_dword(YmmReg1[32,32], lo[32,2], vlo[0,64], vlo[64,64]);\n"
+        "    avx_sel_dword(YmmReg1[64,32], lo[64,2], vlo[0,64], vlo[64,64]);\n    avx_sel_dword(YmmReg1[96,32], lo[96,2], vlo[0,64], vlo[64,64]);\n"
+        "    avx_sel_dword(YmmReg1[128,32], hi[0,2], vhi[0,64], vhi[64,64]);\n    avx_sel_dword(YmmReg1[160,32], hi[32,2], vhi[0,64], vhi[64,64]);\n"
+        "    avx_sel_dword(YmmReg1[192,32], hi[64,2], vhi[0,64], vhi[64,64]);\n    avx_sel_dword(YmmReg1[224,32], hi[96,2], vhi[0,64], vhi[64,64]);",
+    ("VPERMILPS", "XmmReg1,XmmReg2_m128,imm8"): "    local s:1 = imm8;\n" + _pshufd("YmmReg1", "m", 0) + "\n    avx_zero_upper(YmmReg1);",
+    ("VPERMILPS", "YmmReg1,YmmReg2_m256,imm8"): "    local s:1 = imm8;\n" + _pshufd("YmmReg1", "lo", 0) + "\n" + _pshufd("YmmReg1", "hi", 128),
+    ("VPERMILPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"):
+        "    local va:16 = vexVVVV_XmmReg;\n"
+        "    avx_sel_qword(YmmReg1[0,64], m[1,1], va[0,64], va[64,64], va[0,64], va[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], m[65,1], va[0,64], va[64,64], va[0,64], va[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPERMILPD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"):
+        "    avx_sel_qword(YmmReg1[0,64], lo[1,1], vlo[0,64], vlo[64,64], vlo[0,64], vlo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], lo[65,1], vlo[0,64], vlo[64,64], vlo[0,64], vlo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[128,64], hi[1,1], vhi[0,64], vhi[64,64], vhi[0,64], vhi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[192,64], hi[65,1], vhi[0,64], vhi[64,64], vhi[0,64], vhi[64,64]);",
+    ("VPERMILPD", "XmmReg1,XmmReg2_m128,imm8"):
+        "    local s:1 = imm8;\n"
+        "    avx_sel_qword(YmmReg1[0,64], s & 1, m[0,64], m[64,64], m[0,64], m[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], (s >> 1) & 1, m[0,64], m[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPERMILPD", "YmmReg1,YmmReg2_m256,imm8"):
+        "    local s:1 = imm8;\n"
+        "    avx_sel_qword(YmmReg1[0,64], s & 1, lo[0,64], lo[64,64], lo[0,64], lo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], (s >> 1) & 1, lo[0,64], lo[64,64], lo[0,64], lo[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[128,64], (s >> 2) & 1, hi[0,64], hi[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[192,64], (s >> 3) & 1, hi[0,64], hi[64,64], hi[0,64], hi[64,64]);",
+    # cross-lane 128-bit permutes: each dest half picks one of the four source halves, or zero (bit 3/7)
+    ("VPERM2F128", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
+        "    local s:1 = imm8;\n    local zl:8 = 0 - zext(s[3,1] == 0);\n    local zh:8 = 0 - zext(s[7,1] == 0);\n"
+        "    local a0:8; avx_sel_qword(a0, s, vlo[0,64], vhi[0,64], lo[0,64], hi[0,64]);\n"
+        "    local a1:8; avx_sel_qword(a1, s, vlo[64,64], vhi[64,64], lo[64,64], hi[64,64]);\n"
+        "    local b0:8; avx_sel_qword(b0, s >> 4, vlo[0,64], vhi[0,64], lo[0,64], hi[0,64]);\n"
+        "    local b1:8; avx_sel_qword(b1, s >> 4, vlo[64,64], vhi[64,64], lo[64,64], hi[64,64]);\n"
+        "    YmmReg1[0,64] = a0 & zl;\n    YmmReg1[64,64] = a1 & zl;\n    YmmReg1[128,64] = b0 & zh;\n    YmmReg1[192,64] = b1 & zh;",
+    # qword permutes by imm8 across the whole register
+    ("VPERMQ", "YmmReg1,YmmReg2_m256,imm8"):
+        "    local s:1 = imm8;\n"
+        "    avx_sel_qword(YmmReg1[0,64], s, lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[64,64], s >> 2, lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[128,64], s >> 4, lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_sel_qword(YmmReg1[192,64], s >> 6, lo[0,64], lo[64,64], hi[0,64], hi[64,64]);",
+    # dword permutes with per-lane 3-bit indices across the whole register
+    ("VPERMD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"):
+        "    avx_permd(YmmReg1[0,64], vlo[0,64], lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_permd(YmmReg1[64,64], vlo[64,64], lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_permd(YmmReg1[128,64], vhi[0,64], lo[0,64], lo[64,64], hi[0,64], hi[64,64]);\n"
+        "    avx_permd(YmmReg1[192,64], vhi[64,64], lo[0,64], lo[64,64], hi[0,64], hi[64,64]);",
+    # 128-bit lane insert / extract
+    ("VINSERTF128", "YmmReg1,vexVVVV_YmmReg,XmmReg2_m128,imm8"):
+        "    local s:1 = imm8 & 1;\n    local kl:8 = 0 - zext(s == 0);\n    local kh:8 = ~kl;\n"
+        "    YmmReg1[0,64] = (m[0,64] & kl) | (vlo[0,64] & kh);\n    YmmReg1[64,64] = (m[64,64] & kl) | (vlo[64,64] & kh);\n"
+        "    YmmReg1[128,64] = (m[0,64] & kh) | (vhi[0,64] & kl);\n    YmmReg1[192,64] = (m[64,64] & kh) | (vhi[64,64] & kl);",
+    ("VEXTRACTF128", "XmmReg2_m128,YmmReg1,imm8"): "SPLIT_EXTRACT",
+    ("VEXTRACTF128", "XmmReg2,YmmReg1,imm8"):
+        "    local s:1 = imm8 & 1;\n    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n"
+        "    local r:16 = (x * zext(s == 0)) | (y * zext(s == 1));\n"
+        "    YmmReg2[0,64] = r[0,64];\n    YmmReg2[64,64] = r[64,64];\n    avx_zero_upper(YmmReg2);",
+    ("VEXTRACTF128", "m128,YmmReg1,imm8"):
+        "    local s:1 = imm8 & 1;\n    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n"
+        "    m128 = (x * zext(s == 0)) | (y * zext(s == 1));",
+    ("VINSERTPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m32,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n    local src:4 = m;\n"
+        "    local d:16 = va;\n    local dsel:1 = (s >> 4) & 3;\n    local zm:1 = s & 0xf;\n"
+        "    local v0:4 = d[0,32] * zext(dsel != 0) + src * zext(dsel == 0);\n"
+        "    local v1:4 = d[32,32] * zext(dsel != 1) + src * zext(dsel == 1);\n"
+        "    local v2:4 = d[64,32] * zext(dsel != 2) + src * zext(dsel == 2);\n"
+        "    local v3:4 = d[96,32] * zext(dsel != 3) + src * zext(dsel == 3);\n"
+        "    YmmReg1[0,32] = v0 * zext(zm[0,1] == 0);\n    YmmReg1[32,32] = v1 * zext(zm[1,1] == 0);\n"
+        "    YmmReg1[64,32] = v2 * zext(zm[2,1] == 0);\n    YmmReg1[96,32] = v3 * zext(zm[3,1] == 0);\n    avx_zero_upper(YmmReg1);",
+    ("VEXTRACTPS", "rm32,XmmReg1,imm8"):
+        "    local x:16 = XmmReg1;\n    local r:4; avx_sel_dword(r, imm8:1, x[0,64], x[64,64]);\n    rm32 = r;\n    build check_rm32_dest;",
+    ("VPINSRB", "XmmReg1,vexVVVV_XmmReg,Reg32_m8,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local i:8 = zext(imm8) & 15;\n    local v:1 = Reg32_m8;\n"
+        "    local r0:8; avx_insert8(r0, va[0,64], v, i);\n    local r1:8; avx_insert8(r1, va[64,64], v, i - 8);\n"
+        "    YmmReg1[0,64] = r0;\n    YmmReg1[64,64] = r1;\n    avx_zero_upper(YmmReg1);",
+    ("VPINSRW", "XmmReg1,vexVVVV_XmmReg,Reg32_m16,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local i:8 = zext(imm8) & 7;\n    local v:2 = Reg32_m16;\n"
+        "    local r0:8; avx_insert16(r0, va[0,64], v, i);\n    local r1:8; avx_insert16(r1, va[64,64], v, i - 4);\n"
+        "    YmmReg1[0,64] = r0;\n    YmmReg1[64,64] = r1;\n    avx_zero_upper(YmmReg1);",
+    ("VPINSRD", "XmmReg1,vexVVVV_XmmReg,rm32,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local i:8 = zext(imm8) & 3;\n    local v:4 = rm32;\n"
+        "    local r0:8; avx_insert32(r0, va[0,64], v, i);\n    local r1:8; avx_insert32(r1, va[64,64], v, i - 2);\n"
+        "    YmmReg1[0,64] = r0;\n    YmmReg1[64,64] = r1;\n    avx_zero_upper(YmmReg1);",
+    ("VPINSRQ", "XmmReg1,vexVVVV_XmmReg,rm64,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n    local i:1 = imm8 & 1;\n    local v:8 = rm64;\n"
+        "    YmmReg1[0,64] = (v * zext(i == 0)) | (va[0,64] * zext(i != 0));\n    YmmReg1[64,64] = (v * zext(i == 1)) | (va[64,64] * zext(i != 1));\n    avx_zero_upper(YmmReg1);",
+    ("VPEXTRB", "Rmr32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:1; avx_extract8(r, x[0,64], x[64,64], imm8:1);\n    Rmr32 = zext(r);\n    build check_Rmr32_dest;",
+    ("VPEXTRB", "m8,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:1; avx_extract8(r, x[0,64], x[64,64], imm8:1);\n    m8 = r;",
+    ("VPEXTRW", "Reg32,XmmReg2,imm8"): "    local x:16 = XmmReg2;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    Reg32 = zext(r);\n    build check_Reg32_dest;",
+    ("VPEXTRW", "Reg32_m16,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    Reg32_m16 = zext(r);",
+    ("VPEXTRD", "Rmr32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:4; avx_sel_dword(r, imm8:1, x[0,64], x[64,64]);\n    Rmr32 = r;\n    build check_Rmr32_dest;",
+    ("VPEXTRD", "m32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:4; avx_sel_dword(r, imm8:1, x[0,64], x[64,64]);\n    m32 = r;",
+    ("VPEXTRQ", "rm64,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local i:1 = imm8 & 1;\n    rm64 = (x[0,64] * zext(i == 0)) | (x[64,64] * zext(i == 1));",
+    # horizontal subtracts and saturating horizontal ops
+    ("VPHSUBW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"): "    local va:16 = vexVVVV_XmmReg;\n    avx_hsub16(YmmReg1[0,64], va[0,64], va[64,64]);\n    avx_hsub16(YmmReg1[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPHSUBW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"): "    avx_hsub16(YmmReg1[0,64], vlo[0,64], vlo[64,64]);\n    avx_hsub16(YmmReg1[64,64], lo[0,64], lo[64,64]);\n    avx_hsub16(YmmReg1[128,64], vhi[0,64], vhi[64,64]);\n    avx_hsub16(YmmReg1[192,64], hi[0,64], hi[64,64]);",
+    ("VPHSUBD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"): "    local va:16 = vexVVVV_XmmReg;\n    avx_hsub32(YmmReg1[0,64], va[0,64], va[64,64]);\n    avx_hsub32(YmmReg1[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPHSUBD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"): "    avx_hsub32(YmmReg1[0,64], vlo[0,64], vlo[64,64]);\n    avx_hsub32(YmmReg1[64,64], lo[0,64], lo[64,64]);\n    avx_hsub32(YmmReg1[128,64], vhi[0,64], vhi[64,64]);\n    avx_hsub32(YmmReg1[192,64], hi[0,64], hi[64,64]);",
+    ("VPHADDSW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"): "    local va:16 = vexVVVV_XmmReg;\n    avx_hadds16(YmmReg1[0,64], va[0,64], va[64,64]);\n    avx_hadds16(YmmReg1[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPHADDSW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"): "    avx_hadds16(YmmReg1[0,64], vlo[0,64], vlo[64,64]);\n    avx_hadds16(YmmReg1[64,64], lo[0,64], lo[64,64]);\n    avx_hadds16(YmmReg1[128,64], vhi[0,64], vhi[64,64]);\n    avx_hadds16(YmmReg1[192,64], hi[0,64], hi[64,64]);",
+    ("VPHSUBSW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"): "    local va:16 = vexVVVV_XmmReg;\n    avx_hsubs16(YmmReg1[0,64], va[0,64], va[64,64]);\n    avx_hsubs16(YmmReg1[64,64], m[0,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPHSUBSW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"): "    avx_hsubs16(YmmReg1[0,64], vlo[0,64], vlo[64,64]);\n    avx_hsubs16(YmmReg1[64,64], lo[0,64], lo[64,64]);\n    avx_hsubs16(YmmReg1[128,64], vhi[0,64], vhi[64,64]);\n    avx_hsubs16(YmmReg1[192,64], hi[0,64], hi[64,64]);",
+    ("VPMADDUBSW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128"): "    local va:16 = vexVVVV_XmmReg;\n    avx_maddubs(YmmReg1[0,64], va[0,64], m[0,64]);\n    avx_maddubs(YmmReg1[64,64], va[64,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMADDUBSW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256"): "    avx_maddubs(YmmReg1[0,64], vlo[0,64], lo[0,64]);\n    avx_maddubs(YmmReg1[64,64], vlo[64,64], lo[64,64]);\n    avx_maddubs(YmmReg1[128,64], vhi[0,64], hi[0,64]);\n    avx_maddubs(YmmReg1[192,64], vhi[64,64], hi[64,64]);",
+    # MXCSR and the upper-zeroing pair
+    ("VLDMXCSR", "m32"): "    MXCSR = m32;",
+    ("VSTMXCSR", "m32"): "    m32 = MXCSR;",
+})
+# VPERM2I128 and VEXTRACTI128 share bodies with their F variants
+MANUAL[("VPERM2I128", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8")] = MANUAL[("VPERM2F128", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8")]
+MANUAL[("VINSERTI128", "YmmReg1,vexVVVV_YmmReg,XmmReg2_m128,imm8")] = MANUAL[("VINSERTF128", "YmmReg1,vexVVVV_YmmReg,XmmReg2_m128,imm8")]
+
+for _sh in ("XmmReg2_m128,YmmReg1,imm8", "XmmReg2,YmmReg1,imm8", "m128,YmmReg1,imm8"):
+    MANUAL[("VEXTRACTI128", _sh)] = MANUAL[("VEXTRACTF128", _sh)]
+MANUAL[("VPERMPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256")] = MANUAL[("VPERMD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256")]
+MANUAL[("VPERMPD", "YmmReg1,YmmReg2_m256,imm8")] = MANUAL[("VPERMQ", "YmmReg1,YmmReg2_m256,imm8")]
+
+
 def constructor_manual(name: str, operands: str, pattern: str, shape: str, body: str) -> str:
     pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
     pattern = pattern.replace("(YmmReg1 & ZmmReg1)", "YmmReg1")
@@ -869,6 +1159,12 @@ def constructor_manual(name: str, operands: str, pattern: str, shape: str, body:
         pattern = re.sub(r"\bYmmReg1\b", "(YmmReg1 & XmmReg1 & YmmReg1_H)", pattern, count=1)
     if "check_Reg32_dest" in body and "check_Reg32_dest" not in pattern:
         pattern = pattern.replace("Reg32", "Reg32 & check_Reg32_dest", 1)
+    if shape in ("vexVVVV_XmmReg,XmmReg2,imm8",):
+        pattern = pattern.replace("& vexVVVV_XmmReg;", "& vexVVVV_XmmReg & vexVVVV_YmmReg;")
+    if shape in ("vexVVVV_YmmReg,YmmReg2,imm8",):
+        pattern = pattern.replace("& YmmReg2)", "& YmmReg2 & YmmReg2_L & YmmReg2_H)")
+    if "Reg32_m8" in shape:
+        pre.append("")
     if "check_rm32_dest" in body and "check_rm32_dest" not in pattern:
         pattern = pattern.replace("& rm32", "& rm32 & check_rm32_dest ...", 1)
     return f":{name} {operands} is {pattern}\n{{\n" + "\n".join(pre + [body]) + "\n}\n"
@@ -1000,6 +1296,13 @@ def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
                 text = gen(name, row["operands"], row["pattern"], template, arity)
         elif name in TABLE_SHIFT:
             text = constructor_shift(name, row["operands"], row["pattern"], TABLE_SHIFT[name], shape)
+        elif (name, shape) in MANUAL and MANUAL[(name, shape)] == "SPLIT_EXTRACT":
+            pat = row["pattern"].replace("(YmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128; imm8", "")
+            reg = constructor_manual(name, "XmmReg2, YmmReg1, imm8",
+                pat + "mod=3 & (YmmReg1 & XmmReg1 & YmmReg1_H) & (XmmReg2 & YmmReg2); imm8", "XmmReg2,YmmReg1,imm8", MANUAL[(name, "XmmReg2,YmmReg1,imm8")])
+            mem = constructor_manual(name, "m128, YmmReg1, imm8",
+                pat + "(YmmReg1 & XmmReg1 & YmmReg1_H) ... & m128; imm8", "m128,YmmReg1,imm8", MANUAL[(name, "m128,YmmReg1,imm8")])
+            text = reg + "\n" + mem
         elif (name, shape) in MANUAL and MANUAL[(name, shape)] == "SPLIT":
             pat = row["pattern"].replace("(XmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128", "")
             reg = constructor_manual(name, "XmmReg2, XmmReg1",

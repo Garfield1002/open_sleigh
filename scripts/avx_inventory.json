@@ -3785,5 +3785,12 @@
   "operands": "Reg32, YmmReg2",
   "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD7; Reg32 & (mod=0x3 & YmmReg2) & check_Reg32_dest",
   "body": "local byte_mask:4 = 0:4;\n\tbyte_mask[0,1] = YmmReg2[7,1];\n\tbyte_mask[1,1] = YmmReg2[15,1];\n\tbyte_mask[2,1] = YmmReg2[23,1];\n\tbyte_mask[3,1] = YmmReg2[31,1];\n\tbyte_mask[4,1] = YmmReg2[39,1];\n\tbyte_mask[5,1] = YmmReg2[47,1];\n\tbyte_mask[6,1] = YmmReg2[55,1];\n\tbyte_mask[7,1] = YmmReg2[63,1];\n\tbyte_mask[8,1] = YmmReg2[71,1];\n\tbyte_mask[9,1] = YmmReg2[79,1];\n\tbyte_mask[10,1] = YmmReg2[87,1];\n\tbyte_mask[11,1] = YmmReg2[95,1];\n\tbyte_mask[12,1] = YmmReg2[103,1];\n\tbyte_mask[13,1] = YmmReg2[111,1];\n\tbyte_mask[14,1] = YmmReg2[119,1];\n\tbyte_mask[15,1] = YmmReg2[127,1];\n\tbyte_mask[16,1] = YmmReg2[135,1];\n\tbyte_mask[17,1] = YmmReg2[143,1];\n\tbyte_mask[18,1] = YmmReg2[151,1];\n\tbyte_mask[19,1] = YmmReg2[159,1];\n\tbyte_mask[20,1] = YmmReg2[167,1];\n\tbyte_mask[21,1] = YmmReg2[175,1];\n\tbyte_mask[22,1] = YmmReg2[183,1];\n\tbyte_mask[23,1] = YmmReg2[191,1];\n\tbyte_mask[24,1] = YmmReg2[199,1];\n\tbyte_mask[25,1] = YmmReg2[207,1];\n\tbyte_mask[26,1] = YmmReg2[215,1];\n\tbyte_mask[27,1] = YmmReg2[223,1];\n\tbyte_mask[28,1] = YmmReg2[231,1];\n\tbyte_mask[29,1] = YmmReg2[239,1];\n\tbyte_mask[30,1] = YmmReg2[247,1];\n\tbyte_mask[31,1] = YmmReg2[255,1];\n\tReg32 = zext(byte_mask);\n\tbuild check_Reg32_dest;"
+ },
+ {
+  "file": "avx2_manual.sinc",
+  "name": "VINSERTI128",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x38; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": ""
  }
 ]
