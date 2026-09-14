@@ -225,38 +225,38 @@ define register offset=0x1200 size=8   [
 	XMM31_Qa  XMM31_Qb  YMM31_Qc  YMM31_Qd  _ _ _ _
 ];
 define register offset=0x1200 size=4   [
-	XMM0_Da  XMM0_Db  XMM0_Dc  XMM0_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM1_Da  XMM1_Db  XMM1_Dc  XMM1_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM2_Da  XMM2_Db  XMM2_Dc  XMM2_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM3_Da  XMM3_Db  XMM3_Dc  XMM3_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM4_Da  XMM4_Db  XMM4_Dc  XMM4_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM5_Da  XMM5_Db  XMM5_Dc  XMM5_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM6_Da  XMM6_Db  XMM6_Dc  XMM6_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM7_Da  XMM7_Db  XMM7_Dc  XMM7_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM8_Da  XMM8_Db  XMM8_Dc  XMM8_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM9_Da  XMM9_Db  XMM9_Dc  XMM9_Dd  _ _ _ _ _ _ _ _ _ _ _ _
-	XMM10_Da XMM10_Db XMM10_Dc XMM10_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM11_Da XMM11_Db XMM11_Dc XMM11_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM12_Da XMM12_Db XMM12_Dc XMM12_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM13_Da XMM13_Db XMM13_Dc XMM13_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM14_Da XMM14_Db XMM14_Dc XMM14_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM15_Da XMM15_Db XMM15_Dc XMM15_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM16_Da XMM16_Db XMM16_Dc XMM16_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM17_Da XMM17_Db XMM17_Dc XMM17_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM18_Da XMM18_Db XMM18_Dc XMM18_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM19_Da XMM19_Db XMM19_Dc XMM19_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM20_Da XMM20_Db XMM20_Dc XMM20_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM21_Da XMM21_Db XMM21_Dc XMM21_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM22_Da XMM22_Db XMM22_Dc XMM22_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM23_Da XMM23_Db XMM23_Dc XMM23_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM24_Da XMM24_Db XMM24_Dc XMM24_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM25_Da XMM25_Db XMM25_Dc XMM25_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM26_Da XMM26_Db XMM26_Dc XMM26_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM27_Da XMM27_Db XMM27_Dc XMM27_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM28_Da XMM28_Db XMM28_Dc XMM28_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM29_Da XMM29_Db XMM29_Dc XMM29_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM30_Da XMM30_Db XMM30_Dc XMM30_Dd _ _ _ _ _ _ _ _ _ _ _ _
-	XMM31_Da XMM31_Db XMM31_Dc XMM31_Dd _ _ _ _ _ _ _ _ _ _ _ _
+	XMM0_Da  XMM0_Db  XMM0_Dc  XMM0_Dd  YMM0_De  YMM0_Df  YMM0_Dg  YMM0_Dh  _ _ _ _ _ _ _ _
+	XMM1_Da  XMM1_Db  XMM1_Dc  XMM1_Dd  YMM1_De  YMM1_Df  YMM1_Dg  YMM1_Dh  _ _ _ _ _ _ _ _
+	XMM2_Da  XMM2_Db  XMM2_Dc  XMM2_Dd  YMM2_De  YMM2_Df  YMM2_Dg  YMM2_Dh  _ _ _ _ _ _ _ _
+	XMM3_Da  XMM3_Db  XMM3_Dc  XMM3_Dd  YMM3_De  YMM3_Df  YMM3_Dg  YMM3_Dh  _ _ _ _ _ _ _ _
+	XMM4_Da  XMM4_Db  XMM4_Dc  XMM4_Dd  YMM4_De  YMM4_Df  YMM4_Dg  YMM4_Dh  _ _ _ _ _ _ _ _
+	XMM5_Da  XMM5_Db  XMM5_Dc  XMM5_Dd  YMM5_De  YMM5_Df  YMM5_Dg  YMM5_Dh  _ _ _ _ _ _ _ _
+	XMM6_Da  XMM6_Db  XMM6_Dc  XMM6_Dd  YMM6_De  YMM6_Df  YMM6_Dg  YMM6_Dh  _ _ _ _ _ _ _ _
+	XMM7_Da  XMM7_Db  XMM7_Dc  XMM7_Dd  YMM7_De  YMM7_Df  YMM7_Dg  YMM7_Dh  _ _ _ _ _ _ _ _
+	XMM8_Da  XMM8_Db  XMM8_Dc  XMM8_Dd  YMM8_De  YMM8_Df  YMM8_Dg  YMM8_Dh  _ _ _ _ _ _ _ _
+	XMM9_Da  XMM9_Db  XMM9_Dc  XMM9_Dd  YMM9_De  YMM9_Df  YMM9_Dg  YMM9_Dh  _ _ _ _ _ _ _ _
+	XMM10_Da  XMM10_Db  XMM10_Dc  XMM10_Dd  YMM10_De  YMM10_Df  YMM10_Dg  YMM10_Dh  _ _ _ _ _ _ _ _
+	XMM11_Da  XMM11_Db  XMM11_Dc  XMM11_Dd  YMM11_De  YMM11_Df  YMM11_Dg  YMM11_Dh  _ _ _ _ _ _ _ _
+	XMM12_Da  XMM12_Db  XMM12_Dc  XMM12_Dd  YMM12_De  YMM12_Df  YMM12_Dg  YMM12_Dh  _ _ _ _ _ _ _ _
+	XMM13_Da  XMM13_Db  XMM13_Dc  XMM13_Dd  YMM13_De  YMM13_Df  YMM13_Dg  YMM13_Dh  _ _ _ _ _ _ _ _
+	XMM14_Da  XMM14_Db  XMM14_Dc  XMM14_Dd  YMM14_De  YMM14_Df  YMM14_Dg  YMM14_Dh  _ _ _ _ _ _ _ _
+	XMM15_Da  XMM15_Db  XMM15_Dc  XMM15_Dd  YMM15_De  YMM15_Df  YMM15_Dg  YMM15_Dh  _ _ _ _ _ _ _ _
+	XMM16_Da  XMM16_Db  XMM16_Dc  XMM16_Dd  YMM16_De  YMM16_Df  YMM16_Dg  YMM16_Dh  _ _ _ _ _ _ _ _
+	XMM17_Da  XMM17_Db  XMM17_Dc  XMM17_Dd  YMM17_De  YMM17_Df  YMM17_Dg  YMM17_Dh  _ _ _ _ _ _ _ _
+	XMM18_Da  XMM18_Db  XMM18_Dc  XMM18_Dd  YMM18_De  YMM18_Df  YMM18_Dg  YMM18_Dh  _ _ _ _ _ _ _ _
+	XMM19_Da  XMM19_Db  XMM19_Dc  XMM19_Dd  YMM19_De  YMM19_Df  YMM19_Dg  YMM19_Dh  _ _ _ _ _ _ _ _
+	XMM20_Da  XMM20_Db  XMM20_Dc  XMM20_Dd  YMM20_De  YMM20_Df  YMM20_Dg  YMM20_Dh  _ _ _ _ _ _ _ _
+	XMM21_Da  XMM21_Db  XMM21_Dc  XMM21_Dd  YMM21_De  YMM21_Df  YMM21_Dg  YMM21_Dh  _ _ _ _ _ _ _ _
+	XMM22_Da  XMM22_Db  XMM22_Dc  XMM22_Dd  YMM22_De  YMM22_Df  YMM22_Dg  YMM22_Dh  _ _ _ _ _ _ _ _
+	XMM23_Da  XMM23_Db  XMM23_Dc  XMM23_Dd  YMM23_De  YMM23_Df  YMM23_Dg  YMM23_Dh  _ _ _ _ _ _ _ _
+	XMM24_Da  XMM24_Db  XMM24_Dc  XMM24_Dd  YMM24_De  YMM24_Df  YMM24_Dg  YMM24_Dh  _ _ _ _ _ _ _ _
+	XMM25_Da  XMM25_Db  XMM25_Dc  XMM25_Dd  YMM25_De  YMM25_Df  YMM25_Dg  YMM25_Dh  _ _ _ _ _ _ _ _
+	XMM26_Da  XMM26_Db  XMM26_Dc  XMM26_Dd  YMM26_De  YMM26_Df  YMM26_Dg  YMM26_Dh  _ _ _ _ _ _ _ _
+	XMM27_Da  XMM27_Db  XMM27_Dc  XMM27_Dd  YMM27_De  YMM27_Df  YMM27_Dg  YMM27_Dh  _ _ _ _ _ _ _ _
+	XMM28_Da  XMM28_Db  XMM28_Dc  XMM28_Dd  YMM28_De  YMM28_Df  YMM28_Dg  YMM28_Dh  _ _ _ _ _ _ _ _
+	XMM29_Da  XMM29_Db  XMM29_Dc  XMM29_Dd  YMM29_De  YMM29_Df  YMM29_Dg  YMM29_Dh  _ _ _ _ _ _ _ _
+	XMM30_Da  XMM30_Db  XMM30_Dc  XMM30_Dd  YMM30_De  YMM30_Df  YMM30_Dg  YMM30_Dh  _ _ _ _ _ _ _ _
+	XMM31_Da  XMM31_Db  XMM31_Dc  XMM31_Dd  YMM31_De  YMM31_Df  YMM31_Dg  YMM31_Dh  _ _ _ _ _ _ _ _
 ];
 define register offset=0x1200 size=2   [
 	XMM0_Wa  XMM0_Wb  XMM0_Wc  XMM0_Wd  XMM0_We  XMM0_Wf  XMM0_Wg  XMM0_Wh  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _

@@ -275,6 +275,19 @@ def macro_library() -> str:
             lines.append(f"    r[{i*dw},{dw}] = s{i}[0,{dw}];")
         lines.append("    dest = r;")
         out.append(f"macro {name}(dest, a) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Widening moves: a half-qword of narrow lanes to a qword of wide ones.\n"
+               "# `signed` selects sext over zext.\n")
+    for (sw, dw) in ((8, 16), (16, 32), (8, 32)):
+        n = 64 // dw
+        lines = [f"    local x:{n*sw//8} = a; local r:8; local s:1 = signed;"]
+        for i in range(n):
+            lines.append(f"    r[{i*dw},{dw}] = (sext(x[{i*sw},{sw}]) * zext(s)) | (zext(x[{i*sw},{sw}]) * zext(!s));")
+        lines.append("    dest = r;")
+        out.append(f"macro avx_ext{sw}to{dw}(dest, a, signed) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# The eight sign bits of a qword's bytes, packed into one byte.\n")
+    lines = ["    local x:8 = a;",
+             "    dest = " + " | ".join(f"(zext(x[{i*8+7},1]) << {i})" for i in range(8)) + ";"]
+    out.append("macro avx_bytemask(dest, a) {\n" + "\n".join(lines) + "\n}\n")
     out.append("\n# IEEE lanes, through the MXCSR-aware SSE scalar macros.\n")
     for w, sfx in ((32, "32"), (64, "64")):
         for op in ("add", "sub", "mul", "div", "min", "max"):
@@ -458,6 +471,236 @@ def constructor_256(name: str, operands: str, pattern: str, macro: str, arity: i
 _LANE_COUNTER = [0]
 
 
+# Hand-written bodies keyed by (mnemonic, operand shape). The emitter binds
+# `m` to the r/m operand (loaded at its width), `va` to the vvvv operand as a
+# 16-byte local when present, `vlo`/`vhi` to its halves for YMM forms, and
+# `lo`/`hi` to the halves of a YMM r/m operand. Every body writes lanes of
+# YmmReg1 (or the named destination) and never a value wider than 16 bytes.
+SCALAR32 = ("    local va:16 = vexVVVV_XmmReg;\n"
+            "    {op}(YmmReg1[0,32], va[0,32], m);\n"
+            "    YmmReg1[32,32] = va[32,32];\n"
+            "    YmmReg1[64,64] = va[64,64];\n"
+            "    avx_zero_upper(YmmReg1);")
+SCALAR64 = ("    local va:16 = vexVVVV_XmmReg;\n"
+            "    {op}(YmmReg1[0,64], va[0,64], m);\n"
+            "    YmmReg1[64,64] = va[64,64];\n"
+            "    avx_zero_upper(YmmReg1);")
+SCALAR32_U = ("    local va:16 = vexVVVV_XmmReg;\n"
+              "    {op}(YmmReg1[0,32], m);\n"
+              "    YmmReg1[32,32] = va[32,32];\n"
+              "    YmmReg1[64,64] = va[64,64];\n"
+              "    avx_zero_upper(YmmReg1);")
+SCALAR64_U = ("    local va:16 = vexVVVV_XmmReg;\n"
+              "    {op}(YmmReg1[0,64], m);\n"
+              "    YmmReg1[64,64] = va[64,64];\n"
+              "    avx_zero_upper(YmmReg1);")
+
+MANUAL: dict[tuple[str, str], str] = {}
+
+
+def _scalar(name, w, op, unary=False):
+    shape = f"XmmReg1,vexVVVV_XmmReg,XmmReg2_m{w}"
+    tpl = {(32, False): SCALAR32, (64, False): SCALAR64,
+           (32, True): SCALAR32_U, (64, True): SCALAR64_U}[(w, unary)]
+    MANUAL[(name, shape)] = tpl.format(op=op)
+
+
+for _op in ("add", "sub", "mul", "div", "min", "max"):
+    _scalar(f"V{_op.upper()}SS", 32, f"sse_{_op}32")
+    _scalar(f"V{_op.upper()}SD", 64, f"sse_{_op}64")
+_scalar("VSQRTSS", 32, "sse_sqrt32", unary=True)
+_scalar("VSQRTSD", 64, "sse_sqrt64", unary=True)
+
+MANUAL.update({
+    # rounding: scalar keeps vvvv's upper lanes; packed rounds every lane
+    ("VROUNDSS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m32,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n"
+        "    sse_round32(YmmReg1[0,32], m, imm8:1);\n"
+        "    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n"
+        "    avx_zero_upper(YmmReg1);",
+    ("VROUNDSD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m64,imm8"):
+        "    local va:16 = vexVVVV_XmmReg;\n"
+        "    sse_round64(YmmReg1[0,64], m, imm8:1);\n"
+        "    YmmReg1[64,64] = va[64,64];\n"
+        "    avx_zero_upper(YmmReg1);",
+    ("VROUNDPS", "XmmReg1,XmmReg2_m128,imm8"):
+        "    sse_round32(YmmReg1[0,32], m[0,32], imm8:1);\n    sse_round32(YmmReg1[32,32], m[32,32], imm8:1);\n"
+        "    sse_round32(YmmReg1[64,32], m[64,32], imm8:1);\n    sse_round32(YmmReg1[96,32], m[96,32], imm8:1);\n"
+        "    avx_zero_upper(YmmReg1);",
+    ("VROUNDPS", "YmmReg1,YmmReg2_m256,imm8"):
+        "    sse_round32(YmmReg1[0,32], lo[0,32], imm8:1);\n    sse_round32(YmmReg1[32,32], lo[32,32], imm8:1);\n"
+        "    sse_round32(YmmReg1[64,32], lo[64,32], imm8:1);\n    sse_round32(YmmReg1[96,32], lo[96,32], imm8:1);\n"
+        "    sse_round32(YmmReg1[128,32], hi[0,32], imm8:1);\n    sse_round32(YmmReg1[160,32], hi[32,32], imm8:1);\n"
+        "    sse_round32(YmmReg1[192,32], hi[64,32], imm8:1);\n    sse_round32(YmmReg1[224,32], hi[96,32], imm8:1);",
+    ("VROUNDPD", "XmmReg1,XmmReg2_m128,imm8"):
+        "    sse_round64(YmmReg1[0,64], m[0,64], imm8:1);\n    sse_round64(YmmReg1[64,64], m[64,64], imm8:1);\n"
+        "    avx_zero_upper(YmmReg1);",
+    ("VROUNDPD", "YmmReg1,YmmReg2_m256,imm8"):
+        "    sse_round64(YmmReg1[0,64], lo[0,64], imm8:1);\n    sse_round64(YmmReg1[64,64], lo[64,64], imm8:1);\n"
+        "    sse_round64(YmmReg1[128,64], hi[0,64], imm8:1);\n    sse_round64(YmmReg1[192,64], hi[64,64], imm8:1);",
+    # ordered / unordered scalar compares into EFLAGS
+    ("VCOMISS", "XmmReg1,XmmReg2_m32"): "    sse_comis32(XmmReg1[0,32], m, 1:1);",
+    ("VCOMISD", "XmmReg1,XmmReg2_m64"): "    sse_comis64(XmmReg1[0,64], m, 1:1);",
+    ("VUCOMISS", "XmmReg1,XmmReg2_m32"): "    sse_comis32(XmmReg1[0,32], m, 0:1);",
+    ("VUCOMISD", "XmmReg1,XmmReg2_m64"): "    sse_comis64(XmmReg1[0,64], m, 0:1);",
+    # integer <-> float conversions
+    ("VCVTSI2SS", "XmmReg1,vexVVVV_XmmReg,rm32"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_i4_to_f32(YmmReg1[0,32], rm32);\n"
+        "    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTSI2SS", "XmmReg1,vexVVVV_XmmReg,rm64"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_i8_to_f32(YmmReg1[0,32], rm64);\n"
+        "    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTSI2SD", "XmmReg1,vexVVVV_XmmReg,rm32"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_i4_to_f64(YmmReg1[0,64], rm32);\n"
+        "    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTSI2SD", "XmmReg1,vexVVVV_XmmReg,rm64"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_i8_to_f64(YmmReg1[0,64], rm64);\n"
+        "    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTSS2SI", "Reg32,XmmReg2_m32"): "    local rc:1; sse_rc(rc);\n    sse_f32_to_i4(Reg32, m, rc);\n    build check_Reg32_dest;",
+    ("VCVTSS2SI", "Reg64,XmmReg2_m32"): "    local rc:1; sse_rc(rc);\n    sse_f32_to_i8(Reg64, m, rc);",
+    ("VCVTSD2SI", "Reg32,XmmReg2_m64"): "    local rc:1; sse_rc(rc);\n    sse_f64_to_i4(Reg32, m, rc);\n    build check_Reg32_dest;",
+    ("VCVTSD2SI", "Reg64,XmmReg2_m64"): "    local rc:1; sse_rc(rc);\n    sse_f64_to_i8(Reg64, m, rc);",
+    ("VCVTTSS2SI", "Reg32,XmmReg2_m32"): "    sse_f32_to_i4(Reg32, m, 3:1);\n    build check_Reg32_dest;",
+    ("VCVTTSS2SI", "Reg64,XmmReg2_m32"): "    sse_f32_to_i8(Reg64, m, 3:1);",
+    ("VCVTTSD2SI", "Reg32,XmmReg2_m64"): "    sse_f64_to_i4(Reg32, m, 3:1);\n    build check_Reg32_dest;",
+    ("VCVTTSD2SI", "Reg64,XmmReg2_m64"): "    sse_f64_to_i8(Reg64, m, 3:1);",
+    ("VCVTSS2SD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m32"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_widen32(YmmReg1[0,64], m);\n"
+        "    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTSD2SS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m64"):
+        "    local va:16 = vexVVVV_XmmReg;\n    sse_narrow64(YmmReg1[0,32], m);\n"
+        "    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VCVTDQ2PS", "XmmReg1,XmmReg2_m128"):
+        "    sse_i4_to_f32(YmmReg1[0,32], m[0,32]);\n    sse_i4_to_f32(YmmReg1[32,32], m[32,32]);\n"
+        "    sse_i4_to_f32(YmmReg1[64,32], m[64,32]);\n    sse_i4_to_f32(YmmReg1[96,32], m[96,32]);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTDQ2PS", "YmmReg1,YmmReg2_m256"):
+        "    sse_i4_to_f32(YmmReg1[0,32], lo[0,32]);\n    sse_i4_to_f32(YmmReg1[32,32], lo[32,32]);\n"
+        "    sse_i4_to_f32(YmmReg1[64,32], lo[64,32]);\n    sse_i4_to_f32(YmmReg1[96,32], lo[96,32]);\n"
+        "    sse_i4_to_f32(YmmReg1[128,32], hi[0,32]);\n    sse_i4_to_f32(YmmReg1[160,32], hi[32,32]);\n"
+        "    sse_i4_to_f32(YmmReg1[192,32], hi[64,32]);\n    sse_i4_to_f32(YmmReg1[224,32], hi[96,32]);",
+    ("VCVTPS2DQ", "XmmReg1,XmmReg2_m128"):
+        "    local rc:1; sse_rc(rc);\n"
+        "    sse_f32_to_i4(YmmReg1[0,32], m[0,32], rc);\n    sse_f32_to_i4(YmmReg1[32,32], m[32,32], rc);\n"
+        "    sse_f32_to_i4(YmmReg1[64,32], m[64,32], rc);\n    sse_f32_to_i4(YmmReg1[96,32], m[96,32], rc);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTPS2DQ", "YmmReg1,YmmReg2_m256"):
+        "    local rc:1; sse_rc(rc);\n"
+        "    sse_f32_to_i4(YmmReg1[0,32], lo[0,32], rc);\n    sse_f32_to_i4(YmmReg1[32,32], lo[32,32], rc);\n"
+        "    sse_f32_to_i4(YmmReg1[64,32], lo[64,32], rc);\n    sse_f32_to_i4(YmmReg1[96,32], lo[96,32], rc);\n"
+        "    sse_f32_to_i4(YmmReg1[128,32], hi[0,32], rc);\n    sse_f32_to_i4(YmmReg1[160,32], hi[32,32], rc);\n"
+        "    sse_f32_to_i4(YmmReg1[192,32], hi[64,32], rc);\n    sse_f32_to_i4(YmmReg1[224,32], hi[96,32], rc);",
+    ("VCVTTPS2DQ", "XmmReg1,XmmReg2_m128"):
+        "    sse_f32_to_i4(YmmReg1[0,32], m[0,32], 3:1);\n    sse_f32_to_i4(YmmReg1[32,32], m[32,32], 3:1);\n"
+        "    sse_f32_to_i4(YmmReg1[64,32], m[64,32], 3:1);\n    sse_f32_to_i4(YmmReg1[96,32], m[96,32], 3:1);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTTPS2DQ", "YmmReg1,YmmReg2_m256"):
+        "    sse_f32_to_i4(YmmReg1[0,32], lo[0,32], 3:1);\n    sse_f32_to_i4(YmmReg1[32,32], lo[32,32], 3:1);\n"
+        "    sse_f32_to_i4(YmmReg1[64,32], lo[64,32], 3:1);\n    sse_f32_to_i4(YmmReg1[96,32], lo[96,32], 3:1);\n"
+        "    sse_f32_to_i4(YmmReg1[128,32], hi[0,32], 3:1);\n    sse_f32_to_i4(YmmReg1[160,32], hi[32,32], 3:1);\n"
+        "    sse_f32_to_i4(YmmReg1[192,32], hi[64,32], 3:1);\n    sse_f32_to_i4(YmmReg1[224,32], hi[96,32], 3:1);",
+    # double <-> single/int, where the narrower side is half the width
+    ("VCVTPS2PD", "XmmReg1,XmmReg2_m64"):
+        "    sse_widen32(YmmReg1[0,64], m[0,32]);\n    sse_widen32(YmmReg1[64,64], m[32,32]);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTPS2PD", "YmmReg1,XmmReg2_m128"):
+        "    sse_widen32(YmmReg1[0,64], m[0,32]);\n    sse_widen32(YmmReg1[64,64], m[32,32]);\n"
+        "    sse_widen32(YmmReg1[128,64], m[64,32]);\n    sse_widen32(YmmReg1[192,64], m[96,32]);",
+    ("VCVTPD2PS", "XmmReg1,XmmReg2_m128"):
+        "    sse_narrow64(YmmReg1[0,32], m[0,64]);\n    sse_narrow64(YmmReg1[32,32], m[64,64]);\n"
+        "    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VCVTPD2PS", "XmmReg1,YmmReg2_m256"):
+        "    sse_narrow64(YmmReg1[0,32], lo[0,64]);\n    sse_narrow64(YmmReg1[32,32], lo[64,64]);\n"
+        "    sse_narrow64(YmmReg1[64,32], hi[0,64]);\n    sse_narrow64(YmmReg1[96,32], hi[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTDQ2PD", "XmmReg1,XmmReg2_m64"):
+        "    sse_i4_to_f64(YmmReg1[0,64], m[0,32]);\n    sse_i4_to_f64(YmmReg1[64,64], m[32,32]);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTDQ2PD", "YmmReg1,XmmReg2_m128"):
+        "    sse_i4_to_f64(YmmReg1[0,64], m[0,32]);\n    sse_i4_to_f64(YmmReg1[64,64], m[32,32]);\n"
+        "    sse_i4_to_f64(YmmReg1[128,64], m[64,32]);\n    sse_i4_to_f64(YmmReg1[192,64], m[96,32]);",
+    ("VCVTPD2DQ", "XmmReg1,XmmReg2_m128"):
+        "    local rc:1; sse_rc(rc);\n    sse_f64_to_i4(YmmReg1[0,32], m[0,64], rc);\n    sse_f64_to_i4(YmmReg1[32,32], m[64,64], rc);\n"
+        "    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VCVTPD2DQ", "XmmReg1,YmmReg2_m256"):
+        "    local rc:1; sse_rc(rc);\n    sse_f64_to_i4(YmmReg1[0,32], lo[0,64], rc);\n    sse_f64_to_i4(YmmReg1[32,32], lo[64,64], rc);\n"
+        "    sse_f64_to_i4(YmmReg1[64,32], hi[0,64], rc);\n    sse_f64_to_i4(YmmReg1[96,32], hi[64,64], rc);\n    avx_zero_upper(YmmReg1);",
+    ("VCVTTPD2DQ", "XmmReg1,XmmReg2_m128"):
+        "    sse_f64_to_i4(YmmReg1[0,32], m[0,64], 3:1);\n    sse_f64_to_i4(YmmReg1[32,32], m[64,64], 3:1);\n"
+        "    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VCVTTPD2DQ", "XmmReg1,YmmReg2_m256"):
+        "    sse_f64_to_i4(YmmReg1[0,32], lo[0,64], 3:1);\n    sse_f64_to_i4(YmmReg1[32,32], lo[64,64], 3:1);\n"
+        "    sse_f64_to_i4(YmmReg1[64,32], hi[0,64], 3:1);\n    sse_f64_to_i4(YmmReg1[96,32], hi[64,64], 3:1);\n    avx_zero_upper(YmmReg1);",
+    # test: ZF on and, CF on andn, over the whole operand
+    ("VPTEST", "XmmReg1,XmmReg2_m128"):
+        "    local x:16 = XmmReg1;\n    ZF = (m & x) == 0;\n    CF = (m & ~x) == 0;\n    AF = 0; OF = 0; PF = 0; SF = 0;",
+    ("VPTEST", "YmmReg1,YmmReg2_m256"):
+        "    local xl:16 = XmmReg1;\n    local xh:16 = YmmReg1_H;\n"
+        "    ZF = ((lo & xl) | (hi & xh)) == 0;\n    CF = ((lo & ~xl) | (hi & ~xh)) == 0;\n    AF = 0; OF = 0; PF = 0; SF = 0;",
+    # sign / zero extension moves; the source is the low part of the r/m
+    ("VPMOVSXBW", "XmmReg1,XmmReg2_m64"): "    avx_ext8to16(YmmReg1[0,64], m[0,32], 1:1);\n    avx_ext8to16(YmmReg1[64,64], m[32,32], 1:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXBW", "YmmReg1,XmmReg2_m128"): "    avx_ext8to16(YmmReg1[0,64], m[0,32], 1:1);\n    avx_ext8to16(YmmReg1[64,64], m[32,32], 1:1);\n    avx_ext8to16(YmmReg1[128,64], m[64,32], 1:1);\n    avx_ext8to16(YmmReg1[192,64], m[96,32], 1:1);",
+    ("VPMOVZXBW", "XmmReg1,XmmReg2_m64"): "    avx_ext8to16(YmmReg1[0,64], m[0,32], 0:1);\n    avx_ext8to16(YmmReg1[64,64], m[32,32], 0:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXBW", "YmmReg1,XmmReg2_m128"): "    avx_ext8to16(YmmReg1[0,64], m[0,32], 0:1);\n    avx_ext8to16(YmmReg1[64,64], m[32,32], 0:1);\n    avx_ext8to16(YmmReg1[128,64], m[64,32], 0:1);\n    avx_ext8to16(YmmReg1[192,64], m[96,32], 0:1);",
+    ("VPMOVSXBD", "XmmReg1,XmmReg2_m32"): "    avx_ext8to32(YmmReg1[0,64], m[0,16], 1:1);\n    avx_ext8to32(YmmReg1[64,64], m[16,16], 1:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXBD", "YmmReg1,XmmReg2_m64"): "    avx_ext8to32(YmmReg1[0,64], m[0,16], 1:1);\n    avx_ext8to32(YmmReg1[64,64], m[16,16], 1:1);\n    avx_ext8to32(YmmReg1[128,64], m[32,16], 1:1);\n    avx_ext8to32(YmmReg1[192,64], m[48,16], 1:1);",
+    ("VPMOVZXBD", "XmmReg1,XmmReg2_m32"): "    avx_ext8to32(YmmReg1[0,64], m[0,16], 0:1);\n    avx_ext8to32(YmmReg1[64,64], m[16,16], 0:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXBD", "YmmReg1,XmmReg2_m64"): "    avx_ext8to32(YmmReg1[0,64], m[0,16], 0:1);\n    avx_ext8to32(YmmReg1[64,64], m[16,16], 0:1);\n    avx_ext8to32(YmmReg1[128,64], m[32,16], 0:1);\n    avx_ext8to32(YmmReg1[192,64], m[48,16], 0:1);",
+    ("VPMOVSXBQ", "XmmReg1,XmmReg2_m16"): "    YmmReg1[0,64] = sext(m[0,8]);\n    YmmReg1[64,64] = sext(m[8,8]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXBQ", "YmmReg1,XmmReg2_m32"): "    YmmReg1[0,64] = sext(m[0,8]);\n    YmmReg1[64,64] = sext(m[8,8]);\n    YmmReg1[128,64] = sext(m[16,8]);\n    YmmReg1[192,64] = sext(m[24,8]);",
+    ("VPMOVZXBQ", "XmmReg1,XmmReg2_m16"): "    YmmReg1[0,64] = zext(m[0,8]);\n    YmmReg1[64,64] = zext(m[8,8]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXBQ", "YmmReg1,XmmReg2_m32"): "    YmmReg1[0,64] = zext(m[0,8]);\n    YmmReg1[64,64] = zext(m[8,8]);\n    YmmReg1[128,64] = zext(m[16,8]);\n    YmmReg1[192,64] = zext(m[24,8]);",
+    ("VPMOVSXWD", "XmmReg1,XmmReg2_m64"): "    avx_ext16to32(YmmReg1[0,64], m[0,32], 1:1);\n    avx_ext16to32(YmmReg1[64,64], m[32,32], 1:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXWD", "YmmReg1,XmmReg2_m128"): "    avx_ext16to32(YmmReg1[0,64], m[0,32], 1:1);\n    avx_ext16to32(YmmReg1[64,64], m[32,32], 1:1);\n    avx_ext16to32(YmmReg1[128,64], m[64,32], 1:1);\n    avx_ext16to32(YmmReg1[192,64], m[96,32], 1:1);",
+    ("VPMOVZXWD", "XmmReg1,XmmReg2_m64"): "    avx_ext16to32(YmmReg1[0,64], m[0,32], 0:1);\n    avx_ext16to32(YmmReg1[64,64], m[32,32], 0:1);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXWD", "YmmReg1,XmmReg2_m128"): "    avx_ext16to32(YmmReg1[0,64], m[0,32], 0:1);\n    avx_ext16to32(YmmReg1[64,64], m[32,32], 0:1);\n    avx_ext16to32(YmmReg1[128,64], m[64,32], 0:1);\n    avx_ext16to32(YmmReg1[192,64], m[96,32], 0:1);",
+    ("VPMOVSXWQ", "XmmReg1,XmmReg2_m32"): "    YmmReg1[0,64] = sext(m[0,16]);\n    YmmReg1[64,64] = sext(m[16,16]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXWQ", "YmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = sext(m[0,16]);\n    YmmReg1[64,64] = sext(m[16,16]);\n    YmmReg1[128,64] = sext(m[32,16]);\n    YmmReg1[192,64] = sext(m[48,16]);",
+    ("VPMOVZXWQ", "XmmReg1,XmmReg2_m32"): "    YmmReg1[0,64] = zext(m[0,16]);\n    YmmReg1[64,64] = zext(m[16,16]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXWQ", "YmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = zext(m[0,16]);\n    YmmReg1[64,64] = zext(m[16,16]);\n    YmmReg1[128,64] = zext(m[32,16]);\n    YmmReg1[192,64] = zext(m[48,16]);",
+    ("VPMOVSXDQ", "XmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = sext(m[0,32]);\n    YmmReg1[64,64] = sext(m[32,32]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVSXDQ", "YmmReg1,XmmReg2_m128"): "    YmmReg1[0,64] = sext(m[0,32]);\n    YmmReg1[64,64] = sext(m[32,32]);\n    YmmReg1[128,64] = sext(m[64,32]);\n    YmmReg1[192,64] = sext(m[96,32]);",
+    ("VPMOVZXDQ", "XmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = zext(m[0,32]);\n    YmmReg1[64,64] = zext(m[32,32]);\n    avx_zero_upper(YmmReg1);",
+    ("VPMOVZXDQ", "YmmReg1,XmmReg2_m128"): "    YmmReg1[0,64] = zext(m[0,32]);\n    YmmReg1[64,64] = zext(m[32,32]);\n    YmmReg1[128,64] = zext(m[64,32]);\n    YmmReg1[192,64] = zext(m[96,32]);",
+    # sign-bit masks into a GPR
+    ("VMOVMSKPS", "Reg32,XmmReg2"):
+        "    local x:16 = XmmReg2;\n    Reg32 = zext(x[31,1]) | (zext(x[63,1]) << 1) | (zext(x[95,1]) << 2) | (zext(x[127,1]) << 3);\n    build check_Reg32_dest;",
+    ("VMOVMSKPS", "Reg32,YmmReg2"):
+        "    local x:16 = YmmReg2_L;\n    local y:16 = YmmReg2_H;\n"
+        "    Reg32 = zext(x[31,1]) | (zext(x[63,1]) << 1) | (zext(x[95,1]) << 2) | (zext(x[127,1]) << 3)\n"
+        "          | (zext(y[31,1]) << 4) | (zext(y[63,1]) << 5) | (zext(y[95,1]) << 6) | (zext(y[127,1]) << 7);\n    build check_Reg32_dest;",
+    ("VMOVMSKPD", "Reg32,XmmReg2"):
+        "    local x:16 = XmmReg2;\n    Reg32 = zext(x[63,1]) | (zext(x[127,1]) << 1);\n    build check_Reg32_dest;",
+    ("VMOVMSKPD", "Reg32,YmmReg2"):
+        "    local x:16 = YmmReg2_L;\n    local y:16 = YmmReg2_H;\n"
+        "    Reg32 = zext(x[63,1]) | (zext(x[127,1]) << 1) | (zext(y[63,1]) << 2) | (zext(y[127,1]) << 3);\n    build check_Reg32_dest;",
+    ("VPMOVMSKB", "Reg32,XmmReg2"):
+        "    local x:16 = XmmReg2;\n    local r:4; avx_bytemask(r[0,8], x[0,64]); avx_bytemask(r[8,8], x[64,64]); r[16,16] = 0;\n    Reg32 = r;\n    build check_Reg32_dest;",
+    ("VPMOVMSKB", "Reg32,YmmReg2"):
+        "    local x:16 = YmmReg2_L;\n    local y:16 = YmmReg2_H;\n    local r:4;\n"
+        "    avx_bytemask(r[0,8], x[0,64]); avx_bytemask(r[8,8], x[64,64]);\n"
+        "    avx_bytemask(r[16,8], y[0,64]); avx_bytemask(r[24,8], y[64,64]);\n    Reg32 = r;\n    build check_Reg32_dest;",
+})
+
+
+def constructor_manual(name: str, operands: str, pattern: str, shape: str, body: str) -> str:
+    pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
+    pattern = pattern.replace("(YmmReg1 & ZmmReg1)", "YmmReg1")
+    pre = []
+    if "YmmReg2_m256" in shape:
+        pattern = pattern.replace("... & YmmReg2_m256", "... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H")
+        pre += ["    local lo:16 = YmmReg2_m256_L;", "    local hi:16 = YmmReg2_m256_H;"]
+    elif "XmmReg2_m128" in shape:
+        pre.append("    local m:16 = XmmReg2_m128;")
+    elif "XmmReg2_m64" in shape:
+        pre.append("    local m:8 = XmmReg2_m64;")
+    elif "XmmReg2_m32" in shape:
+        pre.append("    local m:4 = XmmReg2_m32;")
+    elif "XmmReg2_m16" in shape:
+        pre.append("    local m:2 = XmmReg2_m16;")
+    if shape == "Reg32,YmmReg2":
+        pattern = re.sub(r"\bYmmReg2\b", "YmmReg2 & YmmReg2_L & YmmReg2_H", pattern, count=1)
+    if "YmmReg1_H" in body:
+        pattern = re.sub(r"\bYmmReg1\b", "(YmmReg1 & XmmReg1 & YmmReg1_H)", pattern, count=1)
+    if "check_Reg32_dest" in body and "check_Reg32_dest" not in pattern:
+        pattern = pattern.replace("Reg32", "Reg32 & check_Reg32_dest", 1)
+    return f":{name} {operands} is {pattern}\n{{\n" + "\n".join(pre + [body]) + "\n}\n"
+
+
 def lane128_body(template: str, d: tuple[str, str], a: tuple[str, str], b: tuple[str, str] | None) -> str:
     """Bind every source qword to a fresh local so a template may slice it
     (`{a0}[0,32]`), since a bit range of a bit range is not SLEIGH."""
@@ -584,10 +827,15 @@ def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
                 text = gen(name, row["operands"], row["pattern"], template, arity)
         elif name in TABLE_SHIFT:
             text = constructor_shift(name, row["operands"], row["pattern"], TABLE_SHIFT[name], shape)
+        elif (name, shape) in MANUAL:
+            text = constructor_manual(name, row["operands"], row["pattern"], shape, MANUAL[(name, shape)])
         if text is None:
             continue
         seen_headers.add(key)
         out.append(f"# {name}\n")
+        if "Reg64" in shape or "rm64" in shape:
+            # Only assembled into the 64-bit specification.
+            text = "@ifdef IA64\n" + text + "@endif\n"
         out.append(text)
         out.append("\n")
         done.add(name)
@@ -605,7 +853,7 @@ def main() -> int:
         "# integer forms are generated into avx.sinc beside their 128-bit\n"
         "# siblings. Generated by scripts/avx_gen.py; do not edit.\n"
     )
-    missing = sorted((set(TABLE) | set(TABLE_128) | set(TABLE_SHIFT) | set(TABLE_VSHIFT)) - done)
+    missing = sorted((set(TABLE) | set(TABLE_128) | set(TABLE_SHIFT) | set(TABLE_VSHIFT) | {n for n, _ in MANUAL}) - done)
     if missing:
         print("no inventory match for:", " ".join(missing), file=sys.stderr)
     print(f"generated {len(done)} mnemonics")

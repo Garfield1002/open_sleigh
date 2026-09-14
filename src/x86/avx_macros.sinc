@@ -678,6 +678,35 @@ macro avx_packus32(dest, a) {
     dest = r;
 }
 
+# Widening moves: a half-qword of narrow lanes to a qword of wide ones.
+# `signed` selects sext over zext.
+macro avx_ext8to16(dest, a, signed) {
+    local x:4 = a; local r:8; local s:1 = signed;
+    r[0,16] = (sext(x[0,8]) * zext(s)) | (zext(x[0,8]) * zext(!s));
+    r[16,16] = (sext(x[8,8]) * zext(s)) | (zext(x[8,8]) * zext(!s));
+    r[32,16] = (sext(x[16,8]) * zext(s)) | (zext(x[16,8]) * zext(!s));
+    r[48,16] = (sext(x[24,8]) * zext(s)) | (zext(x[24,8]) * zext(!s));
+    dest = r;
+}
+macro avx_ext16to32(dest, a, signed) {
+    local x:4 = a; local r:8; local s:1 = signed;
+    r[0,32] = (sext(x[0,16]) * zext(s)) | (zext(x[0,16]) * zext(!s));
+    r[32,32] = (sext(x[16,16]) * zext(s)) | (zext(x[16,16]) * zext(!s));
+    dest = r;
+}
+macro avx_ext8to32(dest, a, signed) {
+    local x:2 = a; local r:8; local s:1 = signed;
+    r[0,32] = (sext(x[0,8]) * zext(s)) | (zext(x[0,8]) * zext(!s));
+    r[32,32] = (sext(x[8,8]) * zext(s)) | (zext(x[8,8]) * zext(!s));
+    dest = r;
+}
+
+# The eight sign bits of a qword's bytes, packed into one byte.
+macro avx_bytemask(dest, a) {
+    local x:8 = a;
+    dest = (zext(x[7,1]) << 0) | (zext(x[15,1]) << 1) | (zext(x[23,1]) << 2) | (zext(x[31,1]) << 3) | (zext(x[39,1]) << 4) | (zext(x[47,1]) << 5) | (zext(x[55,1]) << 6) | (zext(x[63,1]) << 7);
+}
+
 # IEEE lanes, through the MXCSR-aware SSE scalar macros.
 macro avx_fadd32(dest, a, b) {
     local x:8 = a; local y:8 = b; local r:8;
