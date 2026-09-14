@@ -1,0 +1,3789 @@
+[
+ {
+  "file": "avx.sinc",
+  "name": "VADDPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x58; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local m:16 = XmmReg2_m128;\n\tXmmReg1[0,64]  = vexVVVV_XmmReg[0,64]  f+ m[0,64];\n    XmmReg1[64,64] = vexVVVV_XmmReg[64,64] f+ m[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x58; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local m:32 = YmmReg2_m256;\n\tYmmReg1[0,64]   = vexVVVV_YmmReg[0,64]   f+ m[0,64];\n    YmmReg1[64,64]  = vexVVVV_YmmReg[64,64]  f+ m[64,64];\n    YmmReg1[128,64] = vexVVVV_YmmReg[128,64] f+ m[128,64];\n    YmmReg1[192,64] = vexVVVV_YmmReg[192,64] f+ m[192,64];\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x58; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = XmmReg2_m128;\n\tXmmReg1[0,32]   = vexVVVV_XmmReg[0,32]  f+ tmp[0,32];\n    XmmReg1[32,32]  = vexVVVV_XmmReg[32,32] f+ tmp[32,32];\n    XmmReg1[64,32]  = vexVVVV_XmmReg[64,32] f+ tmp[64,32];\n    XmmReg1[96,32]  = vexVVVV_XmmReg[96,32] f+ tmp[96,32];\n    ZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x58; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tYmmReg1[0,32]   = vexVVVV_YmmReg[0,32]   f+ tmp[0,32];\n    YmmReg1[32,32]  = vexVVVV_YmmReg[32,32]  f+ tmp[32,32];\n    YmmReg1[64,32]  = vexVVVV_YmmReg[64,32]  f+ tmp[64,32];\n    YmmReg1[96,32]  = vexVVVV_YmmReg[96,32]  f+ tmp[96,32];\n    YmmReg1[128,32] = vexVVVV_YmmReg[128,32] f+ tmp[128,32];\n    YmmReg1[160,32] = vexVVVV_YmmReg[160,32] f+ tmp[160,32];\n    YmmReg1[192,32] = vexVVVV_YmmReg[192,32] f+ tmp[192,32];\n    YmmReg1[224,32] = vexVVVV_YmmReg[224,32] f+ tmp[224,32];\n    \n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x58; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:8 = vexVVVV_XmmReg[0,64] f+ XmmReg2_m64[0,64];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x58; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:4 = vexVVVV_XmmReg[0,32] f+ XmmReg2_m32[0,32];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSUBPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD0; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vaddsubpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSUBPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD0; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vaddsubpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSUBPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD0; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vaddsubps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VADDSUBPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD0; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vaddsubps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x54; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vandpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x54; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vandpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x54; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vandps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x54; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vandps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDNPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x55; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vandnpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDNPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x55; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vandnpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDNPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x55; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vandnps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VANDNPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x55; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vandnps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8_3_0",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8_3_0",
+  "body": "local tmp:16 = vblendpd_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8_3_0:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8_3_0",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8_3_0",
+  "body": "local tmp:32 = vblendpd_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8_3_0:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vblendps_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vblendps_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDVPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x4B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; Xmm_imm8_7_4",
+  "body": "local tmp:16 = vblendvpd_avx( vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDVPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x4B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; Ymm_imm8_7_4",
+  "body": "local tmp:32 = vblendvpd_avx( vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDVPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x4A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; Xmm_imm8_7_4",
+  "body": "local tmp:16 = vblendvps_avx( vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBLENDVPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x4A; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; Ymm_imm8_7_4",
+  "body": "local tmp:32 = vblendvps_avx( vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCOMISD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x2F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "fucompe(XmmReg1[0,64], XmmReg2_m64[0,64]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCOMISS",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x2F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "fucompe(XmmReg1[0,32], XmmReg2_m32[0,32]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTDQ2PD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vcvtdq2pd_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTDQ2PD",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vcvtdq2pd_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTDQ2PS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vcvtdq2ps_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTDQ2PS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vcvtdq2ps_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPD2DQ",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vcvtpd2dq_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPD2DQ",
+  "operands": "XmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (XmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:16 = vcvtpd2dq_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPD2PS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x5A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vcvtpd2ps_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPD2PS",
+  "operands": "XmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x5A; (XmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:16 = vcvtpd2ps_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2DQ",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vcvtps2dq_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2DQ",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vcvtps2dq_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2PD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x5A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vcvtps2pd_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2PD",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x5A; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vcvtps2pd_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSD2SI",
+  "operands": "Reg32, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W0); byte=0x2D; Reg32 ... & XmmReg2_m64",
+  "body": "Reg32 = trunc(round(XmmReg2_m64[0,64]));\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSD2SI",
+  "operands": "Reg64, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W1); byte=0x2D; Reg64 ... & XmmReg2_m64",
+  "body": "Reg64 = round(XmmReg2_m64[0,64]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSD2SS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:4 = float2float(XmmReg2_m64[0,64]);\n\tXmmReg1[0,32] = tmp;\n\tXmmReg1[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSI2SD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2A; (XmmReg1 & ZmmReg1) ... & rm32",
+  "body": "local tmp:8 = int2float(rm32);\n\tXmmReg1[0,64] = tmp;\n\tXmmReg1[64,64] = vexVVVV_XmmReg[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSI2SD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x2A; (XmmReg1 & ZmmReg1) ... & rm64",
+  "body": "local tmp:8 = int2float(rm64);\n\tXmmReg1[0,64] = tmp;\n\tXmmReg1[64,64] = vexVVVV_XmmReg[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSI2SS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2A; (XmmReg1 & ZmmReg1) ... & rm32",
+  "body": "local tmp:4 = int2float( rm32 );\n\tXmmReg1[0,32] = tmp;\n\tXmmReg1[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSI2SS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x2A; (XmmReg1 & ZmmReg1) ... & rm64",
+  "body": "local tmp:4 = int2float( rm64 );\n\tXmmReg1[0,32] = tmp;\n\tXmmReg1[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSS2SD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:8 = float2float( XmmReg2_m32[0,32] );\n\tXmmReg1[0,64] = tmp;\n\tXmmReg1[64,64] = vexVVVV_XmmReg[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSS2SI",
+  "operands": "Reg32, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W0); byte=0x2D; Reg32 ... & XmmReg2_m32",
+  "body": "Reg32 = trunc(round(XmmReg2_m32[0,32]));"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTSS2SI",
+  "operands": "Reg64, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W1); byte=0x2D; Reg64 ... & XmmReg2_m32",
+  "body": "Reg64 = trunc(round(XmmReg2_m32[0,32]));"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTPD2DQ",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = XmmReg2_m128;\n\tXmmReg1[0,32] = trunc(tmp[0,64]);\n\tXmmReg1[32,32] = trunc(tmp[64,64]);\n\tXmmReg1[64,32] = 0;\n\tXmmReg1[96,32] = 0;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTPD2DQ",
+  "operands": "XmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xE6; (XmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tXmmReg1[0,32] = trunc(tmp[0,64]);\n\tXmmReg1[32,32] = trunc(tmp[64,64]);\n\tXmmReg1[64,32] = trunc(tmp[128,64]);\n\tXmmReg1[96,32] = trunc(tmp[192,64]);\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTPS2DQ",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = XmmReg2_m128;\n\tXmmReg1[0,32] = trunc(tmp[0,32]);\n\tXmmReg1[32,32] = trunc(tmp[32,32]);\n\tXmmReg1[64,32] = trunc(tmp[64,32]);\n\tXmmReg1[96,32] = trunc(tmp[96,32]);\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTPS2DQ",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x5B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tYmmReg1[0,32] = trunc(tmp[0,32]);\n\tYmmReg1[32,32] = trunc(tmp[32,32]);\n\tYmmReg1[64,32] = trunc(tmp[64,32]);\n\tYmmReg1[96,32] = trunc(tmp[96,32]);\n\tYmmReg1[128,32] = trunc(tmp[128,32]);\n\tYmmReg1[160,32] = trunc(tmp[160,32]);\n\tYmmReg1[192,32] = trunc(tmp[192,32]);\n\tYmmReg1[224,32] = trunc(tmp[224,32]);\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTSD2SI",
+  "operands": "Reg32, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W0); byte=0x2C; Reg32 ... & XmmReg2_m64",
+  "body": "Reg32 = trunc(XmmReg2_m64[0,64]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTSD2SI",
+  "operands": "Reg64, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_W1); byte=0x2C; Reg64 ... & XmmReg2_m64",
+  "body": "Reg64 = trunc(XmmReg2_m64[0,64]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTSS2SI",
+  "operands": "Reg32, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W0); byte=0x2C; Reg32 ... & XmmReg2_m32",
+  "body": "Reg32 = trunc(XmmReg2_m32[0,32]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTTSS2SI",
+  "operands": "Reg64, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_W1); byte=0x2C; Reg64 ... & XmmReg2_m32",
+  "body": "Reg64 = trunc(XmmReg2_m32[0,32]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vdivpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5E; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vdivpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vdivps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5E; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vdivps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "XmmReg1[0,64] = vexVVVV_XmmReg[0,64] f/ XmmReg2_m64[0,64];\n\tXmmReg1[64,64] = vexVVVV_XmmReg[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDIVSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "XmmReg1[0,32] = vexVVVV_XmmReg[0,32] f/ XmmReg2_m32[0,32];\n\tXmmReg1[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDPPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x41; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vdppd_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDPPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x40; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vdpps_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VDPPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x40; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vdpps_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VEXTRACTPS",
+  "operands": "rm32, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x17; XmmReg1 ... & rm32; imm8",
+  "body": "rm32 = vextractps_avx( XmmReg1, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHADDPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local m:16 = XmmReg2_m128;\n    XmmReg1[0,64] = vexVVVV_XmmReg[0,64] f+ vexVVVV_XmmReg[64,64];\n    XmmReg1[64,64] = m[0,64]   f+ m[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHADDPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x7C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local m:32 = YmmReg2_m256;\n    YmmReg1[0,64] = vexVVVV_YmmReg[0,64] f+ vexVVVV_YmmReg[64,64];\n    YmmReg1[64,64] = m[0,64]   f+ m[64,64];\n    YmmReg1[128,64] = vexVVVV_YmmReg[128,64] f+ vexVVVV_YmmReg[192,64];\n    YmmReg1[192,64] = m[128,64]   f+ m[192,64];\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHADDPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vhaddps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHADDPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x7C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vhaddps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHSUBPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vhsubpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHSUBPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x7D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vhsubpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHSUBPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x7D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vhsubps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VHSUBPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x7D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vhsubps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VINSERTPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x21; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32; imm8",
+  "body": "local tmp:16 = vinsertps_avx( vexVVVV_XmmReg, XmmReg2_m32, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VLDDQU",
+  "operands": "XmmReg1, m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0xF0; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vlddqu_avx( m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VLDDQU",
+  "operands": "YmmReg1, m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0xF0; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vlddqu_avx( m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VLDMXCSR",
+  "operands": "m32",
+  "pattern": "$(VEX_NONE) & $(VEX_LZ) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0xAE; reg_opcode=2 ... & m32",
+  "body": "vldmxcsr_avx( m32 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVDQU",
+  "operands": "XmmReg1, XmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xF7; XmmReg1 & (mod=0x3 & XmmReg2)",
+  "body": "vmaskmovdqu_avx( XmmReg1, XmmReg2 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vmaxpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vmaxpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vmaxps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vmaxps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vmaxsd_avx( vexVVVV_XmmReg, XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMAXSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vmaxss_avx( vexVVVV_XmmReg, XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vminpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vminpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vminps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vminps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vminsd_avx( vexVVVV_XmmReg, XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMINSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vminss_avx( vexVVVV_XmmReg, XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVD",
+  "operands": "XmmReg1, rm32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W0); byte=0x6E; (XmmReg1 & ZmmReg1) ... & rm32",
+  "body": "ZmmReg1 = zext( rm32 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVQ",
+  "operands": "XmmReg1, rm64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W1); byte=0x6E; (XmmReg1 & ZmmReg1) ... & rm64",
+  "body": "ZmmReg1 = zext( rm64 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVD",
+  "operands": "rm32, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W0); byte=0x7E; XmmReg1 ... & rm32",
+  "body": "rm32 = XmmReg1 [0,32];"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVQ",
+  "operands": "rm64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W1); byte=0x7E; XmmReg1 ... & rm64",
+  "body": "rm64 = XmmReg1 [0,64];"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDDUP",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x12; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:8 = XmmReg2_m64[0,64];\n\tXmmReg1[0,64] = tmp;\n    XmmReg1[64,64] = tmp;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDDUP",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x12; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tlocal tmp1:8 = tmp[0,64];\n\tlocal tmp2:8 = tmp[128,64];\n\tYmmReg1[0,64] = tmp1;\n    YmmReg1[64,64] = tmp1;\n    YmmReg1[128,64] = tmp2;\n    YmmReg1[192,64] = tmp2;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDQU",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x6F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = XmmReg2_m128;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDQU",
+  "operands": "XmmReg2_m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; (XmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128",
+  "body": "XmmReg2_m128 = XmmReg1;\n\tbuild XmmReg2_m128_extend;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDQU",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x6F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDQU",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVDQU",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; YmmReg1 & (mod=3 & ZmmReg2 & YmmReg2)",
+  "body": "ZmmReg2 = zext( YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVHLPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x12; (XmmReg1 & ZmmReg1) & (mod=0x3 & XmmReg2)",
+  "body": "local tmp:16 = vmovhlps_avx( vexVVVV_XmmReg, XmmReg2 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVHPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x16; (XmmReg1 & ZmmReg1) ... & m64",
+  "body": "local tmp:16 = vmovhpd_avx( vexVVVV_XmmReg, m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVHPD",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x17; XmmReg1 ... & m64",
+  "body": "m64 = vmovhpd_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVHPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x16; (XmmReg1 & ZmmReg1) ... & m64",
+  "body": "local tmp:16 = vmovhps_avx( vexVVVV_XmmReg, m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVHPS",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x17; XmmReg1 ... & m64",
+  "body": "m64 = vmovhps_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVLHPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x16; (XmmReg1 & ZmmReg1) & (mod=0x3 & XmmReg2)",
+  "body": "local tmp:16 = vmovlhps_avx( vexVVVV_XmmReg, XmmReg2 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVLPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x12; (XmmReg1 & ZmmReg1) ... & m64",
+  "body": "local tmp:16 = vmovlpd_avx( vexVVVV_XmmReg, m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVLPD",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x13; XmmReg1 ... & m64",
+  "body": "m64 = vmovlpd_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVLPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x12; (XmmReg1 & ZmmReg1) ... & m64",
+  "body": "local tmp:16 = vmovlps_avx( vexVVVV_XmmReg, m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVLPS",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x13; XmmReg1 ... & m64",
+  "body": "m64 = vmovlps_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVMSKPD",
+  "operands": "Reg32, XmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x50; Reg32 & (mod=0x3 & XmmReg2)",
+  "body": "Reg32 = vmovmskpd_avx( XmmReg2 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVMSKPD",
+  "operands": "Reg32, YmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x50; Reg32 & (mod=0x3 & YmmReg2)",
+  "body": "Reg32 = vmovmskpd_avx( YmmReg2 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVMSKPS",
+  "operands": "Reg32, XmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x50; Reg32 & (mod=0x3 & XmmReg2)",
+  "body": "Reg32 = vmovmskps_avx( XmmReg2 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVMSKPS",
+  "operands": "Reg32, YmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x50; Reg32 & (mod=0x3 & YmmReg2)",
+  "body": "Reg32 = vmovmskps_avx( YmmReg2 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTDQA",
+  "operands": "XmmReg1, m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x2A; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vmovntdqa_avx( m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTDQ",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xE7; XmmReg1 ... & m128",
+  "body": "m128 = vmovntdq_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTDQ",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xE7; YmmReg1 ... & m256",
+  "body": "m256 = vmovntdq_avx( YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTPD",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x2B; XmmReg1 ... & m128",
+  "body": "m128 = vmovntpd_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTPD",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x2B; YmmReg1 ... & m256",
+  "body": "m256 = vmovntpd_avx( YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTPS",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x2B; XmmReg1 ... & m128",
+  "body": "m128 = vmovntps_avx( XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVNTPS",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x2B; YmmReg1 ... & m256",
+  "body": "m256 = vmovntps_avx( YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVQ",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x7E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "ZmmReg1 = zext(XmmReg2_m64[0,64]);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVQ",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD6; XmmReg1 ... & m64",
+  "body": "m64 = XmmReg1[0,64];"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVQ",
+  "operands": "XmmReg2, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD6; XmmReg1 & (mod=3 & XmmReg2 & ZmmReg2 )",
+  "body": "ZmmReg2 = zext( XmmReg1[0,64] );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSHDUP",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x16; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vmovshdup_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSHDUP",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x16; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vmovshdup_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSLDUP",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x12; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vmovsldup_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSLDUP",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x12; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vmovsldup_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x10; (XmmReg1 & ZmmReg1) & (mod=0x3 & XmmReg2)",
+  "body": "XmmReg1[0,32] = XmmReg2[0,32];\n\tXmmReg1[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSS",
+  "operands": "XmmReg1, m32",
+  "pattern": "$(VEX_NONE) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (XmmReg1 & ZmmReg1) ... & m32",
+  "body": "ZmmReg1 = zext( m32 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSS",
+  "operands": "XmmReg2, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x11; XmmReg1 & (mod=0x3 & (XmmReg2 & ZmmReg2))",
+  "body": "XmmReg2[0,32] = XmmReg1[0,32];\n\tXmmReg2[32,96] = vexVVVV_XmmReg[32,96];\n\tZmmReg2 = zext(XmmReg2);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVSS",
+  "operands": "m32, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x11; XmmReg1 ... & m32",
+  "body": "m32 = XmmReg1[0,32];"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVUPD",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = XmmReg2_m128;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVUPD",
+  "operands": "XmmReg2_m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x11; (XmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128",
+  "body": "XmmReg2_m128 = XmmReg1;\n\tbuild XmmReg2_m128_extend;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVUPD",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = YmmReg2_m256;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVUPD",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x11; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMOVUPD",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x11; YmmReg1 & ( mod=3 & YmmReg2 & ZmmReg2 )",
+  "body": "local tmp:32 = YmmReg1;\n\tZmmReg2 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMPSADBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x42; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vmpsadbw_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x59; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local m:16 = XmmReg2_m128;\n    XmmReg1[0,64] = vexVVVV_XmmReg[0,64] f* m[0,64];\n    XmmReg1[64,64] = vexVVVV_XmmReg[64,64] f* m[64,64];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x59; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local m:32 = YmmReg2_m256;\n    YmmReg1[0,64] = vexVVVV_YmmReg[0,64] f* m[0,64];\n    YmmReg1[64,64] = vexVVVV_YmmReg[64,64] f* m[64,64];\n    YmmReg1[128,64] = vexVVVV_YmmReg[128,64] f* m[128,64];\n    YmmReg1[192,64] = vexVVVV_YmmReg[192,64] f* m[192,64];\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x59; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local m:16 = XmmReg2_m128;\n    XmmReg1[0,32]  = vexVVVV_XmmReg[0,32] f* m[0,32];\n    XmmReg1[32,32] = vexVVVV_XmmReg[32,32] f* m[32,32];\n    XmmReg1[64,32] = vexVVVV_XmmReg[64,32] f* m[64,32];\n    XmmReg1[96,32] = vexVVVV_XmmReg[96,32] f* m[96,32];\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x59; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local m:32 = YmmReg2_m256;\n    YmmReg1[0,32]  = vexVVVV_YmmReg[0,32] f* m[0,32];\n    YmmReg1[32,32] = vexVVVV_YmmReg[32,32] f* m[32,32];\n    YmmReg1[64,32] = vexVVVV_YmmReg[64,32] f* m[64,32];\n    YmmReg1[96,32] = vexVVVV_YmmReg[96,32] f* m[96,32];\n    YmmReg1[128,32] = vexVVVV_YmmReg[128,32] f* m[128,32];\n    YmmReg1[160,32] = vexVVVV_YmmReg[160,32] f* m[160,32];\n    YmmReg1[192,32] = vexVVVV_YmmReg[192,32] f* m[192,32];\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x59; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:8 =  vexVVVV_XmmReg[0,64] f* XmmReg2_m64[0,64];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMULSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x59; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:4 = vexVVVV_XmmReg[0,32] f* XmmReg2_m32[0,32];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VORPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x56; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vorpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VORPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x56; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vorpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VORPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_XmmReg; byte=0x56; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vorps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VORPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & vexVVVV_YmmReg; byte=0x56; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vorps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPABSB",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpabsb_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPABSW",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpabsw_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPABSD",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpabsd_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPACKSSWB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x63; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpacksswb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPACKSSDW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpackssdw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPACKUSDW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_XmmReg; byte=0x2B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpackusdw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPACKUSWB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x67; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpackuswb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xFC; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xFD; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xFE; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD4; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xEC; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddsb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xED; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDUSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xDC; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddusb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPADDUSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xDD; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpaddusw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPALIGNR",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpalignr_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPAND",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xDB; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpand_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPANDN",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xDF; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpandn_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPAVGB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE0; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpavgb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPAVGW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE3; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpavgw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPBLENDVB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x4C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; Xmm_imm8_7_4",
+  "body": "local tmp:16 = vpblendvb_avx( vexVVVV_XmmReg, XmmReg2_m128, Xmm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPBLENDW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpblendw_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPEQB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x74; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpeqb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPEQW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x75; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpeqw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPEQD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x76; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpeqd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPESTRI",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A); byte=0x61; XmmReg1 ... & XmmReg2_m128; imm8",
+  "body": "vpcmpestri_avx( XmmReg1, XmmReg2_m128, imm8:1 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPESTRM",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A); byte=0x60; XmmReg1 ... & XmmReg2_m128; imm8",
+  "body": "vpcmpestrm_avx( XmmReg1, XmmReg2_m128, imm8:1 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPGTB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x64; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpgtb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPGTW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x65; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpgtw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPGTD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x66; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpgtd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPGTQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x37; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpcmpgtq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPISTRI",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x63; XmmReg1 ... & XmmReg2_m128; imm8",
+  "body": "vpcmpistri_avx( XmmReg1, XmmReg2_m128, imm8:1 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPCMPISTRM",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x62; XmmReg1 ... & XmmReg2_m128; imm8",
+  "body": "vpcmpistrm_avx( XmmReg1, XmmReg2_m128, imm8:1 );\n\t# TODO missing destination or side effects"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRB",
+  "operands": "Rmr32, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x14; mod=3 & XmmReg1 & Rmr32 & check_Rmr32_dest; imm8",
+  "body": "local tmp8:1 = imm8;\n\tlocal tmp = XmmReg1 >> (tmp8[0,3]*8);\n\tRmr32 = zext(tmp[0,8]);\n\tbuild check_Rmr32_dest;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRB",
+  "operands": "m8, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x14; (XmmReg1 ... & m8); imm8",
+  "body": "local tmp8:1 = imm8;\n\tlocal tmp = XmmReg1 >> (tmp8[0,3]*8);\n\tm8 = tmp[0,8];"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRD",
+  "operands": "Rmr32, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x16; mod=3 & XmmReg1 & Rmr32 & check_Rmr32_dest; imm8",
+  "body": "local tmp = XmmReg1 >> (imm8*32);\n\tRmr32 = tmp(0);\n\tbuild check_Rmr32_dest;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRD",
+  "operands": "m32, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x16; XmmReg1 ... & m32; imm8",
+  "body": "local tmp = XmmReg1 >> (imm8*32);\n\tm32 = tmp(0);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRQ",
+  "operands": "rm64, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1); byte=0x16; XmmReg1 ... & rm64; imm8",
+  "body": "rm64 = vpextrq_avx( XmmReg1, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRW",
+  "operands": "Reg32, XmmReg2, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W0); byte=0xC5; Reg32 & (mod=0x3 & XmmReg2); imm8",
+  "body": "Reg32 = vpextrw_avx( XmmReg2, imm8:1 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRW",
+  "operands": "Reg32_m16, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; XmmReg1 ... & Reg32_m16; imm8",
+  "body": "Reg32_m16 = vpextrw_avx( XmmReg1, imm8:1 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHADDW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x01; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphaddw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHADDD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x02; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphaddd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHADDSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x03; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphaddsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHMINPOSUW",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x41; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphminposuw_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHSUBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x05; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphsubw_avx( XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHSUBD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x06; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphsubd_avx( XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPHSUBSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x07; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vphsubsw_avx( XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPINSRB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, Reg32_m8, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x20; (XmmReg1 & ZmmReg1) ... & Reg32_m8; imm8",
+  "body": "local tmp:16 = vpinsrb_avx( vexVVVV_XmmReg, Reg32_m8, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPINSRD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm32, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x22; (XmmReg1 & ZmmReg1) ... & rm32; imm8",
+  "body": "local tmp:16 = vpinsrd_avx( vexVVVV_XmmReg, rm32, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPINSRQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, rm64, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x22; (XmmReg1 & ZmmReg1) ... & rm64; imm8",
+  "body": "local tmp:16 = vpinsrq_avx( vexVVVV_XmmReg, rm64, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPINSRW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, Reg32_m16, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_W0) & vexVVVV_XmmReg; byte=0xC4; (XmmReg1 & ZmmReg1) ... & Reg32_m16; imm8",
+  "body": "local tmp:16 = vpinsrw_avx( vexVVVV_XmmReg, Reg32_m16, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMADDUBSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x04; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaddubsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMADDWD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF5; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaddwd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x3C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxsb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xEE; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x3D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxsd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXUB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0xDE; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxub_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXUW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_XmmReg; byte=0x3E; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxuw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMAXUD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x3F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmaxud_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_XmmReg; byte=0x38; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminsb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0xEA; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x39; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminsd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINUB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_XmmReg; byte=0xDA; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminub_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINUW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_XmmReg; byte=0x3A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminuw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMINUD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x3B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpminud_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXBW",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x20; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovsxbw_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXBD",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x21; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vpmovsxbd_avx( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXBQ",
+  "operands": "XmmReg1, XmmReg2_m16",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x22; (XmmReg1 & ZmmReg1) ... & XmmReg2_m16",
+  "body": "local tmp:16 = vpmovsxbq_avx( XmmReg2_m16 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXWD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x23; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovsxwd_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXWQ",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x24; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vpmovsxwq_avx( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVSXDQ",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x25; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovsxdq_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXBW",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x30; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovzxbw_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXBD",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x31; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vpmovzxbd_avx( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXBQ",
+  "operands": "XmmReg1, XmmReg2_m16",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x32; (XmmReg1 & ZmmReg1) ... & XmmReg2_m16",
+  "body": "local tmp:16 = vpmovzxbq_avx( XmmReg2_m16 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXWD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x33; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovzxwd_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXWQ",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x34; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vpmovzxwq_avx( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMOVZXDQ",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x35; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vpmovzxdq_avx( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x28; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmuldq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULHRSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmulhrsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULHUW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE4; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmulhuw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULHW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE5; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmulhw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULLD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x40; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmulld_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULLW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD5; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmullw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPMULUDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF4; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpmuludq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPOR",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xEB; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpor_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSADBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsadbw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSHUFB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x00; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpshufb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSHUFD",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpshufd_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSHUFHW",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpshufhw_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSHUFLW",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpshuflw_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSIGNB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x08; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsignb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSIGNW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x09; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsignw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSIGND",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsignd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLDQ",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x73; reg_opcode=7 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpslldq_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF1; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsllw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLW",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x71; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsllw_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF2; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpslld_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLD",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x72; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpslld_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF3; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsllq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSLLQ",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x73; reg_opcode=6 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsllq_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRAW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE1; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsraw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRAW",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x71; reg_opcode=4 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsraw_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRAD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE2; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrad_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRAD",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x72; reg_opcode=4 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsrad_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLDQ",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x73; reg_opcode=3 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsrldq_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD1; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrlw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLW",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x71; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsrlw_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD2; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrld_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLD",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x72; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsrld_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD3; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrlq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSRLQ",
+  "operands": "vexVVVV_XmmReg, XmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x73; reg_opcode=2 & (mod=0x3 & XmmReg2); imm8",
+  "body": "vexVVVV_XmmReg = vpsrlq_avx( XmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF8; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xF9; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xFA; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xFB; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE8; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubsb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xE9; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubsw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBUSB",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD8; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubusb_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPSUBUSW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xD9; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsubusw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPTEST",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x17; XmmReg1 ... & XmmReg2_m128",
+  "body": "local val1 = XmmReg2_m128;\n\tlocal val2 = XmmReg1;\n\tZF = (val1 & val2) == 0;\n\tCF = (val1 & ~val2) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPTEST",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x17; YmmReg1 ... & YmmReg2_m256",
+  "body": "local val1 = YmmReg2_m256;\n\tlocal val2 = YmmReg1;\n\tZF = (val1 & val2) == 0;\n\tCF = (val1 & ~val2) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKHBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x68; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpckhbw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKHWD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x69; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpckhwd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKHDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpckhdq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKHQDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpckhqdq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKLBW",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x60; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpcklbw_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKLWD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x61; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpcklwd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKLDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x62; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpckldq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPUNPCKLQDQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x6C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpunpcklqdq_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPXOR",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xEF; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vexVVVV_XmmReg ^ XmmReg2_m128;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRCPPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x53; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vrcpps_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRCPPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x53; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vrcpps_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRCPSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x53; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vrcpss_avx( vexVVVV_XmmReg, XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDPD",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x09; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vroundpd_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDPD",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x09; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vroundpd_avx( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDPS",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x08; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vroundps_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDPS",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG); byte=0x08; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vroundps_avx( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0B; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64; imm8",
+  "body": "local tmp:16 = vroundsd_avx( vexVVVV_XmmReg, XmmReg2_m64, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VROUNDSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0A; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32; imm8",
+  "body": "local tmp:16 = vroundss_avx( vexVVVV_XmmReg, XmmReg2_m32, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRSQRTPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x52; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vrsqrtps_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRSQRTPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x52; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vrsqrtps_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VRSQRTSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x52; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vrsqrtss_avx( vexVVVV_XmmReg, XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSHUFPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xC6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vshufpd_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSHUFPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xC6; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vshufpd_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSHUFPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0xC6; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vshufps_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSHUFPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xC6; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vshufps_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTPD",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x51; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vsqrtpd_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTPD",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x51; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vsqrtpd_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x51; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vsqrtps_avx( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x51; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vsqrtps_avx( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x51; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vsqrtsd_avx( vexVVVV_XmmReg, XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSQRTSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x51; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:16 = vsqrtss_avx( vexVVVV_XmmReg, XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSTMXCSR",
+  "operands": "m32",
+  "pattern": "$(VEX_NONE) & $(VEX_LZ) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0xAE; reg_opcode=3 ... & m32",
+  "body": "m32 = vstmxcsr_avx(  );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vsubpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vsubpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vsubps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x5C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vsubps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m64",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:8 = vexVVVV_XmmReg[0,64] f- XmmReg2_m64[0,64];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VSUBSS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m32",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x5C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:4 = vexVVVV_XmmReg[0,32] f- XmmReg2_m32[0,32];\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUCOMISD",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x2E; XmmReg1 ... & XmmReg2_m64",
+  "body": "val1:8 = XmmReg1[0,64];\n\tval2:8 = XmmReg2_m64[0,64];\n\tfucompe(val1, val2);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUCOMISS",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x2E; XmmReg1 ... & XmmReg2_m32",
+  "body": "val1:4 = XmmReg1[0,32];\n\tval2:4 = XmmReg2_m32[0,32];\n\tfucompe(val1, val2);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKHPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x15; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vunpckhpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKHPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x15; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vunpckhpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKHPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x15; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vunpckhps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKHPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x15; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vunpckhps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKLPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x14; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vunpcklpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKLPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x14; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vunpcklpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKLPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x14; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vunpcklps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VUNPCKLPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x14; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vunpcklps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBROADCASTSS",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x18; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local val:4 = XmmReg2_m32[0,32];\n\tXmmReg1[0,32] = val;\n\tXmmReg1[32,32] = val;\n\tXmmReg1[64,32] = val;\n\tXmmReg1[96,32] = val;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBROADCASTSS",
+  "operands": "YmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x18; (YmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local val:4 = XmmReg2_m32[0,32];\n\tYmmReg1[0,32] = val;\n\tYmmReg1[32,32] = val;\n\tYmmReg1[64,32] = val;\n\tYmmReg1[96,32] = val;\n\tYmmReg1[128,32] = val;\n\tYmmReg1[160,32] = val;\n\tYmmReg1[192,32] = val;\n\tYmmReg1[224,32] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBROADCASTSD",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x19; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local val:8 = XmmReg2_m64[0,64];\n\tYmmReg1[0,64] = val;\n\tYmmReg1[64,64] = val;\n\tYmmReg1[128,64] = val;\n\tYmmReg1[192,64] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VBROADCASTF128",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x1A; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local val:16 = XmmReg2_m128;\n\tYmmReg1[0,128] = val;\n\tYmmReg1[128,128] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VEXTRACTF128",
+  "operands": "XmmReg2_m128, YmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x19; (YmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128; imm8",
+  "body": "local ext:1 = (imm8:1 & 1) == 1;\n\t\n\tlocal val:16 = YmmReg1[0,128];\n\t\n\tif (ext == 0) goto <assign>;\n\n    val = YmmReg1[128,128];\n    \n  <assign>  \n    XmmReg2_m128 = val;\n\tbuild XmmReg2_m128_extend;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VINSERTF128",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x18; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local ext:1 = (imm8:1 & 1) == 1;\n    local src1_0   = vexVVVV_YmmReg[0, 128];\n    local src1_1 = vexVVVV_YmmReg[128, 128];\n    \n    src2:16 = XmmReg2_m128;\n    \n\tYmmReg1[0,128] = src2;\n\tYmmReg1[128,128] = src1_1;\n\t\n\tif (ext == 0) goto <extend>;\n\n\tYmmReg1[0,128] = src1_0;\n\tYmmReg1[128,128] = src2;\n\n   <extend>\t\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2C; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vmaskmovps_avx( vexVVVV_XmmReg, m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x2C; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vmaskmovps_avx( vexVVVV_YmmReg, m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2D; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vmaskmovpd_avx( vexVVVV_XmmReg, m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x2D; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vmaskmovpd_avx( vexVVVV_YmmReg, m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPS",
+  "operands": "m128, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2E; XmmReg1 ... & m128",
+  "body": "m128 = vmaskmovps_avx( vexVVVV_XmmReg, XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPS",
+  "operands": "m256, vexVVVV_YmmReg, YmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x2E; YmmReg1 ... & m256",
+  "body": "m256 = vmaskmovps_avx( vexVVVV_YmmReg, YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPD",
+  "operands": "m128, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x2F; XmmReg1 ... & m128",
+  "body": "m128 = vmaskmovpd_avx( vexVVVV_XmmReg, XmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VMASKMOVPD",
+  "operands": "m256, vexVVVV_YmmReg, YmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x2F; YmmReg1 ... & m256",
+  "body": "m256 = vmaskmovpd_avx( vexVVVV_YmmReg, YmmReg1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERM2F128",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x06; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vperm2f128_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpermilpd_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x0D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpermilpd_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPD",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x05; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpermilpd_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPD",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x05; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpermilpd_avx( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x0C; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpermilps_avx( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPS",
+  "operands": "XmmReg1, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x04; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpermilps_avx( XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x0C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpermilps_avx( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPERMILPS",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x04; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpermilps_avx( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VTESTPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x0E; XmmReg1 ... & XmmReg2_m128",
+  "body": "local val1 = XmmReg2_m128;\n\tlocal val2 = XmmReg1;\n\tlocal ztest = val1 & val2;\n\tZF = (ztest[31,1] | ztest[63,1] | ztest[95,1] | ztest[127,1]) == 0;\n\tlocal ctest = val1 & ~val2;\n\tCF = (ctest[31,1] | ctest[63,1] | ctest[95,1] | ctest[127,1]) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VTESTPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x0E; YmmReg1 ... & YmmReg2_m256",
+  "body": "local val1 = YmmReg2_m256;\n\tlocal val2 = YmmReg1;\n\tlocal ztest = val1 & val2;\n\tZF = (ztest[31,1] | ztest[63,1] | ztest[95,1] | ztest[127,1] | ztest[160,1] | ztest[191,1] | ztest[224,1] | ztest[255,1]) == 0;\n\tlocal ctest = val1 & ~val2;\n\tCF = (ctest[31,1] | ctest[63,1] | ctest[95,1] | ctest[127,1] | ctest[160,1] | ctest[191,1] | ctest[224,1] | ctest[255,1]) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VTESTPD",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x0F; XmmReg1 ... & XmmReg2_m128",
+  "body": "local val1 = XmmReg2_m128;\n\tlocal val2 = XmmReg1;\n\tlocal ztest = val1 & val2;\n\tZF = (ztest[63,1] | ztest[127,1]) == 0;\n\tlocal ctest = val1 & ~val2;\n\tCF = (ctest[63,1] | ctest[127,1]) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VTESTPD",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x0F; YmmReg1 ... & YmmReg2_m256",
+  "body": "local val1 = YmmReg2_m256;\n\tlocal val2 = YmmReg1;\n\tlocal ztest = val1 & val2;\n\tZF = (ztest[63,1] | ztest[127,1] | ztest[191,1] | ztest[255,1]) == 0;\n\tlocal ctest = val1 & ~val2;\n\tCF = (ctest[63,1] | ctest[127,1] | ctest[191,1] | ctest[255,1]) == 0;\n\tAF = 0;\n\tOF = 0;\n\tPF = 0;\n\tSF = 0;"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VXORPD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "tmp:16 = XmmReg2_m128;\n    XmmReg1[0,64] = ( vexVVVV_XmmReg[0,64] ^ tmp[0,64] );\n    XmmReg1[64,64] = ( vexVVVV_XmmReg[64,64] ^ tmp[64,64] );\n    ZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VXORPD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x57; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "tmp:32 = YmmReg2_m256;\n    YmmReg1[0,64] = ( vexVVVV_YmmReg[0,64] ^ tmp[0,64] );\n    YmmReg1[64,64] = ( vexVVVV_YmmReg[64,64] ^ tmp[64,64] );\n    YmmReg1[128,64] = ( vexVVVV_YmmReg[128,64] ^ tmp[128,64] );\n    YmmReg1[192,64] = ( vexVVVV_YmmReg[192,64] ^ tmp[192,64] );\n    ZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VXORPS",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "tmp:16 = XmmReg2_m128;\n    XmmReg1[0,32]  = ( vexVVVV_XmmReg[0,32] ^ tmp[0,32] );\n    XmmReg1[32,32] = ( vexVVVV_XmmReg[32,32] ^ tmp[32,32] );\n    XmmReg1[64,32] = ( vexVVVV_XmmReg[64,32] ^ tmp[64,32] );\n    XmmReg1[96,32] = ( vexVVVV_XmmReg[96,32] ^ tmp[96,32] );\n    ZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VXORPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x57; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "tmp:32 = YmmReg2_m256;\n    YmmReg1[0,32]  = ( vexVVVV_YmmReg[0,32] ^ tmp[0,32] );\n    YmmReg1[32,32] =  ( vexVVVV_YmmReg[32,32] ^ tmp[32,32] );\n    YmmReg1[64,32] =  ( vexVVVV_YmmReg[64,32] ^ tmp[64,32] );\n    YmmReg1[96,32] =  ( vexVVVV_YmmReg[96,32] ^ tmp[96,32] );\n    YmmReg1[128,32] = ( vexVVVV_YmmReg[128,32] ^ tmp[128,32] );\n    YmmReg1[160,32] = ( vexVVVV_YmmReg[160,32] ^ tmp[160,32] );\n    YmmReg1[192,32] = ( vexVVVV_YmmReg[192,32] ^ tmp[192,32] );\n    YmmReg1[224,32] = ( vexVVVV_YmmReg[224,32] ^ tmp[224,32] );   \n    ZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPH2PS",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x13; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:16 = vcvtph2ps_f16c( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPH2PS",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x13; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vcvtph2ps_f16c( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2PH",
+  "operands": "XmmReg2_m64, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x1D; XmmReg1 ... & XmmReg2_m64; imm8",
+  "body": "XmmReg2_m64 = vcvtps2ph_f16c( XmmReg1, imm8:1 );"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VCVTPS2PH",
+  "operands": "XmmReg2_m128, YmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x1D; (YmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128; imm8",
+  "body": "XmmReg2_m128 = vcvtps2ph_f16c( YmmReg1, imm8:1 );\n\tbuild XmmReg2_m128_extend;"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VMOVNTDQA",
+  "operands": "YmmReg1, m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x2A; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vmovntdqa_avx2( m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VMPSADBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x42; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vmpsadbw_avx2( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPABSB",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpabsb_avx2( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPABSW",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpabsw_avx2( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPABSD",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x1E; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpabsd_avx2( YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPACKSSWB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x63; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpacksswb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPACKSSDW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x6B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpackssdw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPACKUSDW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_YmmReg; byte=0x2B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpackusdw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPACKUSWB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x67; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpackuswb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xFC; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xFD; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xFE; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD4; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xEC; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddsb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xED; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDUSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xDC; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddusb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPADDUSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xDD; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpaddusw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPALIGNR",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpalignr_avx2( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPAND",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xDB; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpand_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPANDN",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xDF; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpandn_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPAVGB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE0; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpavgb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPAVGW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE3; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpavgw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBLENDVB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x4C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; Ymm_imm8_7_4",
+  "body": "local tmp:32 = vpblendvb_avx2( vexVVVV_YmmReg, YmmReg2_m256, Ymm_imm8_7_4 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBLENDW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0E; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpblendw_avx2( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPEQB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x74; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpeqb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPEQW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x75; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpeqw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPEQD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x76; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpeqd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPGTB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x64; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpgtb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPGTW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x65; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpgtw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPGTD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x66; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpgtd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPCMPGTQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x37; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpcmpgtq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHADDW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x01; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphaddw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHADDD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x02; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphaddd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHADDSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x03; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphaddsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHSUBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x05; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphsubw_avx2( YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHSUBD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x06; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphsubd_avx2( YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPHSUBSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x07; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vphsubsw_avx2( YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMADDUBSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x04; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaddubsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMADDWD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF5; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaddwd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x3C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxsb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xEE; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXSD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x3D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxsd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXUB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0xDE; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxub_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXUW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_YmmReg; byte=0x3E; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxuw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMAXUD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x3F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmaxud_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_YmmReg; byte=0x38; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminsb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0xEA; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINSD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x39; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminsd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINUB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & vexVVVV_YmmReg; byte=0xDA; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminub_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINUW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & vexVVVV_YmmReg; byte=0x3A; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminuw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMINUD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x3B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpminud_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXBW",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x20; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovsxbw_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXBD",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x21; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:32 = vpmovsxbd_avx2( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXBQ",
+  "operands": "YmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x22; (YmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:32 = vpmovsxbq_avx2( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXWD",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x23; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovsxwd_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXWQ",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x24; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:32 = vpmovsxwq_avx2( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVSXDQ",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x25; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovsxdq_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXBW",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x30; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovzxbw_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXBD",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x31; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:32 = vpmovzxbd_avx2( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXBQ",
+  "operands": "YmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x32; (YmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local tmp:32 = vpmovzxbq_avx2( XmmReg2_m32 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXWD",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x33; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovzxwd_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXWQ",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x34; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local tmp:32 = vpmovzxwq_avx2( XmmReg2_m64 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMOVZXDQ",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG); byte=0x35; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpmovzxdq_avx2( XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x28; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmuldq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULHRSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0B; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmulhrsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULHUW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE4; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmulhuw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULHW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE5; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmulhw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULLD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x40; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmulld_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULLW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD5; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmullw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMULUDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF4; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpmuludq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPOR",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xEB; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpor_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSADBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF6; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsadbw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSHUFB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x00; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpshufb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSHUFD",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpshufd_avx2( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSHUFHW",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F3) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpshufhw_avx2( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSHUFLW",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x70; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpshuflw_avx2( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSIGNB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x08; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsignb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSIGNW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x09; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsignw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSIGND",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0A; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsignd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLDQ",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=7 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpslldq_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF1; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsllw_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLW",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=6 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsllw_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF2; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpslld_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLD",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=6 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpslld_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF3; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsllq_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLQ",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=6 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsllq_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE1; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsraw_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAW",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=4 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsraw_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE2; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsrad_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAD",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=4 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsrad_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLDQ",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=3 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsrldq_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD1; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsrlw_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLW",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x71; reg_opcode=2 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsrlw_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD2; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsrld_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLD",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x72; reg_opcode=2 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsrld_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD3; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:32 = vpsrlq_avx2( vexVVVV_YmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLQ",
+  "operands": "vexVVVV_YmmReg, YmmReg2, imm8",
+  "pattern": "$(VEX_NDD) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x73; reg_opcode=2 & (mod=0x3 & YmmReg2); imm8",
+  "body": "vexVVVV_YmmReg = vpsrlq_avx2( YmmReg2, imm8:1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF8; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xF9; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xFA; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xFB; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE8; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubsb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xE9; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubsw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBUSB",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD8; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubusb_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSUBUSW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xD9; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsubusw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKHBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x68; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpckhbw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKHWD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x69; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpckhwd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKHDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x6A; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpckhdq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKHQDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x6D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpckhqdq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKLBW",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x60; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpcklbw_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKLWD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x61; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpcklwd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKLDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x62; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpckldq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPUNPCKLQDQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x6C; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpunpcklqdq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPXOR",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0xEF; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vexVVVV_YmmReg ^ YmmReg2_m256;\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VEXTRACTI128",
+  "operands": "XmmReg2_m128, YmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x39; (YmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128; imm8",
+  "body": "local ext:1 = (imm8:1 & 1) == 1;\n\t\n\tlocal val:16 = YmmReg1[0,128];\n\t\n\tif (ext == 0) goto <assign>;\n\n    val = YmmReg1[128,128];\n    \n  <assign>  \n    XmmReg2_m128 = val;\n\tbuild XmmReg2_m128_extend;"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBLENDD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x02; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vpblendd_avx2( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBLENDD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x02; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpblendd_avx2( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTB",
+  "operands": "XmmReg1, XmmReg2_m8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x78; (XmmReg1 & ZmmReg1) ... & XmmReg2_m8",
+  "body": "local val:1 = XmmReg2_m8[0,8];\n\tXmmReg1[0,8] = val;\n\tXmmReg1[8,8] = val;\n\tXmmReg1[16,8] = val;\n\tXmmReg1[24,8] = val;\n\tXmmReg1[32,8] = val;\n\tXmmReg1[40,8] = val;\n\tXmmReg1[48,8] = val;\n\tXmmReg1[56,8] = val;\n\tXmmReg1[64,8] = val;\n\tXmmReg1[72,8] = val;\n\tXmmReg1[80,8] = val;\n\tXmmReg1[88,8] = val;\n\tXmmReg1[96,8] = val;\n\tXmmReg1[104,8] = val;\n\tXmmReg1[112,8] = val;\n\tXmmReg1[120,8] = val;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTB",
+  "operands": "YmmReg1, XmmReg2_m8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x78; (YmmReg1 & ZmmReg1) ... & XmmReg2_m8",
+  "body": "local val:1 = XmmReg2_m8[0,8];\n\tYmmReg1[0,8] = val;\n\tYmmReg1[8,8] = val;\n\tYmmReg1[16,8] = val;\n\tYmmReg1[24,8] = val;\n\tYmmReg1[32,8] = val;\n\tYmmReg1[40,8] = val;\n\tYmmReg1[48,8] = val;\n\tYmmReg1[56,8] = val;\n\tYmmReg1[64,8] = val;\n\tYmmReg1[72,8] = val;\n\tYmmReg1[80,8] = val;\n\tYmmReg1[88,8] = val;\n\tYmmReg1[96,8] = val;\n\tYmmReg1[104,8] = val;\n\tYmmReg1[112,8] = val;\n\tYmmReg1[120,8] = val;\n\t\n\tYmmReg1[128,8] = val;\n\tYmmReg1[136,8] = val;\n\tYmmReg1[144,8] = val;\n\tYmmReg1[152,8] = val;\n\tYmmReg1[160,8] = val;\n\tYmmReg1[168,8] = val;\n\tYmmReg1[176,8] = val;\n\tYmmReg1[184,8] = val;\n\tYmmReg1[192,8] = val;\n\tYmmReg1[200,8] = val;\n\tYmmReg1[208,8] = val;\n\tYmmReg1[216,8] = val;\n\tYmmReg1[224,8] = val;\n\tYmmReg1[232,8] = val;\n\tYmmReg1[240,8] = val;\n\tYmmReg1[248,8] = val;\n\t\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTW",
+  "operands": "XmmReg1, XmmReg2_m16",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x79; (XmmReg1 & ZmmReg1) ... & XmmReg2_m16",
+  "body": "local val:2 = XmmReg2_m16[0,16];\n\tXmmReg1[0,16] = val;\n\tXmmReg1[16,16] = val;\n\tXmmReg1[32,16] = val;\n\tXmmReg1[48,16] = val;\n\tXmmReg1[64,16] = val;\n\tXmmReg1[80,16] = val;\n\tXmmReg1[96,16] = val;\n\tXmmReg1[112,16] = val;\n\t\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTW",
+  "operands": "YmmReg1, XmmReg2_m16",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x79; (YmmReg1 & ZmmReg1) ... & XmmReg2_m16",
+  "body": "local val:2 = XmmReg2_m16[0,16];\n\tYmmReg1[0,16] = val;\n\tYmmReg1[16,16] = val;\n\tYmmReg1[32,16] = val;\n\tYmmReg1[48,16] = val;\n\tYmmReg1[64,16] = val;\n\tYmmReg1[80,16] = val;\n\tYmmReg1[96,16] = val;\n\tYmmReg1[112,16] = val;\n\t\n\tYmmReg1[128,16] = val;\n\tYmmReg1[144,16] = val;\n\tYmmReg1[160,16] = val;\n\tYmmReg1[176,16] = val;\n\tYmmReg1[192,16] = val;\n\tYmmReg1[208,16] = val;\n\tYmmReg1[224,16] = val;\n\tYmmReg1[240,16] = val;\n\t\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTD",
+  "operands": "XmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x58; (XmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local val:4 = XmmReg2_m32[0,32];\n\tXmmReg1[0,32] = val;\n\tXmmReg1[32,32] = val;\n\tXmmReg1[64,32] = val;\n\tXmmReg1[96,32] = val;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTD",
+  "operands": "YmmReg1, XmmReg2_m32",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x58; (YmmReg1 & ZmmReg1) ... & XmmReg2_m32",
+  "body": "local val:4 = XmmReg2_m32[0,32];\n\tYmmReg1[0,32] = val;\n\tYmmReg1[32,32] = val;\n\tYmmReg1[64,32] = val;\n\tYmmReg1[96,32] = val;\n\tYmmReg1[128,32] = val;\n\tYmmReg1[160,32] = val;\n\tYmmReg1[192,32] = val;\n\tYmmReg1[224,32] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTQ",
+  "operands": "XmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x59; (XmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local val:8 = XmmReg2_m64[0,64];\n\tXmmReg1[0,64] = val;\n\tXmmReg1[64,64] = val;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPBROADCASTQ",
+  "operands": "YmmReg1, XmmReg2_m64",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x59; (YmmReg1 & ZmmReg1) ... & XmmReg2_m64",
+  "body": "local val:8 = XmmReg2_m64[0,64];\n\tYmmReg1[0,64] = val;\n\tYmmReg1[64,64] = val;\n\tYmmReg1[128,64] = val;\n\tYmmReg1[192,64] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VBROADCASTI128",
+  "operands": "YmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0); byte=0x5A; (YmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local val:16 = XmmReg2_m128;\n\tYmmReg1[0,128] = val;\n\tYmmReg1[128,128] = val;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPERM2I128",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x46; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vperm2i128_avx2( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPERMD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x36; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpermd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPERMPD",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1); byte=0x01; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpermpd_avx2( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPERMPS",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x16; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpermps_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPERMQ",
+  "operands": "YmmReg1, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1); byte=0x00; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vpermq_avx2( YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x8C; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vpmaskmovd_avx2( vexVVVV_XmmReg, m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x8C; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vpmaskmovd_avx2( vexVVVV_YmmReg, m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x8C; (XmmReg1 & ZmmReg1) ... & m128",
+  "body": "local tmp:16 = vpmaskmovq_avx2( vexVVVV_XmmReg, m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg; byte=0x8C; (YmmReg1 & ZmmReg1) ... & m256",
+  "body": "local tmp:32 = vpmaskmovq_avx2( vexVVVV_YmmReg, m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVD",
+  "operands": "m128, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x8E; XmmReg1 ... & m128",
+  "body": "m128 = vpmaskmovd_avx2( vexVVVV_XmmReg, XmmReg1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVD",
+  "operands": "m256, vexVVVV_YmmReg, YmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x8E; YmmReg1 ... & m256",
+  "body": "m256 = vpmaskmovd_avx2( vexVVVV_YmmReg, YmmReg1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVQ",
+  "operands": "m128, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x8E; XmmReg1 ... & m128",
+  "body": "m128 = vpmaskmovq_avx2( vexVVVV_XmmReg, XmmReg1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPMASKMOVQ",
+  "operands": "m256, vexVVVV_YmmReg, YmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg; byte=0x8E; YmmReg1 ... & m256",
+  "body": "m256 = vpmaskmovq_avx2( vexVVVV_YmmReg, YmmReg1 );"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLVD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x47; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsllvd_avx2( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLVQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x47; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsllvq_avx2( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLVD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x47; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsllvd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSLLVQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg; byte=0x47; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsllvq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAVD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x46; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsravd_avx2( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRAVD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x46; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsravd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLVD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x45; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrlvd_avx2( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLVQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_XmmReg; byte=0x45; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "local tmp:16 = vpsrlvq_avx2( vexVVVV_XmmReg, XmmReg2_m128 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLVD",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg; byte=0x45; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsrlvd_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx2.sinc",
+  "name": "VPSRLVQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W1) & vexVVVV_YmmReg; byte=0x45; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local tmp:32 = vpsrlvq_avx2( vexVVVV_YmmReg, YmmReg2_m256 );\n\tZmmReg1 = zext(tmp);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x28; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "XmmReg1 = XmmReg2_m128;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "XmmReg2, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x29; mod=3 & XmmReg1 & (XmmReg2 & ZmmReg2)",
+  "body": "XmmReg2 = XmmReg1;\n\tZmmReg2 = zext(XmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x29; XmmReg1 ... & m128",
+  "body": "m128 = XmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x28; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "YmmReg1 = YmmReg2_m256;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x29; mod=3 & YmmReg1 & (YmmReg2 & ZmmReg2)",
+  "body": "YmmReg2 = YmmReg1;\n\tZmmReg2 = zext(YmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPD",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x29; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x28; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "XmmReg1 = XmmReg2_m128;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "XmmReg2, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x29; mod=3 & XmmReg1 & (XmmReg2 & ZmmReg2)",
+  "body": "XmmReg2 = XmmReg1;\n\tZmmReg2 = zext(XmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x29; XmmReg1 ... & m128",
+  "body": "m128 = XmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x28; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "YmmReg1 = YmmReg2_m256;\n\tZmmReg1 = zext(YmmReg2_m256);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x29; mod=3 & YmmReg1 & (YmmReg2 & ZmmReg2)",
+  "body": "YmmReg2 = YmmReg1;\n\tZmmReg2 = zext(YmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVAPS",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x29; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x6F; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "XmmReg1 = XmmReg2_m128;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "XmmReg2, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; mod=3 & XmmReg1 & (XmmReg2 & ZmmReg2)",
+  "body": "ZmmReg2 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; XmmReg1 ... & m128",
+  "body": "m128 = XmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x6F; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "YmmReg1 = YmmReg2_m256;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; mod=3 & YmmReg1 & (YmmReg2 & ZmmReg2)",
+  "body": "YmmReg2 = YmmReg1;\n\tZmmReg2 = zext(YmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVDQA",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0x7F; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVSD",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x10; XmmReg1 & ZmmReg1 & (mod=0x3 & XmmReg2)",
+  "body": "local tmpa:8 = XmmReg2[0,64];\n\tlocal tmpb:8 = vexVVVV_XmmReg[64,64];\n\tXmmReg1[0,64] = tmpa;\n\tXmmReg1[64,64] = tmpb;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVSD",
+  "operands": "XmmReg1, m64",
+  "pattern": "$(VEX_NONE) & $(VEX_LIG) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (XmmReg1 & YmmReg1 & ZmmReg1) ... & m64",
+  "body": "XmmReg1[0,64] = m64;\n\tXmmReg1[64,64] = 0;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVSD",
+  "operands": "XmmReg2, vexVVVV_XmmReg, XmmReg1",
+  "pattern": "$(VEX_NDS) & $(VEX_LIG) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x11; XmmReg1 & (mod=0x3 & (XmmReg2 & ZmmReg2))",
+  "body": "local tmpa:8 = XmmReg1[0,64];\n\tlocal tmpb:8 = vexVVVV_XmmReg[64,64];\n\tXmmReg2[0,64] = tmpa;\n\tXmmReg2[64,64] = tmpb;\n\tZmmReg2 = zext(XmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVSD",
+  "operands": "m64, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_LIG) & $(VEX_PRE_F2) & $(VEX_0F) & $(VEX_WIG); byte=0x11; XmmReg1 ... & m64",
+  "body": "m64 = XmmReg1[0,64];"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "XmmReg1, XmmReg2_m128",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "XmmReg1 = XmmReg2_m128;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "XmmReg2, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x11; XmmReg1 & (mod = 3 & XmmReg2 & ZmmReg2)",
+  "body": "XmmReg2 = XmmReg1;\n\tZmmReg2 = zext(XmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "m128, XmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x11; XmmReg1 ... & m128",
+  "body": "m128 = XmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "YmmReg1, YmmReg2_m256",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x10; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "YmmReg1 = YmmReg2_m256;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "YmmReg2, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x11; mod=3 & YmmReg1 & (YmmReg2 & ZmmReg2)",
+  "body": "YmmReg2 = YmmReg1;\n\tZmmReg2 = zext(YmmReg2);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VMOVUPS",
+  "operands": "m256, YmmReg1",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x11; YmmReg1 ... & m256",
+  "body": "m256 = YmmReg1;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VPCMPEQQ",
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x29; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128",
+  "body": "XmmReg1[0,64] = zext(vexVVVV_XmmReg[0,64] == XmmReg2_m128[0,64]) * 0xffffffffffffffff:8;\n\tXmmReg1[64,64] = zext(vexVVVV_XmmReg[64,64] == XmmReg2_m128[64,64]) * 0xffffffffffffffff:8;\n\tZmmReg1 = zext(XmmReg1);"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VPMOVMSKB",
+  "operands": "Reg32, XmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD7; Reg32 & (mod=0x3 & XmmReg2) & check_Reg32_dest",
+  "body": "local byte_mask:2 = 0:2;\n\tbyte_mask[0,1] = XmmReg2[7,1];\n\tbyte_mask[1,1] = XmmReg2[15,1];\n\tbyte_mask[2,1] = XmmReg2[23,1];\n\tbyte_mask[3,1] = XmmReg2[31,1];\n\tbyte_mask[4,1] = XmmReg2[39,1];\n\tbyte_mask[5,1] = XmmReg2[47,1];\n\tbyte_mask[6,1] = XmmReg2[55,1];\n\tbyte_mask[7,1] = XmmReg2[63,1];\n\tbyte_mask[8,1] = XmmReg2[71,1];\n\tbyte_mask[9,1] = XmmReg2[79,1];\n\tbyte_mask[10,1] = XmmReg2[87,1];\n\tbyte_mask[11,1] = XmmReg2[95,1];\n\tbyte_mask[12,1] = XmmReg2[103,1];\n\tbyte_mask[13,1] = XmmReg2[111,1];\n\tbyte_mask[14,1] = XmmReg2[119,1];\n\tbyte_mask[15,1] = XmmReg2[127,1];\n\tReg32 = zext(byte_mask);\n\tbuild check_Reg32_dest;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VZEROALL",
+  "operands": "",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x77",
+  "body": "ZMM0[0,64] = 0:8; ZMM0[64,64] = 0:8; ZMM0[128,64] = 0:8; ZMM0[192,64] = 0:8; ZMM0[256,64] = 0:8; ZMM0[320,64] = 0:8; ZMM0[384,64] = 0:8; ZMM0[448,64] = 0:8;\n\tZMM1[0,64] = 0:8; ZMM1[64,64] = 0:8; ZMM1[128,64] = 0:8; ZMM1[192,64] = 0:8; ZMM1[256,64] = 0:8; ZMM1[320,64] = 0:8; ZMM1[384,64] = 0:8; ZMM1[448,64] = 0:8;\n\tZMM2[0,64] = 0:8; ZMM2[64,64] = 0:8; ZMM2[128,64] = 0:8; ZMM2[192,64] = 0:8; ZMM2[256,64] = 0:8; ZMM2[320,64] = 0:8; ZMM2[384,64] = 0:8; ZMM2[448,64] = 0:8;\n\tZMM3[0,64] = 0:8; ZMM3[64,64] = 0:8; ZMM3[128,64] = 0:8; ZMM3[192,64] = 0:8; ZMM3[256,64] = 0:8; ZMM3[320,64] = 0:8; ZMM3[384,64] = 0:8; ZMM3[448,64] = 0:8;\n\tZMM4[0,64] = 0:8; ZMM4[64,64] = 0:8; ZMM4[128,64] = 0:8; ZMM4[192,64] = 0:8; ZMM4[256,64] = 0:8; ZMM4[320,64] = 0:8; ZMM4[384,64] = 0:8; ZMM4[448,64] = 0:8;\n\tZMM5[0,64] = 0:8; ZMM5[64,64] = 0:8; ZMM5[128,64] = 0:8; ZMM5[192,64] = 0:8; ZMM5[256,64] = 0:8; ZMM5[320,64] = 0:8; ZMM5[384,64] = 0:8; ZMM5[448,64] = 0:8;\n\tZMM6[0,64] = 0:8; ZMM6[64,64] = 0:8; ZMM6[128,64] = 0:8; ZMM6[192,64] = 0:8; ZMM6[256,64] = 0:8; ZMM6[320,64] = 0:8; ZMM6[384,64] = 0:8; ZMM6[448,64] = 0:8;\n\tZMM7[0,64] = 0:8; ZMM7[64,64] = 0:8; ZMM7[128,64] = 0:8; ZMM7[192,64] = 0:8; ZMM7[256,64] = 0:8; ZMM7[320,64] = 0:8; ZMM7[384,64] = 0:8; ZMM7[448,64] = 0:8;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VZEROALL",
+  "operands": "",
+  "pattern": "$(LONGMODE_ON) & $(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x77",
+  "body": "ZMM0[0,64] = 0:8; ZMM0[64,64] = 0:8; ZMM0[128,64] = 0:8; ZMM0[192,64] = 0:8; ZMM0[256,64] = 0:8; ZMM0[320,64] = 0:8; ZMM0[384,64] = 0:8; ZMM0[448,64] = 0:8;\n\tZMM1[0,64] = 0:8; ZMM1[64,64] = 0:8; ZMM1[128,64] = 0:8; ZMM1[192,64] = 0:8; ZMM1[256,64] = 0:8; ZMM1[320,64] = 0:8; ZMM1[384,64] = 0:8; ZMM1[448,64] = 0:8;\n\tZMM2[0,64] = 0:8; ZMM2[64,64] = 0:8; ZMM2[128,64] = 0:8; ZMM2[192,64] = 0:8; ZMM2[256,64] = 0:8; ZMM2[320,64] = 0:8; ZMM2[384,64] = 0:8; ZMM2[448,64] = 0:8;\n\tZMM3[0,64] = 0:8; ZMM3[64,64] = 0:8; ZMM3[128,64] = 0:8; ZMM3[192,64] = 0:8; ZMM3[256,64] = 0:8; ZMM3[320,64] = 0:8; ZMM3[384,64] = 0:8; ZMM3[448,64] = 0:8;\n\tZMM4[0,64] = 0:8; ZMM4[64,64] = 0:8; ZMM4[128,64] = 0:8; ZMM4[192,64] = 0:8; ZMM4[256,64] = 0:8; ZMM4[320,64] = 0:8; ZMM4[384,64] = 0:8; ZMM4[448,64] = 0:8;\n\tZMM5[0,64] = 0:8; ZMM5[64,64] = 0:8; ZMM5[128,64] = 0:8; ZMM5[192,64] = 0:8; ZMM5[256,64] = 0:8; ZMM5[320,64] = 0:8; ZMM5[384,64] = 0:8; ZMM5[448,64] = 0:8;\n\tZMM6[0,64] = 0:8; ZMM6[64,64] = 0:8; ZMM6[128,64] = 0:8; ZMM6[192,64] = 0:8; ZMM6[256,64] = 0:8; ZMM6[320,64] = 0:8; ZMM6[384,64] = 0:8; ZMM6[448,64] = 0:8;\n\tZMM7[0,64] = 0:8; ZMM7[64,64] = 0:8; ZMM7[128,64] = 0:8; ZMM7[192,64] = 0:8; ZMM7[256,64] = 0:8; ZMM7[320,64] = 0:8; ZMM7[384,64] = 0:8; ZMM7[448,64] = 0:8;\n\tZMM8[0,64] = 0:8; ZMM8[64,64] = 0:8; ZMM8[128,64] = 0:8; ZMM8[192,64] = 0:8; ZMM8[256,64] = 0:8; ZMM8[320,64] = 0:8; ZMM8[384,64] = 0:8; ZMM8[448,64] = 0:8;\n\tZMM9[0,64] = 0:8; ZMM9[64,64] = 0:8; ZMM9[128,64] = 0:8; ZMM9[192,64] = 0:8; ZMM9[256,64] = 0:8; ZMM9[320,64] = 0:8; ZMM9[384,64] = 0:8; ZMM9[448,64] = 0:8;\n\tZMM10[0,64] = 0:8; ZMM10[64,64] = 0:8; ZMM10[128,64] = 0:8; ZMM10[192,64] = 0:8; ZMM10[256,64] = 0:8; ZMM10[320,64] = 0:8; ZMM10[384,64] = 0:8; ZMM10[448,64] = 0:8;\n\tZMM11[0,64] = 0:8; ZMM11[64,64] = 0:8; ZMM11[128,64] = 0:8; ZMM11[192,64] = 0:8; ZMM11[256,64] = 0:8; ZMM11[320,64] = 0:8; ZMM11[384,64] = 0:8; ZMM11[448,64] = 0:8;\n\tZMM12[0,64] = 0:8; ZMM12[64,64] = 0:8; ZMM12[128,64] = 0:8; ZMM12[192,64] = 0:8; ZMM12[256,64] = 0:8; ZMM12[320,64] = 0:8; ZMM12[384,64] = 0:8; ZMM12[448,64] = 0:8;\n\tZMM13[0,64] = 0:8; ZMM13[64,64] = 0:8; ZMM13[128,64] = 0:8; ZMM13[192,64] = 0:8; ZMM13[256,64] = 0:8; ZMM13[320,64] = 0:8; ZMM13[384,64] = 0:8; ZMM13[448,64] = 0:8;\n\tZMM14[0,64] = 0:8; ZMM14[64,64] = 0:8; ZMM14[128,64] = 0:8; ZMM14[192,64] = 0:8; ZMM14[256,64] = 0:8; ZMM14[320,64] = 0:8; ZMM14[384,64] = 0:8; ZMM14[448,64] = 0:8;\n\tZMM15[0,64] = 0:8; ZMM15[64,64] = 0:8; ZMM15[128,64] = 0:8; ZMM15[192,64] = 0:8; ZMM15[256,64] = 0:8; ZMM15[320,64] = 0:8; ZMM15[384,64] = 0:8; ZMM15[448,64] = 0:8;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VZEROUPPER",
+  "operands": "",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x77",
+  "body": "ZMM0[128,64] = 0:8; ZMM0[192,64] = 0:8; ZMM0[256,64] = 0:8; ZMM0[320,64] = 0:8; ZMM0[384,64] = 0:8; ZMM0[448,64] = 0:8;\n\tZMM1[128,64] = 0:8; ZMM1[192,64] = 0:8; ZMM1[256,64] = 0:8; ZMM1[320,64] = 0:8; ZMM1[384,64] = 0:8; ZMM1[448,64] = 0:8;\n\tZMM2[128,64] = 0:8; ZMM2[192,64] = 0:8; ZMM2[256,64] = 0:8; ZMM2[320,64] = 0:8; ZMM2[384,64] = 0:8; ZMM2[448,64] = 0:8;\n\tZMM3[128,64] = 0:8; ZMM3[192,64] = 0:8; ZMM3[256,64] = 0:8; ZMM3[320,64] = 0:8; ZMM3[384,64] = 0:8; ZMM3[448,64] = 0:8;\n\tZMM4[128,64] = 0:8; ZMM4[192,64] = 0:8; ZMM4[256,64] = 0:8; ZMM4[320,64] = 0:8; ZMM4[384,64] = 0:8; ZMM4[448,64] = 0:8;\n\tZMM5[128,64] = 0:8; ZMM5[192,64] = 0:8; ZMM5[256,64] = 0:8; ZMM5[320,64] = 0:8; ZMM5[384,64] = 0:8; ZMM5[448,64] = 0:8;\n\tZMM6[128,64] = 0:8; ZMM6[192,64] = 0:8; ZMM6[256,64] = 0:8; ZMM6[320,64] = 0:8; ZMM6[384,64] = 0:8; ZMM6[448,64] = 0:8;\n\tZMM7[128,64] = 0:8; ZMM7[192,64] = 0:8; ZMM7[256,64] = 0:8; ZMM7[320,64] = 0:8; ZMM7[384,64] = 0:8; ZMM7[448,64] = 0:8;"
+ },
+ {
+  "file": "avx_manual.sinc",
+  "name": "VZEROUPPER",
+  "operands": "",
+  "pattern": "$(LONGMODE_ON) & $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_NONE) & $(VEX_0F) & $(VEX_WIG); byte=0x77",
+  "body": "ZMM0[128,64] = 0:8; ZMM0[192,64] = 0:8; ZMM0[256,64] = 0:8; ZMM0[320,64] = 0:8; ZMM0[384,64] = 0:8; ZMM0[448,64] = 0:8;\n\tZMM1[128,64] = 0:8; ZMM1[192,64] = 0:8; ZMM1[256,64] = 0:8; ZMM1[320,64] = 0:8; ZMM1[384,64] = 0:8; ZMM1[448,64] = 0:8;\n\tZMM2[128,64] = 0:8; ZMM2[192,64] = 0:8; ZMM2[256,64] = 0:8; ZMM2[320,64] = 0:8; ZMM2[384,64] = 0:8; ZMM2[448,64] = 0:8;\n\tZMM3[128,64] = 0:8; ZMM3[192,64] = 0:8; ZMM3[256,64] = 0:8; ZMM3[320,64] = 0:8; ZMM3[384,64] = 0:8; ZMM3[448,64] = 0:8;\n\tZMM4[128,64] = 0:8; ZMM4[192,64] = 0:8; ZMM4[256,64] = 0:8; ZMM4[320,64] = 0:8; ZMM4[384,64] = 0:8; ZMM4[448,64] = 0:8;\n\tZMM5[128,64] = 0:8; ZMM5[192,64] = 0:8; ZMM5[256,64] = 0:8; ZMM5[320,64] = 0:8; ZMM5[384,64] = 0:8; ZMM5[448,64] = 0:8;\n\tZMM6[128,64] = 0:8; ZMM6[192,64] = 0:8; ZMM6[256,64] = 0:8; ZMM6[320,64] = 0:8; ZMM6[384,64] = 0:8; ZMM6[448,64] = 0:8;\n\tZMM7[128,64] = 0:8; ZMM7[192,64] = 0:8; ZMM7[256,64] = 0:8; ZMM7[320,64] = 0:8; ZMM7[384,64] = 0:8; ZMM7[448,64] = 0:8;\n\tZMM8[128,64] = 0:8; ZMM8[192,64] = 0:8; ZMM8[256,64] = 0:8; ZMM8[320,64] = 0:8; ZMM8[384,64] = 0:8; ZMM8[448,64] = 0:8;\n\tZMM9[128,64] = 0:8; ZMM9[192,64] = 0:8; ZMM9[256,64] = 0:8; ZMM9[320,64] = 0:8; ZMM9[384,64] = 0:8; ZMM9[448,64] = 0:8;\n\tZMM10[128,64] = 0:8; ZMM10[192,64] = 0:8; ZMM10[256,64] = 0:8; ZMM10[320,64] = 0:8; ZMM10[384,64] = 0:8; ZMM10[448,64] = 0:8;\n\tZMM11[128,64] = 0:8; ZMM11[192,64] = 0:8; ZMM11[256,64] = 0:8; ZMM11[320,64] = 0:8; ZMM11[384,64] = 0:8; ZMM11[448,64] = 0:8;\n\tZMM12[128,64] = 0:8; ZMM12[192,64] = 0:8; ZMM12[256,64] = 0:8; ZMM12[320,64] = 0:8; ZMM12[384,64] = 0:8; ZMM12[448,64] = 0:8;\n\tZMM13[128,64] = 0:8; ZMM13[192,64] = 0:8; ZMM13[256,64] = 0:8; ZMM13[320,64] = 0:8; ZMM13[384,64] = 0:8; ZMM13[448,64] = 0:8;\n\tZMM14[128,64] = 0:8; ZMM14[192,64] = 0:8; ZMM14[256,64] = 0:8; ZMM14[320,64] = 0:8; ZMM14[384,64] = 0:8; ZMM14[448,64] = 0:8;\n\tZMM15[128,64] = 0:8; ZMM15[192,64] = 0:8; ZMM15[256,64] = 0:8; ZMM15[320,64] = 0:8; ZMM15[384,64] = 0:8; ZMM15[448,64] = 0:8;"
+ },
+ {
+  "file": "avx2_manual.sinc",
+  "name": "VPCMPEQQ",
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x29; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256",
+  "body": "local mask:8 = 0xffffffffffffffff;\n\tYmmReg1[0,64] = zext(vexVVVV_YmmReg[0,64] == YmmReg2_m256[0,64]) * mask;\n\tYmmReg1[64,64] = zext(vexVVVV_YmmReg[64,64] == YmmReg2_m256[64,64]) * mask;\n\tYmmReg1[128,64] = zext(vexVVVV_YmmReg[128,64] == YmmReg2_m256[128,64]) * mask;\n\tYmmReg1[192,64] = zext(vexVVVV_YmmReg[192,64] == YmmReg2_m256[192,64]) * mask;\n\tZmmReg1 = zext(YmmReg1);"
+ },
+ {
+  "file": "avx2_manual.sinc",
+  "name": "VPMOVMSKB",
+  "operands": "Reg32, YmmReg2",
+  "pattern": "$(VEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD7; Reg32 & (mod=0x3 & YmmReg2) & check_Reg32_dest",
+  "body": "local byte_mask:4 = 0:4;\n\tbyte_mask[0,1] = YmmReg2[7,1];\n\tbyte_mask[1,1] = YmmReg2[15,1];\n\tbyte_mask[2,1] = YmmReg2[23,1];\n\tbyte_mask[3,1] = YmmReg2[31,1];\n\tbyte_mask[4,1] = YmmReg2[39,1];\n\tbyte_mask[5,1] = YmmReg2[47,1];\n\tbyte_mask[6,1] = YmmReg2[55,1];\n\tbyte_mask[7,1] = YmmReg2[63,1];\n\tbyte_mask[8,1] = YmmReg2[71,1];\n\tbyte_mask[9,1] = YmmReg2[79,1];\n\tbyte_mask[10,1] = YmmReg2[87,1];\n\tbyte_mask[11,1] = YmmReg2[95,1];\n\tbyte_mask[12,1] = YmmReg2[103,1];\n\tbyte_mask[13,1] = YmmReg2[111,1];\n\tbyte_mask[14,1] = YmmReg2[119,1];\n\tbyte_mask[15,1] = YmmReg2[127,1];\n\tbyte_mask[16,1] = YmmReg2[135,1];\n\tbyte_mask[17,1] = YmmReg2[143,1];\n\tbyte_mask[18,1] = YmmReg2[151,1];\n\tbyte_mask[19,1] = YmmReg2[159,1];\n\tbyte_mask[20,1] = YmmReg2[167,1];\n\tbyte_mask[21,1] = YmmReg2[175,1];\n\tbyte_mask[22,1] = YmmReg2[183,1];\n\tbyte_mask[23,1] = YmmReg2[191,1];\n\tbyte_mask[24,1] = YmmReg2[199,1];\n\tbyte_mask[25,1] = YmmReg2[207,1];\n\tbyte_mask[26,1] = YmmReg2[215,1];\n\tbyte_mask[27,1] = YmmReg2[223,1];\n\tbyte_mask[28,1] = YmmReg2[231,1];\n\tbyte_mask[29,1] = YmmReg2[239,1];\n\tbyte_mask[30,1] = YmmReg2[247,1];\n\tbyte_mask[31,1] = YmmReg2[255,1];\n\tReg32 = zext(byte_mask);\n\tbuild check_Reg32_dest;"
+ }
+]

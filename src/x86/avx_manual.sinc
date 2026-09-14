@@ -185,15 +185,6 @@
 	m256 = YmmReg1;
 }
 
-# PCMPEQQ 4-250 PAGE 1370 LINE 71169
-:VPCMPEQQ XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x29; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128
-{
-	XmmReg1[0,64] = zext(vexVVVV_XmmReg[0,64] == XmmReg2_m128[0,64]) * 0xffffffffffffffff:8;
-	XmmReg1[64,64] = zext(vexVVVV_XmmReg[64,64] == XmmReg2_m128[64,64]) * 0xffffffffffffffff:8;
-	ZmmReg1 = zext(XmmReg1);
-}
-
-
 # PMOVMSKB 4-338 PAGE 1458 LINE 75651
 :VPMOVMSKB Reg32, XmmReg2 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F) & $(VEX_WIG); byte=0xD7; Reg32 & (mod=0x3 & XmmReg2) & check_Reg32_dest
 {

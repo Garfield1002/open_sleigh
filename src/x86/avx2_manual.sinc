@@ -96,17 +96,6 @@ define pcodeop vgatherqps ;
 }
 @endif
 
-# PCMPEQQ 4-250 PAGE 1370 LINE 71171
-:VPCMPEQQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x29; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256
-{
-	local mask:8 = 0xffffffffffffffff;
-	YmmReg1[0,64] = zext(vexVVVV_YmmReg[0,64] == YmmReg2_m256[0,64]) * mask;
-	YmmReg1[64,64] = zext(vexVVVV_YmmReg[64,64] == YmmReg2_m256[64,64]) * mask;
-	YmmReg1[128,64] = zext(vexVVVV_YmmReg[128,64] == YmmReg2_m256[128,64]) * mask;
-	YmmReg1[192,64] = zext(vexVVVV_YmmReg[192,64] == YmmReg2_m256[192,64]) * mask;
-	ZmmReg1 = zext(YmmReg1);
-}
-
 # VPGATHERDD/VPGATHERQD 5-273 PAGE 2097 LINE 107884
 define pcodeop vpgatherdd ;
 :VPGATHERDD XmmReg1, d_vm32x, vexVVVV_XmmReg is $(VEX_DDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0x90; (XmmReg1 & ZmmReg1) ... & d_vm32x {
