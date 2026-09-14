@@ -289,3 +289,7 @@ VCMPSS_mon: "VCMPTRUE_USSS" is imm8=0x1f { }
 VCMPSS_op: "" is imm8=0x1f { export 0x1f:1; }
 VCMPSS_mon: "VCMPSS" is imm8 { }
 VCMPSS_op: ", "^imm8 is imm8 { export *[const]:1 imm8; }
+
+# The variable-blend mask register (imm8[7:4]) as two 16-byte halves.
+YmmMask_L: Ymm_imm8_7_4_L is Ymm_imm8_7_4_L { export Ymm_imm8_7_4_L; }
+YmmMask_H: Ymm_imm8_7_4_H is Ymm_imm8_7_4_H { export Ymm_imm8_7_4_H; }

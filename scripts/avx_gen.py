@@ -288,6 +288,44 @@ def macro_library() -> str:
     lines = ["    local x:8 = a;",
              "    dest = " + " | ".join(f"(zext(x[{i*8+7},1]) << {i})" for i in range(8)) + ";"]
     out.append("macro avx_bytemask(dest, a) {\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Blends: per lane, pick b where the selector bit (or the lane's sign\n"
+               "# bit, for the variable forms) is set, else a.\n")
+    for w in (16, 32, 64):
+        n = LANES[w]
+        lines = ["    local x:8 = a; local y:8 = b; local s:1 = sel; local k:8;"]
+        for i, sl in enumerate(lane_slices(w)):
+            lines.append(f"    k{sl} = 0 - zext(s[{i},1]);")
+        lines.append("    dest = (y & k) | (x & ~k);")
+        out.append(f"macro avx_blend{w}(dest, a, b, sel) {{\n" + "\n".join(lines) + "\n}\n")
+    for w in (8, 32, 64):
+        lines = ["    local x:8 = a; local y:8 = b; local v:8 = mask; local k:8;"]
+        for sl in lane_slices(w):
+            lines.append(f"    k{sl} = 0 - zext(v{sl} s< 0);")
+        lines.append("    dest = (y & k) | (x & ~k);")
+        out.append(f"macro avx_blendv{w}(dest, a, b, mask) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Masked loads and stores: a lane moves only when its mask sign bit is set.\n")
+    for w in (32, 64):
+        lines = ["    local v:8 = mask; local x:8 = src; local k:8;"]
+        for sl in lane_slices(w):
+            lines.append(f"    k{sl} = 0 - zext(v{sl} s< 0);")
+        lines.append("    dest = x & k;")
+        out.append(f"macro avx_maskload{w}(dest, src, mask) {{\n" + "\n".join(lines) + "\n}\n")
+        lines = ["    local v:8 = mask; local x:8 = src; local o:8 = old; local k:8;"]
+        for sl in lane_slices(w):
+            lines.append(f"    k{sl} = 0 - zext(v{sl} s< 0);")
+        lines.append("    dest = (x & k) | (o & ~k);")
+        out.append(f"macro avx_maskstore{w}(dest, old, src, mask) {{\n" + "\n".join(lines) + "\n}\n")
+    out.append("\n# Duplicate the odd or even dword of each pair.\n")
+    out.append("macro avx_dup_odd32(dest, a) { local x:8 = a; local r:8; r[0,32] = x[32,32]; r[32,32] = x[32,32]; dest = r; }\n")
+    out.append("macro avx_dup_even32(dest, a) { local x:8 = a; local r:8; r[0,32] = x[0,32]; r[32,32] = x[0,32]; dest = r; }\n")
+    out.append("\n# Broadcast one lane across a qword.\n")
+    for w in (8, 16, 32):
+        n = LANES[w]
+        lines = [f"    local x:{w//8} = a; local r:8;"]
+        for sl in lane_slices(w):
+            lines.append(f"    r{sl} = x;")
+        lines.append("    dest = r;")
+        out.append(f"macro avx_bcast{w}(dest, a) {{\n" + "\n".join(lines) + "\n}\n")
     out.append("\n# IEEE lanes, through the MXCSR-aware SSE scalar macros.\n")
     for w, sfx in ((32, "32"), (64, "64")):
         for op in ("add", "sub", "mul", "div", "min", "max"):
@@ -677,6 +715,114 @@ MANUAL.update({
 })
 
 
+def _full_move(name):
+    # register-or-memory load, both widths; register store; memory store
+    MANUAL[(name, "XmmReg1,XmmReg2_m128")] = "    YmmReg1[0,64] = m[0,64];\n    YmmReg1[64,64] = m[64,64];\n    avx_zero_upper(YmmReg1);"
+    MANUAL[(name, "YmmReg1,YmmReg2_m256")] = "    YmmReg1[0,64] = lo[0,64];\n    YmmReg1[64,64] = lo[64,64];\n    YmmReg1[128,64] = hi[0,64];\n    YmmReg1[192,64] = hi[64,64];"
+    MANUAL[(name, "XmmReg2,XmmReg1")] = "    local x:16 = XmmReg1;\n    YmmReg2[0,64] = x[0,64];\n    YmmReg2[64,64] = x[64,64];\n    avx_zero_upper(YmmReg2);"
+    # VMOVUPD/VMOVDQU spell the 128-bit store as one r/m form; a register
+    # destination still has to zero its YMM upper half, so split it.
+    MANUAL[(name, "XmmReg2_m128,XmmReg1")] = "SPLIT"
+    MANUAL[(name, "m128,XmmReg1")] = "    m128 = XmmReg1;"
+    MANUAL[(name, "YmmReg2,YmmReg1")] = "    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n    YmmReg2[0,64] = x[0,64];\n    YmmReg2[64,64] = x[64,64];\n    YmmReg2[128,64] = y[0,64];\n    YmmReg2[192,64] = y[64,64];"
+    MANUAL[(name, "m256,YmmReg1")] = "    m256_L = XmmReg1;\n    m256_H = YmmReg1_H;"
+
+
+for _n in ("VMOVAPS", "VMOVUPS", "VMOVAPD", "VMOVUPD", "VMOVDQA", "VMOVDQU"):
+    _full_move(_n)
+
+MANUAL.update({
+    ("VLDDQU", "XmmReg1,m128"): "    local x:16 = m128;\n    YmmReg1[0,64] = x[0,64];\n    YmmReg1[64,64] = x[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VLDDQU", "YmmReg1,m256"): "    local x:16 = m256_L;\n    local y:16 = m256_H;\n    YmmReg1[0,64] = x[0,64];\n    YmmReg1[64,64] = x[64,64];\n    YmmReg1[128,64] = y[0,64];\n    YmmReg1[192,64] = y[64,64];",
+    ("VMOVNTDQA", "XmmReg1,m128"): "    local x:16 = m128;\n    YmmReg1[0,64] = x[0,64];\n    YmmReg1[64,64] = x[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVNTDQA", "YmmReg1,m256"): "    local x:16 = m256_L;\n    local y:16 = m256_H;\n    YmmReg1[0,64] = x[0,64];\n    YmmReg1[64,64] = x[64,64];\n    YmmReg1[128,64] = y[0,64];\n    YmmReg1[192,64] = y[64,64];",
+    ("VMOVNTDQ", "m128,XmmReg1"): "    m128 = XmmReg1;",
+    ("VMOVNTDQ", "m256,YmmReg1"): "    m256_L = XmmReg1;\n    m256_H = YmmReg1_H;",
+    ("VMOVNTPS", "m128,XmmReg1"): "    m128 = XmmReg1;",
+    ("VMOVNTPS", "m256,YmmReg1"): "    m256_L = XmmReg1;\n    m256_H = YmmReg1_H;",
+    ("VMOVNTPD", "m128,XmmReg1"): "    m128 = XmmReg1;",
+    ("VMOVNTPD", "m256,YmmReg1"): "    m256_L = XmmReg1;\n    m256_H = YmmReg1_H;",
+    # scalar moves: merge with vvvv (register form) or zero the rest (memory)
+    ("VMOVSS", "XmmReg1,vexVVVV_XmmReg,XmmReg2"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg2;\n    YmmReg1[0,32] = x[0,32];\n    YmmReg1[32,32] = va[32,32];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSS", "XmmReg1,m32"): "    YmmReg1[0,32] = m32;\n    YmmReg1[32,32] = 0:4;\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSS", "XmmReg2,vexVVVV_XmmReg,XmmReg1"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg1;\n    YmmReg2[0,32] = x[0,32];\n    YmmReg2[32,32] = va[32,32];\n    YmmReg2[64,64] = va[64,64];\n    avx_zero_upper(YmmReg2);",
+    ("VMOVSS", "m32,XmmReg1"): "    m32 = XmmReg1[0,32];",
+    ("VMOVSD", "XmmReg1,vexVVVV_XmmReg,XmmReg2"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg2;\n    YmmReg1[0,64] = x[0,64];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSD", "XmmReg1,m64"): "    YmmReg1[0,64] = m64;\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSD", "XmmReg2,vexVVVV_XmmReg,XmmReg1"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg1;\n    YmmReg2[0,64] = x[0,64];\n    YmmReg2[64,64] = va[64,64];\n    avx_zero_upper(YmmReg2);",
+    ("VMOVSD", "m64,XmmReg1"): "    m64 = XmmReg1[0,64];",
+    ("VMOVD", "XmmReg1,rm32"): "    YmmReg1[0,64] = zext(rm32);\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVD", "rm32,XmmReg1"): "    rm32 = XmmReg1[0,32];\n    build check_rm32_dest;",  # pattern gets check_rm32_dest below
+    ("VMOVQ", "XmmReg1,rm64"): "    YmmReg1[0,64] = rm64;\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVQ", "rm64,XmmReg1"): "    rm64 = XmmReg1[0,64];",
+    ("VMOVQ", "XmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = m;\n    YmmReg1[64,64] = 0:8;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVQ", "m64,XmmReg1"): "    m64 = XmmReg1[0,64];",
+    ("VMOVQ", "XmmReg2,XmmReg1"): "    local x:16 = XmmReg1;\n    YmmReg2[0,64] = x[0,64];\n    YmmReg2[64,64] = 0:8;\n    avx_zero_upper(YmmReg2);",
+    # half moves
+    ("VMOVHLPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg2;\n    YmmReg1[0,64] = x[64,64];\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVLHPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg2;\n    YmmReg1[0,64] = va[0,64];\n    YmmReg1[64,64] = x[0,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVHPS", "XmmReg1,vexVVVV_XmmReg,m64"): "    local va:16 = vexVVVV_XmmReg;\n    YmmReg1[0,64] = va[0,64];\n    YmmReg1[64,64] = m64;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVHPS", "m64,XmmReg1"): "    m64 = XmmReg1[64,64];",
+    ("VMOVHPD", "XmmReg1,vexVVVV_XmmReg,m64"): "    local va:16 = vexVVVV_XmmReg;\n    YmmReg1[0,64] = va[0,64];\n    YmmReg1[64,64] = m64;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVHPD", "m64,XmmReg1"): "    m64 = XmmReg1[64,64];",
+    ("VMOVLPS", "XmmReg1,vexVVVV_XmmReg,m64"): "    local va:16 = vexVVVV_XmmReg;\n    YmmReg1[0,64] = m64;\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVLPS", "m64,XmmReg1"): "    m64 = XmmReg1[0,64];",
+    ("VMOVLPD", "XmmReg1,vexVVVV_XmmReg,m64"): "    local va:16 = vexVVVV_XmmReg;\n    YmmReg1[0,64] = m64;\n    YmmReg1[64,64] = va[64,64];\n    avx_zero_upper(YmmReg1);",
+    ("VMOVLPD", "m64,XmmReg1"): "    m64 = XmmReg1[0,64];",
+    # duplicates
+    ("VMOVDDUP", "XmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = m;\n    YmmReg1[64,64] = m;\n    avx_zero_upper(YmmReg1);",
+    ("VMOVDDUP", "YmmReg1,YmmReg2_m256"): "    YmmReg1[0,64] = lo[0,64];\n    YmmReg1[64,64] = lo[0,64];\n    YmmReg1[128,64] = hi[0,64];\n    YmmReg1[192,64] = hi[0,64];",
+    ("VMOVSHDUP", "XmmReg1,XmmReg2_m128"): "    avx_dup_odd32(YmmReg1[0,64], m[0,64]);\n    avx_dup_odd32(YmmReg1[64,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSHDUP", "YmmReg1,YmmReg2_m256"): "    avx_dup_odd32(YmmReg1[0,64], lo[0,64]);\n    avx_dup_odd32(YmmReg1[64,64], lo[64,64]);\n    avx_dup_odd32(YmmReg1[128,64], hi[0,64]);\n    avx_dup_odd32(YmmReg1[192,64], hi[64,64]);",
+    ("VMOVSLDUP", "XmmReg1,XmmReg2_m128"): "    avx_dup_even32(YmmReg1[0,64], m[0,64]);\n    avx_dup_even32(YmmReg1[64,64], m[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VMOVSLDUP", "YmmReg1,YmmReg2_m256"): "    avx_dup_even32(YmmReg1[0,64], lo[0,64]);\n    avx_dup_even32(YmmReg1[64,64], lo[64,64]);\n    avx_dup_even32(YmmReg1[128,64], hi[0,64]);\n    avx_dup_even32(YmmReg1[192,64], hi[64,64]);",
+    # broadcasts
+    ("VBROADCASTSS", "XmmReg1,XmmReg2_m32"): "    avx_bcast32(YmmReg1[0,64], m);\n    avx_bcast32(YmmReg1[64,64], m);\n    avx_zero_upper(YmmReg1);",
+    ("VBROADCASTSS", "YmmReg1,XmmReg2_m32"): "    avx_bcast32(YmmReg1[0,64], m);\n    avx_bcast32(YmmReg1[64,64], m);\n    avx_bcast32(YmmReg1[128,64], m);\n    avx_bcast32(YmmReg1[192,64], m);",
+    ("VBROADCASTSD", "YmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = m;\n    YmmReg1[64,64] = m;\n    YmmReg1[128,64] = m;\n    YmmReg1[192,64] = m;",
+    ("VBROADCASTF128", "YmmReg1,XmmReg2_m128"): "    YmmReg1[0,64] = m[0,64];\n    YmmReg1[64,64] = m[64,64];\n    YmmReg1[128,64] = m[0,64];\n    YmmReg1[192,64] = m[64,64];",
+    ("VBROADCASTI128", "YmmReg1,XmmReg2_m128"): "    YmmReg1[0,64] = m[0,64];\n    YmmReg1[64,64] = m[64,64];\n    YmmReg1[128,64] = m[0,64];\n    YmmReg1[192,64] = m[64,64];",
+    ("VPBROADCASTB", "XmmReg1,XmmReg2_m8"): "    local b:1 = m[0,8];\n    avx_bcast8(YmmReg1[0,64], b);\n    avx_bcast8(YmmReg1[64,64], b);\n    avx_zero_upper(YmmReg1);",
+    ("VPBROADCASTB", "YmmReg1,XmmReg2_m8"): "    local b:1 = m[0,8];\n    avx_bcast8(YmmReg1[0,64], b);\n    avx_bcast8(YmmReg1[64,64], b);\n    avx_bcast8(YmmReg1[128,64], b);\n    avx_bcast8(YmmReg1[192,64], b);",
+    ("VPBROADCASTW", "XmmReg1,XmmReg2_m16"): "    avx_bcast16(YmmReg1[0,64], m);\n    avx_bcast16(YmmReg1[64,64], m);\n    avx_zero_upper(YmmReg1);",
+    ("VPBROADCASTW", "YmmReg1,XmmReg2_m16"): "    avx_bcast16(YmmReg1[0,64], m);\n    avx_bcast16(YmmReg1[64,64], m);\n    avx_bcast16(YmmReg1[128,64], m);\n    avx_bcast16(YmmReg1[192,64], m);",
+    ("VPBROADCASTD", "XmmReg1,XmmReg2_m32"): "    avx_bcast32(YmmReg1[0,64], m);\n    avx_bcast32(YmmReg1[64,64], m);\n    avx_zero_upper(YmmReg1);",
+    ("VPBROADCASTD", "YmmReg1,XmmReg2_m32"): "    avx_bcast32(YmmReg1[0,64], m);\n    avx_bcast32(YmmReg1[64,64], m);\n    avx_bcast32(YmmReg1[128,64], m);\n    avx_bcast32(YmmReg1[192,64], m);",
+    ("VPBROADCASTQ", "XmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = m;\n    YmmReg1[64,64] = m;\n    avx_zero_upper(YmmReg1);",
+    ("VPBROADCASTQ", "YmmReg1,XmmReg2_m64"): "    YmmReg1[0,64] = m;\n    YmmReg1[64,64] = m;\n    YmmReg1[128,64] = m;\n    YmmReg1[192,64] = m;",
+    # immediate blends: bit i of imm8 selects lane i from the r/m operand
+    ("VBLENDPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"): "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n    avx_blend32(YmmReg1[0,64], va[0,64], m[0,64], s);\n    avx_blend32(YmmReg1[64,64], va[64,64], m[64,64], s >> 2);\n    avx_zero_upper(YmmReg1);",
+    ("VBLENDPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"): "    local s:1 = imm8;\n    avx_blend32(YmmReg1[0,64], vlo[0,64], lo[0,64], s);\n    avx_blend32(YmmReg1[64,64], vlo[64,64], lo[64,64], s >> 2);\n    avx_blend32(YmmReg1[128,64], vhi[0,64], hi[0,64], s >> 4);\n    avx_blend32(YmmReg1[192,64], vhi[64,64], hi[64,64], s >> 6);",
+    ("VBLENDPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8_3_0"): "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8_3_0;\n    avx_blend64(YmmReg1[0,64], va[0,64], m[0,64], s);\n    avx_blend64(YmmReg1[64,64], va[64,64], m[64,64], s >> 1);\n    avx_zero_upper(YmmReg1);",
+    ("VBLENDPD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8_3_0"): "    local s:1 = imm8_3_0;\n    avx_blend64(YmmReg1[0,64], vlo[0,64], lo[0,64], s);\n    avx_blend64(YmmReg1[64,64], vlo[64,64], lo[64,64], s >> 1);\n    avx_blend64(YmmReg1[128,64], vhi[0,64], hi[0,64], s >> 2);\n    avx_blend64(YmmReg1[192,64], vhi[64,64], hi[64,64], s >> 3);",
+    ("VPBLENDW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"): "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n    avx_blend16(YmmReg1[0,64], va[0,64], m[0,64], s);\n    avx_blend16(YmmReg1[64,64], va[64,64], m[64,64], s >> 4);\n    avx_zero_upper(YmmReg1);",
+    ("VPBLENDW", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"): "    local s:1 = imm8;\n    avx_blend16(YmmReg1[0,64], vlo[0,64], lo[0,64], s);\n    avx_blend16(YmmReg1[64,64], vlo[64,64], lo[64,64], s >> 4);\n    avx_blend16(YmmReg1[128,64], vhi[0,64], hi[0,64], s);\n    avx_blend16(YmmReg1[192,64], vhi[64,64], hi[64,64], s >> 4);",
+    ("VPBLENDD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"): "    local va:16 = vexVVVV_XmmReg;\n    local s:1 = imm8;\n    avx_blend32(YmmReg1[0,64], va[0,64], m[0,64], s);\n    avx_blend32(YmmReg1[64,64], va[64,64], m[64,64], s >> 2);\n    avx_zero_upper(YmmReg1);",
+    ("VPBLENDD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"): "    local s:1 = imm8;\n    avx_blend32(YmmReg1[0,64], vlo[0,64], lo[0,64], s);\n    avx_blend32(YmmReg1[64,64], vlo[64,64], lo[64,64], s >> 2);\n    avx_blend32(YmmReg1[128,64], vhi[0,64], hi[0,64], s >> 4);\n    avx_blend32(YmmReg1[192,64], vhi[64,64], hi[64,64], s >> 6);",
+    # variable blends: the mask register's lane sign bits select
+    ("VBLENDVPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,Xmm_imm8_7_4"): "    local va:16 = vexVVVV_XmmReg;\n    local k:16 = Xmm_imm8_7_4;\n    avx_blendv32(YmmReg1[0,64], va[0,64], m[0,64], k[0,64]);\n    avx_blendv32(YmmReg1[64,64], va[64,64], m[64,64], k[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VBLENDVPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,Ymm_imm8_7_4"): "    local kl:16 = YmmMask_L;\n    local kh:16 = YmmMask_H;\n    avx_blendv32(YmmReg1[0,64], vlo[0,64], lo[0,64], kl[0,64]);\n    avx_blendv32(YmmReg1[64,64], vlo[64,64], lo[64,64], kl[64,64]);\n    avx_blendv32(YmmReg1[128,64], vhi[0,64], hi[0,64], kh[0,64]);\n    avx_blendv32(YmmReg1[192,64], vhi[64,64], hi[64,64], kh[64,64]);",
+    ("VBLENDVPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,Xmm_imm8_7_4"): "    local va:16 = vexVVVV_XmmReg;\n    local k:16 = Xmm_imm8_7_4;\n    avx_blendv64(YmmReg1[0,64], va[0,64], m[0,64], k[0,64]);\n    avx_blendv64(YmmReg1[64,64], va[64,64], m[64,64], k[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VBLENDVPD", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,Ymm_imm8_7_4"): "    local kl:16 = YmmMask_L;\n    local kh:16 = YmmMask_H;\n    avx_blendv64(YmmReg1[0,64], vlo[0,64], lo[0,64], kl[0,64]);\n    avx_blendv64(YmmReg1[64,64], vlo[64,64], lo[64,64], kl[64,64]);\n    avx_blendv64(YmmReg1[128,64], vhi[0,64], hi[0,64], kh[0,64]);\n    avx_blendv64(YmmReg1[192,64], vhi[64,64], hi[64,64], kh[64,64]);",
+    ("VPBLENDVB", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,Xmm_imm8_7_4"): "    local va:16 = vexVVVV_XmmReg;\n    local k:16 = Xmm_imm8_7_4;\n    avx_blendv8(YmmReg1[0,64], va[0,64], m[0,64], k[0,64]);\n    avx_blendv8(YmmReg1[64,64], va[64,64], m[64,64], k[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VPBLENDVB", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,Ymm_imm8_7_4"): "    local kl:16 = YmmMask_L;\n    local kh:16 = YmmMask_H;\n    avx_blendv8(YmmReg1[0,64], vlo[0,64], lo[0,64], kl[0,64]);\n    avx_blendv8(YmmReg1[64,64], vlo[64,64], lo[64,64], kl[64,64]);\n    avx_blendv8(YmmReg1[128,64], vhi[0,64], hi[0,64], kh[0,64]);\n    avx_blendv8(YmmReg1[192,64], vhi[64,64], hi[64,64], kh[64,64]);",
+    # masked moves: the load form zeroes unselected lanes; the store form leaves memory alone
+    ("VMASKMOVPS", "XmmReg1,vexVVVV_XmmReg,m128"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = m128;\n    avx_maskload32(YmmReg1[0,64], x[0,64], va[0,64]);\n    avx_maskload32(YmmReg1[64,64], x[64,64], va[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VMASKMOVPS", "YmmReg1,vexVVVV_YmmReg,m256"): "    local x:16 = m256_L;\n    local y:16 = m256_H;\n    avx_maskload32(YmmReg1[0,64], x[0,64], vlo[0,64]);\n    avx_maskload32(YmmReg1[64,64], x[64,64], vlo[64,64]);\n    avx_maskload32(YmmReg1[128,64], y[0,64], vhi[0,64]);\n    avx_maskload32(YmmReg1[192,64], y[64,64], vhi[64,64]);",
+    ("VMASKMOVPS", "m128,vexVVVV_XmmReg,XmmReg1"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg1;\n    local o:16 = m128;\n    local r0:8; avx_maskstore32(r0, o[0,64], x[0,64], va[0,64]);\n    local r1:8; avx_maskstore32(r1, o[64,64], x[64,64], va[64,64]);\n    m128 = (zext(r1) << 64) | zext(r0);",
+    ("VMASKMOVPS", "m256,vexVVVV_YmmReg,YmmReg1"): "    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n    local ol:16 = m256_L;\n    local oh:16 = m256_H;\n    local r0:8; avx_maskstore32(r0, ol[0,64], x[0,64], vlo[0,64]);\n    local r1:8; avx_maskstore32(r1, ol[64,64], x[64,64], vlo[64,64]);\n    local r2:8; avx_maskstore32(r2, oh[0,64], y[0,64], vhi[0,64]);\n    local r3:8; avx_maskstore32(r3, oh[64,64], y[64,64], vhi[64,64]);\n    m256_L = (zext(r1) << 64) | zext(r0);\n    m256_H = (zext(r3) << 64) | zext(r2);",
+    ("VMASKMOVPD", "XmmReg1,vexVVVV_XmmReg,m128"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = m128;\n    avx_maskload64(YmmReg1[0,64], x[0,64], va[0,64]);\n    avx_maskload64(YmmReg1[64,64], x[64,64], va[64,64]);\n    avx_zero_upper(YmmReg1);",
+    ("VMASKMOVPD", "YmmReg1,vexVVVV_YmmReg,m256"): "    local x:16 = m256_L;\n    local y:16 = m256_H;\n    avx_maskload64(YmmReg1[0,64], x[0,64], vlo[0,64]);\n    avx_maskload64(YmmReg1[64,64], x[64,64], vlo[64,64]);\n    avx_maskload64(YmmReg1[128,64], y[0,64], vhi[0,64]);\n    avx_maskload64(YmmReg1[192,64], y[64,64], vhi[64,64]);",
+    ("VMASKMOVPD", "m128,vexVVVV_XmmReg,XmmReg1"): "    local va:16 = vexVVVV_XmmReg;\n    local x:16 = XmmReg1;\n    local o:16 = m128;\n    local r0:8; avx_maskstore64(r0, o[0,64], x[0,64], va[0,64]);\n    local r1:8; avx_maskstore64(r1, o[64,64], x[64,64], va[64,64]);\n    m128 = (zext(r1) << 64) | zext(r0);",
+    ("VMASKMOVPD", "m256,vexVVVV_YmmReg,YmmReg1"): "    local x:16 = XmmReg1;\n    local y:16 = YmmReg1_H;\n    local ol:16 = m256_L;\n    local oh:16 = m256_H;\n    local r0:8; avx_maskstore64(r0, ol[0,64], x[0,64], vlo[0,64]);\n    local r1:8; avx_maskstore64(r1, ol[64,64], x[64,64], vlo[64,64]);\n    local r2:8; avx_maskstore64(r2, oh[0,64], y[0,64], vhi[0,64]);\n    local r3:8; avx_maskstore64(r3, oh[64,64], y[64,64], vhi[64,64]);\n    m256_L = (zext(r1) << 64) | zext(r0);\n    m256_H = (zext(r3) << 64) | zext(r2);",
+    ("VMASKMOVDQU", "XmmReg1,XmmReg2"): "    local x:16 = XmmReg1;\n    local k:16 = XmmReg2;\n    local o:16 = *:16 RDI;\n    local r0:8; avx_blendv8(r0, o[0,64], x[0,64], k[0,64]);\n    local r1:8; avx_blendv8(r1, o[64,64], x[64,64], k[64,64]);\n    *:16 RDI = (zext(r1) << 64) | zext(r0);",
+})
+for _n, _w in (("VPMASKMOVD", 32), ("VPMASKMOVQ", 64)):
+    for _k, _b in MANUAL.copy().items():
+        if _k[0] == ("VMASKMOVPS" if _w == 32 else "VMASKMOVPD"):
+            MANUAL[(_n, _k[1])] = _b
+
+
 def constructor_manual(name: str, operands: str, pattern: str, shape: str, body: str) -> str:
     pattern = pattern.replace("(XmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
     pattern = pattern.replace("(YmmReg1 & ZmmReg1)", "YmmReg1")
@@ -692,12 +838,39 @@ def constructor_manual(name: str, operands: str, pattern: str, shape: str, body:
         pre.append("    local m:4 = XmmReg2_m32;")
     elif "XmmReg2_m16" in shape:
         pre.append("    local m:2 = XmmReg2_m16;")
+    elif "XmmReg2_m8" in shape:
+        # the m8 subtable exports a 16-byte zero-extended local
+        pre.append("    local m:16 = XmmReg2_m8;")
     if shape == "Reg32,YmmReg2":
         pattern = re.sub(r"\bYmmReg2\b", "YmmReg2 & YmmReg2_L & YmmReg2_H", pattern, count=1)
+    # register stores name ZmmReg2 in the old patterns; the body writes YmmReg2 lanes
+    pattern = pattern.replace("(XmmReg2 & ZmmReg2)", "(XmmReg2 & YmmReg2)")
+    pattern = pattern.replace("XmmReg2 & ZmmReg2 ", "XmmReg2 & YmmReg2 ")
+    pattern = pattern.replace("XmmReg2 & ZmmReg2)", "XmmReg2 & YmmReg2)")
+    pattern = pattern.replace("(YmmReg2 & ZmmReg2)", "YmmReg2")
+    pattern = pattern.replace("YmmReg2 & ZmmReg2 ", "YmmReg2 ")
+    pattern = pattern.replace("ZmmReg2 & YmmReg2", "YmmReg2")
+    pattern = pattern.replace("XmmReg1 & ZmmReg1 &", "XmmReg1 & YmmReg1 &")
+    pattern = pattern.replace("(XmmReg1 & YmmReg1 & ZmmReg1)", "(XmmReg1 & YmmReg1)")
+    if "XmmReg2_m128_extend" in pattern:
+        pattern = pattern.replace("(XmmReg1 & XmmReg2_m128_extend)", "XmmReg1")
+    if shape in ("XmmReg2,vexVVVV_XmmReg,XmmReg1", "XmmReg2,XmmReg1"):
+        pattern = re.sub(r"\bXmmReg2\b", "XmmReg2 & YmmReg2", pattern, count=1) if "YmmReg2" not in pattern else pattern
+    if "m256_L" in body:
+        pattern = pattern.replace("& m256", "& m256 & m256_L & m256_H")
+    if "YmmMask_L" in body:
+        # Attached fields named twice on the trailing imm8 token trip the
+        # decoder; the halves go through subtables on the same field instead.
+        pattern = pattern.replace("; Ymm_imm8_7_4", "; Ymm_imm8_7_4 & YmmMask_L & YmmMask_H")
+    if "vlo" in body and "vexVVVV_YmmReg" in shape and "vexVVVV_YmmReg_L" not in pattern:
+        pattern = pattern.replace("& vexVVVV_YmmReg;", "& vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H;")
+        pre.extend(["    local vlo:16 = vexVVVV_YmmReg_L;", "    local vhi:16 = vexVVVV_YmmReg_H;"])
     if "YmmReg1_H" in body:
         pattern = re.sub(r"\bYmmReg1\b", "(YmmReg1 & XmmReg1 & YmmReg1_H)", pattern, count=1)
     if "check_Reg32_dest" in body and "check_Reg32_dest" not in pattern:
         pattern = pattern.replace("Reg32", "Reg32 & check_Reg32_dest", 1)
+    if "check_rm32_dest" in body and "check_rm32_dest" not in pattern:
+        pattern = pattern.replace("& rm32", "& rm32 & check_rm32_dest ...", 1)
     return f":{name} {operands} is {pattern}\n{{\n" + "\n".join(pre + [body]) + "\n}\n"
 
 
@@ -827,6 +1000,13 @@ def packed_file(inventory: list[dict]) -> tuple[str, set[str]]:
                 text = gen(name, row["operands"], row["pattern"], template, arity)
         elif name in TABLE_SHIFT:
             text = constructor_shift(name, row["operands"], row["pattern"], TABLE_SHIFT[name], shape)
+        elif (name, shape) in MANUAL and MANUAL[(name, shape)] == "SPLIT":
+            pat = row["pattern"].replace("(XmmReg1 & XmmReg2_m128_extend) ... & XmmReg2_m128", "")
+            reg = constructor_manual(name, "XmmReg2, XmmReg1",
+                pat + "mod=3 & XmmReg1 & (XmmReg2 & YmmReg2)", "XmmReg2,XmmReg1", MANUAL[(name, "XmmReg2,XmmReg1")])
+            mem = constructor_manual(name, "m128, XmmReg1",
+                pat + "XmmReg1 ... & m128", "m128,XmmReg1", MANUAL[(name, "m128,XmmReg1")])
+            text = reg + "\n" + mem
         elif (name, shape) in MANUAL:
             text = constructor_manual(name, row["operands"], row["pattern"], shape, MANUAL[(name, shape)])
         if text is None:

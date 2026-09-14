@@ -707,6 +707,107 @@ macro avx_bytemask(dest, a) {
     dest = (zext(x[7,1]) << 0) | (zext(x[15,1]) << 1) | (zext(x[23,1]) << 2) | (zext(x[31,1]) << 3) | (zext(x[39,1]) << 4) | (zext(x[47,1]) << 5) | (zext(x[55,1]) << 6) | (zext(x[63,1]) << 7);
 }
 
+# Blends: per lane, pick b where the selector bit (or the lane's sign
+# bit, for the variable forms) is set, else a.
+macro avx_blend16(dest, a, b, sel) {
+    local x:8 = a; local y:8 = b; local s:1 = sel; local k:8;
+    k[0,16] = 0 - zext(s[0,1]);
+    k[16,16] = 0 - zext(s[1,1]);
+    k[32,16] = 0 - zext(s[2,1]);
+    k[48,16] = 0 - zext(s[3,1]);
+    dest = (y & k) | (x & ~k);
+}
+macro avx_blend32(dest, a, b, sel) {
+    local x:8 = a; local y:8 = b; local s:1 = sel; local k:8;
+    k[0,32] = 0 - zext(s[0,1]);
+    k[32,32] = 0 - zext(s[1,1]);
+    dest = (y & k) | (x & ~k);
+}
+macro avx_blend64(dest, a, b, sel) {
+    local x:8 = a; local y:8 = b; local s:1 = sel; local k:8;
+    k[0,64] = 0 - zext(s[0,1]);
+    dest = (y & k) | (x & ~k);
+}
+macro avx_blendv8(dest, a, b, mask) {
+    local x:8 = a; local y:8 = b; local v:8 = mask; local k:8;
+    k[0,8] = 0 - zext(v[0,8] s< 0);
+    k[8,8] = 0 - zext(v[8,8] s< 0);
+    k[16,8] = 0 - zext(v[16,8] s< 0);
+    k[24,8] = 0 - zext(v[24,8] s< 0);
+    k[32,8] = 0 - zext(v[32,8] s< 0);
+    k[40,8] = 0 - zext(v[40,8] s< 0);
+    k[48,8] = 0 - zext(v[48,8] s< 0);
+    k[56,8] = 0 - zext(v[56,8] s< 0);
+    dest = (y & k) | (x & ~k);
+}
+macro avx_blendv32(dest, a, b, mask) {
+    local x:8 = a; local y:8 = b; local v:8 = mask; local k:8;
+    k[0,32] = 0 - zext(v[0,32] s< 0);
+    k[32,32] = 0 - zext(v[32,32] s< 0);
+    dest = (y & k) | (x & ~k);
+}
+macro avx_blendv64(dest, a, b, mask) {
+    local x:8 = a; local y:8 = b; local v:8 = mask; local k:8;
+    k[0,64] = 0 - zext(v[0,64] s< 0);
+    dest = (y & k) | (x & ~k);
+}
+
+# Masked loads and stores: a lane moves only when its mask sign bit is set.
+macro avx_maskload32(dest, src, mask) {
+    local v:8 = mask; local x:8 = src; local k:8;
+    k[0,32] = 0 - zext(v[0,32] s< 0);
+    k[32,32] = 0 - zext(v[32,32] s< 0);
+    dest = x & k;
+}
+macro avx_maskstore32(dest, old, src, mask) {
+    local v:8 = mask; local x:8 = src; local o:8 = old; local k:8;
+    k[0,32] = 0 - zext(v[0,32] s< 0);
+    k[32,32] = 0 - zext(v[32,32] s< 0);
+    dest = (x & k) | (o & ~k);
+}
+macro avx_maskload64(dest, src, mask) {
+    local v:8 = mask; local x:8 = src; local k:8;
+    k[0,64] = 0 - zext(v[0,64] s< 0);
+    dest = x & k;
+}
+macro avx_maskstore64(dest, old, src, mask) {
+    local v:8 = mask; local x:8 = src; local o:8 = old; local k:8;
+    k[0,64] = 0 - zext(v[0,64] s< 0);
+    dest = (x & k) | (o & ~k);
+}
+
+# Duplicate the odd or even dword of each pair.
+macro avx_dup_odd32(dest, a) { local x:8 = a; local r:8; r[0,32] = x[32,32]; r[32,32] = x[32,32]; dest = r; }
+macro avx_dup_even32(dest, a) { local x:8 = a; local r:8; r[0,32] = x[0,32]; r[32,32] = x[0,32]; dest = r; }
+
+# Broadcast one lane across a qword.
+macro avx_bcast8(dest, a) {
+    local x:1 = a; local r:8;
+    r[0,8] = x;
+    r[8,8] = x;
+    r[16,8] = x;
+    r[24,8] = x;
+    r[32,8] = x;
+    r[40,8] = x;
+    r[48,8] = x;
+    r[56,8] = x;
+    dest = r;
+}
+macro avx_bcast16(dest, a) {
+    local x:2 = a; local r:8;
+    r[0,16] = x;
+    r[16,16] = x;
+    r[32,16] = x;
+    r[48,16] = x;
+    dest = r;
+}
+macro avx_bcast32(dest, a) {
+    local x:4 = a; local r:8;
+    r[0,32] = x;
+    r[32,32] = x;
+    dest = r;
+}
+
 # IEEE lanes, through the MXCSR-aware SSE scalar macros.
 macro avx_fadd32(dest, a, b) {
     local x:8 = a; local y:8 = b; local r:8;
