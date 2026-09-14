@@ -877,7 +877,10 @@ macro pblendw128(dst, src, ctl) {
 # lane 0 is p0+p1 and lane 1 p1+p0. Derived from the Binit captures (every
 # NaN result of 207k states), numerically identical since each pairing is
 # commutative.
-macro dpps128(dst, src, ctl) {
+# Lane 0 pairs the high products as (p2+p3) in a 128-bit operation and as
+# (p3+p2) in the upper half of VDPPS ymm (derived from the captured NaN
+# results the same way); `hi` selects the latter.
+macro dpps128_ordered(dst, src, ctl, hi) {
     local a:16 = dst;
     local b:16 = src;
     local c:1 = ctl;
@@ -909,7 +912,8 @@ macro dpps128(dst, src, ctl) {
     local s32:4; conditionalAssign(s32, n2 && n3, p3, s23);
     local ns01:1 = (s01[23,8] == 0xff) && (s01[0,23] != 0);
     local ns23:1 = (s23[23,8] == 0xff) && (s23[0,23] != 0);
-    local sum0:4; conditionalAssign(sum0, ns01, s10, sum);
+    local sum0:4; conditionalAssign(sum0, ns23 && (hi != 0), s32, sum);
+    conditionalAssign(sum0, ns01, s10, sum0);
     local sum1:4 = sum;
     local sum2:4; conditionalAssign(sum2, ns01, s10, sum);
     conditionalAssign(sum2, ns23, s32, sum2);
@@ -918,6 +922,14 @@ macro dpps128(dst, src, ctl) {
     conditionalAssign(dst[ 32,32], c[1,1], sum1, 0:4);
     conditionalAssign(dst[ 64,32], c[2,1], sum2, 0:4);
     conditionalAssign(dst[ 96,32], c[3,1], sum3, 0:4);
+}
+
+macro dpps128(dst, src, ctl) {
+    dpps128_ordered(dst, src, ctl, 0:1);
+}
+
+macro dpps128_hi(dst, src, ctl) {
+    dpps128_ordered(dst, src, ctl, 1:1);
 }
 
 macro dppd128(dst, src, ctl) {

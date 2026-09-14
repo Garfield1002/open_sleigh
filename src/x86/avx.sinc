@@ -761,7 +761,7 @@ define pcodeop vcvtps2ph;
     XmmReg1 = vlo;
     dpps128(XmmReg1, lo, imm8:1);
     YmmReg1_H = vhi;
-    dpps128(YmmReg1_H, hi, imm8:1);
+    dpps128_hi(YmmReg1_H, hi, imm8:1);
 }
 
 # VEXTRACTPS
@@ -2039,11 +2039,20 @@ define pcodeop vcvtps2ph;
 }
 
 # VPEXTRW
-:VPEXTRW Reg32_m16, XmmReg1, imm8 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; XmmReg1 ... & Reg32_m16; imm8
+:VPEXTRW Rmr32, XmmReg1, imm8 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; mod=3 & XmmReg1 & Rmr32 & check_Rmr32_dest; imm8
 {
     local x:16 = XmmReg1;
     local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);
-    Reg32_m16 = zext(r);
+    Rmr32 = zext(r);
+    build check_Rmr32_dest;
+}
+
+# VPEXTRW
+:VPEXTRW m16, XmmReg1, imm8 is $(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; (XmmReg1 ... & m16); imm8
+{
+    local x:16 = XmmReg1;
+    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);
+    m16 = r;
 }
 
 # VPHADDW

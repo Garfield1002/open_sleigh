@@ -1339,8 +1339,15 @@
  {
   "file": "avx.sinc",
   "name": "VPEXTRW",
-  "operands": "Reg32_m16, XmmReg1, imm8",
-  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; XmmReg1 ... & Reg32_m16; imm8",
+  "operands": "Rmr32, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; mod=3 & XmmReg1 & Rmr32 & check_Rmr32_dest; imm8",
+  "body": "Reg32_m16 = vpextrw_avx( XmmReg1, imm8:1 );\n\t# TODO Reg64 = zext(Reg32)"
+ },
+ {
+  "file": "avx.sinc",
+  "name": "VPEXTRW",
+  "operands": "m16, XmmReg1, imm8",
+  "pattern": "$(VEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0); byte=0x15; (XmmReg1 ... & m16); imm8",
   "body": "Reg32_m16 = vpextrw_avx( XmmReg1, imm8:1 );\n\t# TODO Reg64 = zext(Reg32)"
  },
  {

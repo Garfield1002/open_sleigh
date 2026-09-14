@@ -149,10 +149,16 @@ def macro_library() -> str:
         ("avx_addus8", "paddusb"), ("avx_addus16", "paddusw"),
         ("avx_subs8", "psubsb"), ("avx_subs16", "psubsw"),
         ("avx_subus8", "psubusb"), ("avx_subus16", "psubusw"),
-        ("avx_avg8", "pavgb"), ("avx_avg16", "pavgw"),
         ("avx_mulhu16", "pmulhuw"), ("avx_madd16", "pmaddwd"),
     ]:
         out.append(userop_macro(name, op))
+    out.append("\n# Rounded unsigned average per lane, (x + y + 1) >> 1, as\n"
+               "# (x & y) + ((x ^ y) >> 1) + ((x ^ y) & 1): every lane stays within its\n"
+               "# width, so the three qword adds never carry across lanes.\n")
+    for w, half, one in ((8, "0x7f7f7f7f7f7f7f7f", "0x0101010101010101"),
+                         (16, "0x7fff7fff7fff7fff", "0x0001000100010001")):
+        out.append(f"macro avx_avg{w}(dest, a, b) {{ local x:8 = a; local y:8 = b; local d:8 = x ^ y; "
+                   f"dest = (x & y) + ((d >> 1) & {half}) + (d & {one}); }}\n")
     out.append("\n# Signed high half of the 16-bit product.\n")
     lines = ["    local x:8 = a; local y:8 = b; local r:8;"]
     for i, sl in enumerate(lane_slices(16)):
@@ -457,11 +463,13 @@ def macro_library() -> str:
             f"    local is_t:1 = ((0x{rel_masks['T']:08x}:4 >> p) & 1) != 0;",
             f"    local n:1 = ((0x{nan_mask:08x}:4 >> p) & 1) != 0;",
             f"    local strict:1 = ((0x{sig_mask:08x}:4 >> p) & 1) != 0;",
+            # Reports first: the operands come back flushed by DAZ and the
+            # relations must see the flushed values.
+            f"    sse_compare{w}(a, b, strict);",
             "    local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;",
             "    local gt:1 = b f< a; local ge:1 = b f<= a;",
             "    local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;",
             "    local res:1 = (o && !unord) || (n && unord);",
-            f"    sse_compare{w}(a, b, strict);",
             "    dest = 0 - zext(res);",
         ]
         out.append(f"macro avx_cmp{w}(dest, x, y, pred) {{\n" + "\n".join(lines) + "\n}\n")
@@ -1138,7 +1146,8 @@ MANUAL.update({
     ("VPEXTRB", "Rmr32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:1; avx_extract8(r, x[0,64], x[64,64], imm8:1);\n    Rmr32 = zext(r);\n    build check_Rmr32_dest;",
     ("VPEXTRB", "m8,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:1; avx_extract8(r, x[0,64], x[64,64], imm8:1);\n    m8 = r;",
     ("VPEXTRW", "Reg32,XmmReg2,imm8"): "    local x:16 = XmmReg2;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    Reg32 = zext(r);\n    build check_Reg32_dest;",
-    ("VPEXTRW", "Reg32_m16,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    Reg32_m16 = zext(r);",
+    ("VPEXTRW", "Rmr32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    Rmr32 = zext(r);\n    build check_Rmr32_dest;",
+    ("VPEXTRW", "m16,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:2; avx_extract16(r, x[0,64], x[64,64], imm8:1);\n    m16 = r;",
     ("VPEXTRD", "Rmr32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:4; avx_sel_dword(r, imm8:1, x[0,64], x[64,64]);\n    Rmr32 = r;\n    build check_Rmr32_dest;",
     ("VPEXTRD", "m32,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local r:4; avx_sel_dword(r, imm8:1, x[0,64], x[64,64]);\n    m32 = r;",
     ("VPEXTRQ", "rm64,XmmReg1,imm8"): "    local x:16 = XmmReg1;\n    local i:1 = imm8 & 1;\n    rm64 = (x[0,64] * zext(i == 0)) | (x[64,64] * zext(i == 1));",
@@ -1181,7 +1190,7 @@ MANUAL.update({
     ("VDPPS", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
         "    XmmReg1 = vexVVVV_XmmReg;\n    dpps128(XmmReg1, m, imm8:1);\n    avx_zero_upper(YmmReg1);",
     ("VDPPS", "YmmReg1,vexVVVV_YmmReg,YmmReg2_m256,imm8"):
-        "    XmmReg1 = vlo;\n    dpps128(XmmReg1, lo, imm8:1);\n    YmmReg1_H = vhi;\n    dpps128(YmmReg1_H, hi, imm8:1);",
+        "    XmmReg1 = vlo;\n    dpps128(XmmReg1, lo, imm8:1);\n    YmmReg1_H = vhi;\n    dpps128_hi(YmmReg1_H, hi, imm8:1);",
     ("VDPPD", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):
         "    XmmReg1 = vexVVVV_XmmReg;\n    dppd128(XmmReg1, m, imm8:1);\n    avx_zero_upper(YmmReg1);",
     ("VMPSADBW", "XmmReg1,vexVVVV_XmmReg,XmmReg2_m128,imm8"):

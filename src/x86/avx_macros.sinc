@@ -109,10 +109,14 @@ macro avx_subs8(dest, a, b) { local x:8 = a; local y:8 = b; dest = psubsb(x, y);
 macro avx_subs16(dest, a, b) { local x:8 = a; local y:8 = b; dest = psubsw(x, y); }
 macro avx_subus8(dest, a, b) { local x:8 = a; local y:8 = b; dest = psubusb(x, y); }
 macro avx_subus16(dest, a, b) { local x:8 = a; local y:8 = b; dest = psubusw(x, y); }
-macro avx_avg8(dest, a, b) { local x:8 = a; local y:8 = b; dest = pavgb(x, y); }
-macro avx_avg16(dest, a, b) { local x:8 = a; local y:8 = b; dest = pavgw(x, y); }
 macro avx_mulhu16(dest, a, b) { local x:8 = a; local y:8 = b; dest = pmulhuw(x, y); }
 macro avx_madd16(dest, a, b) { local x:8 = a; local y:8 = b; dest = pmaddwd(x, y); }
+
+# Rounded unsigned average per lane, (x + y + 1) >> 1, as
+# (x & y) + ((x ^ y) >> 1) + ((x ^ y) & 1): every lane stays within its
+# width, so the three qword adds never carry across lanes.
+macro avx_avg8(dest, a, b) { local x:8 = a; local y:8 = b; local d:8 = x ^ y; dest = (x & y) + ((d >> 1) & 0x7f7f7f7f7f7f7f7f) + (d & 0x0101010101010101); }
+macro avx_avg16(dest, a, b) { local x:8 = a; local y:8 = b; local d:8 = x ^ y; dest = (x & y) + ((d >> 1) & 0x7fff7fff7fff7fff) + (d & 0x0001000100010001); }
 
 # Signed high half of the 16-bit product.
 macro avx_mulhs16(dest, a, b) {
@@ -1025,11 +1029,11 @@ macro avx_cmp32(dest, x, y, pred) {
     local is_t:1 = ((0x80808080:4 >> p) & 1) != 0;
     local n:1 = ((0x87788778:4 >> p) & 1) != 0;
     local strict:1 = ((0x99996666:4 >> p) & 1) != 0;
+    sse_compare32(a, b, strict);
     local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;
     local gt:1 = b f< a; local ge:1 = b f<= a;
     local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;
     local res:1 = (o && !unord) || (n && unord);
-    sse_compare32(a, b, strict);
     dest = 0 - zext(res);
 }
 macro avx_cmp64(dest, x, y, pred) {
@@ -1046,11 +1050,11 @@ macro avx_cmp64(dest, x, y, pred) {
     local is_t:1 = ((0x80808080:4 >> p) & 1) != 0;
     local n:1 = ((0x87788778:4 >> p) & 1) != 0;
     local strict:1 = ((0x99996666:4 >> p) & 1) != 0;
+    sse_compare64(a, b, strict);
     local eq:1 = a f== b; local lt:1 = a f< b; local le:1 = a f<= b;
     local gt:1 = b f< a; local ge:1 = b f<= a;
     local o:1 = (is_eq && eq) || (is_lt && lt) || (is_le && le) || (is_gt && gt) || (is_ge && ge) || (is_ne && !eq) || is_t;
     local res:1 = (o && !unord) || (n && unord);
-    sse_compare64(a, b, strict);
     dest = 0 - zext(res);
 }
 
