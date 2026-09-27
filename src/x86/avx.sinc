@@ -236,24 +236,24 @@ define pcodeop vcvtps2ph;
 }
 
 # VBLENDPD
-:VBLENDPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8_3_0 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128; imm8_3_0
+:VBLENDPD XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & YmmReg1) ... & XmmReg2_m128; imm8
 {
     local m:16 = XmmReg2_m128;
     local va:16 = vexVVVV_XmmReg;
-    local s:1 = imm8_3_0;
+    local s:1 = imm8;
     avx_blend64(YmmReg1[0,64], va[0,64], m[0,64], s);
     avx_blend64(YmmReg1[64,64], va[64,64], m[64,64], s >> 1);
     avx_zero_upper(YmmReg1);
 }
 
 # VBLENDPD
-:VBLENDPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8_3_0 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x0D; YmmReg1 ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H; imm8_3_0
+:VBLENDPD YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x0D; YmmReg1 ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H; imm8
 {
     local lo:16 = YmmReg2_m256_L;
     local hi:16 = YmmReg2_m256_H;
     local vlo:16 = vexVVVV_YmmReg_L;
     local vhi:16 = vexVVVV_YmmReg_H;
-    local s:1 = imm8_3_0;
+    local s:1 = imm8;
     avx_blend64(YmmReg1[0,64], vlo[0,64], lo[0,64], s);
     avx_blend64(YmmReg1[64,64], vlo[64,64], lo[64,64], s >> 1);
     avx_blend64(YmmReg1[128,64], vhi[0,64], hi[0,64], s >> 2);

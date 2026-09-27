@@ -128,16 +128,16 @@
  {
   "file": "avx.sinc",
   "name": "VBLENDPD",
-  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8_3_0",
-  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8_3_0",
-  "body": "local tmp:16 = vblendpd_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8_3_0:1 );\n\tZmmReg1 = zext(tmp);"
+  "operands": "XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x0D; (XmmReg1 & ZmmReg1) ... & XmmReg2_m128; imm8",
+  "body": "local tmp:16 = vblendpd_avx( vexVVVV_XmmReg, XmmReg2_m128, imm8:1 );\n\tZmmReg1 = zext(tmp);"
  },
  {
   "file": "avx.sinc",
   "name": "VBLENDPD",
-  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8_3_0",
-  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8_3_0",
-  "body": "local tmp:32 = vblendpd_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8_3_0:1 );\n\tZmmReg1 = zext(tmp);"
+  "operands": "YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8",
+  "pattern": "$(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg; byte=0x0D; (YmmReg1 & ZmmReg1) ... & YmmReg2_m256; imm8",
+  "body": "local tmp:32 = vblendpd_avx( vexVVVV_YmmReg, YmmReg2_m256, imm8:1 );\n\tZmmReg1 = zext(tmp);"
  },
  {
   "file": "avx.sinc",
