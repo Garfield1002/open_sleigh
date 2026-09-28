@@ -2863,7 +2863,7 @@ with : lockprefx=0 {
 
     ZF = ( rm16 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( ((rm16 >> bitIndex) & 0x0001) != 0 ) goto <done>;
@@ -2908,7 +2908,7 @@ with : lockprefx=0 {
 
     ZF = ( rm32 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( ((rm32 >> bitIndex) & 0x00000001) != 0 ) goto <done>;
@@ -2955,7 +2955,7 @@ with : lockprefx=0 {
 
     ZF = ( rm64 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( ((rm64 >> bitIndex) & 0x0000000000000001) != 0 ) goto <done>;
@@ -2995,7 +2995,7 @@ with : lockprefx=0 {
 
     ZF = ( rm16 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( (rm16 >> bitIndex) != 0 ) goto <done>;
@@ -3040,7 +3040,7 @@ with : lockprefx=0 {
 
     ZF = ( rm32 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( (rm32 >> bitIndex) != 0 ) goto <done>;
@@ -3088,7 +3088,7 @@ with : lockprefx=0 {
 
     ZF = ( rm64 == 0 );
     
-    if ( ZF == 1 ) goto <done>;
+    if ( ZF == 1 ) goto inst_next;
      
 <start>
     if ( (rm64 >> bitIndex) != 0 ) goto <done>;
