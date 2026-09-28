@@ -3255,7 +3255,12 @@ with : lockprefx=0 {
 
 
 :CALLF addr16       is vexMode=0 & addrsize=0 & opsize=1 & byte=0xff; addr16 & reg_opcode=3 ... { local dest:2 = addr16; push22(CS); push24(&:4 inst_next); call [dest]; }
-:CALLF addr32       is vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; pushseg44(CS); push44(&:4 inst_next); call [dest]; }
+:CALLF addr32       is segmented=0 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; pushseg44(CS); push44(&:4 inst_next); call [dest]; }
+# Segmented protected mode: `call m16:32` loads its target (offset, then selector) from
+# memory; the flat form above calls the operand's address itself.
+:CALLF seg32^addr32 is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & seg32 & byte=0xff; addr32 & reg_opcode=3 ... {
+  local lin:4 = segment(seg32, addr32); local dest:4 = *:4 lin; local sel:2 = *:2 (lin + 4);
+  pushseg44(CS); push44(&:4 inst_next); CS = sel; call [dest]; }
 @ifdef IA64
 :CALLF addr32       is $(LONGMODE_ON) &vexMode=0 & addrsize=1 & opsize=2 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; pushseg88(CS); push88(&:8 inst_next); call [dest]; }
 :CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=1 & byte=0xff; addr64 & reg_opcode=3 ... { local dest:8 = addr64; pushseg44(CS); push84(&:4 inst_next); call [dest]; }
