@@ -400,11 +400,13 @@ define context contextreg
 @ifdef IA64
   # Stored context
   longMode=(0,0)      # 0 for 32-bit emulation, 1 for 64-bit mode
-  reserved=(1,3)
+  segmented=(1,1)     # 1: 32-bit memory operands go through segment(sel, off)
+  reserved=(2,3)
   addrsize=(4,5)        # =0  16-bit addressing  =1  32-bit addressing   =2 64-bit addressing
 @else
   # Stored context
-  reserved=(0,3)
+  segmented=(0,0)     # 1: 32-bit memory operands go through segment(sel, off)
+  reserved=(1,3)
   addrsize=(5,5)        # =0  16-bit addressing  =1  32-bit addressing
 @endif
   bit64=(4,4)           # =0  16/32 bit          =1  64-bit
@@ -1210,6 +1212,18 @@ seg16: ES: is segover=4 & ES	{ export ES; }
 seg16: FS: is segover=5 & FS	{ export FS; }
 seg16: GS: is segover=6 & GS	{ export GS; }
 
+# The selector a 32-bit memory operand goes through when `segmented=1`
+# (segmented protected mode, e.g. a DOS extender): the override, or DS.
+# The operand's address is then `segment(seg32, offset)`, whose meaning
+# (the descriptor's base plus the offset) is left to the consumer.
+seg32: 	   is segover=0 & DS	{ export DS; }
+seg32: CS: is segover=1 & CS	{ export CS; }
+seg32: SS: is segover=2 & SS	{ export SS; }
+seg32: DS: is segover=3 & DS	{ export DS; }
+seg32: ES: is segover=4 & ES	{ export ES; }
+seg32: FS: is segover=5 & FS	{ export FS; }
+seg32: GS: is segover=6 & GS	{ export GS; }
+
 Mem16: addr16	is (segover=0 & mod=0 & r_m=2) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
 Mem16: addr16	is (segover=0 & mod=0 & r_m=3) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
 Mem16: addr16	is (segover=0 & mod=1 & r_m=2) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
@@ -1227,11 +1241,12 @@ Mem: segWide^Addr32_64 is $(LONGMODE_ON) & addrsize=1 & segWide; Addr32_64 			{ 
 Mem: segWide^Addr32_64 is $(LONGMODE_ON) & addrsize=1 & segWide & highseg=1; Addr32_64	{ tmp:8 = segWide + Addr32_64; export tmp; }
 Mem: segWide^addr64 is $(LONGMODE_ON) & addrsize=2 & segWide; addr64             { export addr64; }
 Mem: segWide^addr64 is $(LONGMODE_ON) & addrsize=2 & segWide & highseg=1; addr64 { tmp:$(SIZE) = segWide + addr64; export tmp; }
-Mem: segWide^addr32 is $(LONGMODE_OFF) & addrsize=1 & segWide; addr32       		{ tmp:$(SIZE) = zext(addr32); export tmp; }
+Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide; addr32       		{ tmp:$(SIZE) = zext(addr32); export tmp; }
 @else
-Mem: segWide^addr32 is $(LONGMODE_OFF) & addrsize=1 & segWide; addr32       		{ export addr32; }
+Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide; addr32       		{ export addr32; }
 @endif
-Mem: segWide^addr32 is $(LONGMODE_OFF) & addrsize=1 & segWide & highseg=1; addr32 	{ tmp:$(SIZE) = segWide + zext(addr32); export tmp; }
+Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide & highseg=1; addr32 	{ tmp:$(SIZE) = segWide + zext(addr32); export tmp; }
+Mem: seg32^addr32 is $(LONGMODE_OFF) & segmented=1 & addrsize=1 & seg32; addr32 	{ tmp:$(SIZE) = segment(seg32, addr32); export tmp; }
 
 EffectiveAddress: addr16    is                   addrsize=0 & addr16 { local tmp:$(SIZE) = zext(addr16); export tmp; }
 EffectiveAddress: addr32    is $(LONGMODE_OFF) & addrsize=1 & addr32 { local tmp:$(SIZE) = zext(addr32); export tmp; }
@@ -1589,23 +1604,26 @@ ZmmReg2_m512_m64bcst: m512       is m512 & evexDisp8N                  { export 
 ZmmReg2_m512_m64bcst: m64bcst512 is evexB=1 & m64bcst512 & evexDisp8N  { export m64bcst512; }
 
 moffs8: seg16^[imm16]   is addrsize=0 & seg16 & imm16                   { tmp:$(SIZE) = segment(seg16,imm16:2); export *:1 tmp; }
-moffs8: segWide^[imm32]   is addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:1 tmp; }
-moffs8: segWide^[imm32]   is addrsize=1 & segWide & imm32               { export *:1 imm32; }
+moffs8: segWide^[imm32]   is segmented=0 & addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:1 tmp; }
+moffs8: segWide^[imm32]   is segmented=0 & addrsize=1 & segWide & imm32               { export *:1 imm32; }
+moffs8: seg32^[imm32]  is segmented=1 & addrsize=1 & seg32 & imm32      { tmp:$(SIZE) = segment(seg32, imm32); export *:1 tmp; }
 @ifdef IA64
 moffs8: segWide^[imm64]   is addrsize=2 & highseg=1 & segWide & imm64   { tmp:8 = segWide + imm64; export *:1 tmp; }
 moffs8: segWide^[imm64]   is addrsize=2 & segWide & imm64               { export *:1 imm64; }
 @endif
 moffs16: seg16^[imm16]  is addrsize=0 & seg16 & imm16                   { tmp:$(SIZE) = segment(seg16,imm16:2); export *:2 tmp; }
-moffs16: segWide^[imm32]  is addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:2 tmp; }
-moffs16: segWide^[imm32]  is addrsize=1 & segWide & imm32               { export *:2 imm32; }
+moffs16: segWide^[imm32]  is segmented=0 & addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:2 tmp; }
+moffs16: segWide^[imm32]  is segmented=0 & addrsize=1 & segWide & imm32               { export *:2 imm32; }
+moffs16: seg32^[imm32]  is segmented=1 & addrsize=1 & seg32 & imm32      { tmp:$(SIZE) = segment(seg32, imm32); export *:2 tmp; }
 @ifdef IA64
 moffs16: segWide^[imm64]  is addrsize=2 & highseg=1 & segWide & imm64   { tmp:8 = segWide + imm64; export *:2 tmp; }
 moffs16: segWide^[imm64]  is addrsize=2 & segWide & imm64               { export *:2 imm64; }
 @endif
 
 moffs32: seg16^[imm16]  is addrsize=0 & seg16 & imm16                   { tmp:$(SIZE) = segment(seg16,imm16:2); export *:4 tmp; }
-moffs32: segWide^[imm32]  is addrsize=1 & segWide & imm32               { export *:4 imm32; }
-moffs32: segWide^[imm32]  is addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:4 tmp; }
+moffs32: segWide^[imm32]  is segmented=0 & addrsize=1 & segWide & imm32               { export *:4 imm32; }
+moffs32: segWide^[imm32]  is segmented=0 & addrsize=1 & highseg=1 & segWide & imm32   { tmp:$(SIZE) = segWide + imm32; export *:4 tmp; }
+moffs32: seg32^[imm32]  is segmented=1 & addrsize=1 & seg32 & imm32      { tmp:$(SIZE) = segment(seg32, imm32); export *:4 tmp; }
 @ifdef IA64
 moffs32: segWide^[imm64]  is addrsize=2 & segWide & imm64               { export *:4 imm64; }
 moffs32: segWide^[imm64]  is addrsize=2 & highseg=1 & segWide & imm64   { tmp:8 = segWide + imm64; export *:4 tmp; }
@@ -1630,24 +1648,32 @@ check_ECX_dest:	is epsilon  		{ }
 
 # String memory access
 dseSI1: seg16^SI    is addrsize=0 & seg16 & SI  { tmp:4 = segment(seg16,SI); SI = SI + 1-2*zext(DF); export *:1 tmp; }
-dseSI1: segWide^ESI   is addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 1-2*zext(DF); build check_ESI_dest; export *:1 tmp; }
+dseSI1: segWide^ESI   is segmented=0 & addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 1-2*zext(DF); build check_ESI_dest; export *:1 tmp; }
+dseSI1: seg32^ESI   is segmented=1 & addrsize=1 & seg32 & ESI { tmp:4 = segment(seg32, ESI); ESI = ESI + 1-2*zext(DF); export *:1 tmp; }
 dseSI2: seg16^SI    is addrsize=0 & seg16 & SI  { tmp:4 = segment(seg16,SI); SI = SI + 2-4*zext(DF); export *:2 tmp; }
-dseSI2: segWide^ESI   is addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 2-4*zext(DF); build check_ESI_dest; export *:2 tmp; }
+dseSI2: segWide^ESI   is segmented=0 & addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 2-4*zext(DF); build check_ESI_dest; export *:2 tmp; }
+dseSI2: seg32^ESI   is segmented=1 & addrsize=1 & seg32 & ESI { tmp:4 = segment(seg32, ESI); ESI = ESI + 2-4*zext(DF); export *:2 tmp; }
 dseSI4: seg16^SI    is addrsize=0 & seg16 & SI  { tmp:4 = segment(seg16,SI); SI = SI + 4-8*zext(DF); export *:4 tmp; }
-dseSI4: segWide^ESI   is addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 4-8*zext(DF); build check_ESI_dest; export *:4 tmp; }
+dseSI4: segWide^ESI   is segmented=0 & addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 4-8*zext(DF); build check_ESI_dest; export *:4 tmp; }
+dseSI4: seg32^ESI   is segmented=1 & addrsize=1 & seg32 & ESI { tmp:4 = segment(seg32, ESI); ESI = ESI + 4-8*zext(DF); export *:4 tmp; }
 eseDI1: ES:DI       is addrsize=0 & ES & DI     { tmp:4 = segment(ES,DI); DI = DI + 1-2*zext(DF); export *:1 tmp; }
-eseDI1: ES:EDI      is addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+1-2*zext(DF); build check_EDI_dest; export *:1 tmp; }
+eseDI1: ES:EDI      is segmented=0 & addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+1-2*zext(DF); build check_EDI_dest; export *:1 tmp; }
+eseDI1: ES:EDI      is segmented=1 & addrsize=1 & ES & EDI { tmp:4 = segment(ES, EDI); EDI=EDI+1-2*zext(DF); export *:1 tmp; }
 eseDI2: ES:DI       is addrsize=0 & ES & DI     { tmp:4 = segment(ES,DI); DI = DI + 2-4*zext(DF); export *:2 tmp; }
-eseDI2: ES:EDI      is addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+2-4*zext(DF); build check_EDI_dest; export *:2 tmp; }
+eseDI2: ES:EDI      is segmented=0 & addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+2-4*zext(DF); build check_EDI_dest; export *:2 tmp; }
+eseDI2: ES:EDI      is segmented=1 & addrsize=1 & ES & EDI { tmp:4 = segment(ES, EDI); EDI=EDI+2-4*zext(DF); export *:2 tmp; }
 eseDI4: ES:DI       is addrsize=0 & ES & DI     { tmp:4 = segment(ES,DI); DI = DI + 4-8*zext(DF); export *:4 tmp; }
-eseDI4: ES:EDI      is addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+4-8*zext(DF); build check_EDI_dest; export *:4 tmp; }
+eseDI4: ES:EDI      is segmented=0 & addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+4-8*zext(DF); build check_EDI_dest; export *:4 tmp; }
+eseDI4: ES:EDI      is segmented=1 & addrsize=1 & ES & EDI { tmp:4 = segment(ES, EDI); EDI=EDI+4-8*zext(DF); export *:4 tmp; }
 
 @ifdef IA64
 # quadword string functions
 dseSI8: seg16^SI    is addrsize=0 & seg16 & SI  { tmp:4 = segment(seg16,SI); SI = SI + 8-16*zext(DF); export *:8 tmp; }
-dseSI8: segWide^ESI   is addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 8-16*zext(DF); build check_ESI_dest; export *:8 tmp; }
+dseSI8: segWide^ESI   is segmented=0 & addrsize=1 & segWide & ESI & check_ESI_dest { tmp:4 = ESI; ESI = ESI + 8-16*zext(DF); build check_ESI_dest; export *:8 tmp; }
+dseSI8: seg32^ESI   is segmented=1 & addrsize=1 & seg32 & ESI { tmp:4 = segment(seg32, ESI); ESI = ESI + 8-16*zext(DF); export *:8 tmp; }
 eseDI8: ES:DI       is addrsize=0 & ES & DI     { tmp:4 = segment(ES,DI); DI = DI + 8-16*zext(DF); export *:8 tmp; }
-eseDI8: ES:EDI      is addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+8-16*zext(DF); build check_EDI_dest; export *:8 tmp; }
+eseDI8: ES:EDI      is segmented=0 & addrsize=1 & ES & EDI & check_EDI_dest { tmp:4 = EDI; EDI=EDI+8-16*zext(DF); build check_EDI_dest; export *:8 tmp; }
+eseDI8: ES:EDI      is segmented=1 & addrsize=1 & ES & EDI { tmp:4 = segment(ES, EDI); EDI=EDI+8-16*zext(DF); export *:8 tmp; }
 
 dseSI1: RSI   is addrsize=2 & RSI { local tmp = RSI; RSI = RSI + 1-2*zext(DF); export *:1 tmp; }
 dseSI2: RSI   is addrsize=2 & RSI { local tmp = RSI; RSI = RSI + 2-4*zext(DF); export *:2 tmp; }
@@ -5210,7 +5236,8 @@ define pcodeop xend;
 @endif
 
 :XLAT seg16^BX      is vexMode=0 & addrsize=0 & seg16 & byte=0xd7; BX           { tmp:$(SIZE)= 0; ptr2(tmp,BX+zext(AL)); AL = *tmp; }
-:XLAT segWide^EBX     is vexMode=0 & addrsize=1 & segWide & byte=0xd7; EBX          { tmp:$(SIZE)= 0; ptr4(tmp,EBX+zext(AL)); AL = *tmp; }
+:XLAT segWide^EBX     is vexMode=0 & segmented=0 & addrsize=1 & segWide & byte=0xd7; EBX          { tmp:$(SIZE)= 0; ptr4(tmp,EBX+zext(AL)); AL = *tmp; }
+:XLAT seg32^EBX       is vexMode=0 & segmented=1 & addrsize=1 & seg32 & byte=0xd7; EBX          { tmp:$(SIZE) = segment(seg32, EBX+zext(AL)); AL = *:1 tmp; }
 @ifdef IA64
 :XLAT segWide^RBX     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & segWide & byte=0xd7; RBX          { tmp:$(SIZE)= 0; ptr8(tmp,RBX+zext(AL)); AL = *tmp; }
 @endif
