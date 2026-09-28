@@ -14,6 +14,8 @@ with : lockprefx=0 {
 @include "adx.sinc"
 @include "clwb.sinc"
 @include "pclmulqdq.sinc"
+@include "vaes.sinc"
+@include "gfni.sinc"
 @include "mpx.sinc"
 @include "lzcnt.sinc"
 @include "bmi1.sinc"

@@ -432,7 +432,7 @@
     local ptr = Mem + (sext(Reg16) s>> 3);
     local bit=Reg16&7;
     local val=(*:1 ptr >> bit) & 1;
-    *:1 ptr = *:1 ptr & ~(1<<bit);
+    *:1 ptr = *:1 ptr & ~(1:1 << bit);
     CF = (val!=0);
     bitTestUndefinedFlags();
     build unlock; 
@@ -449,7 +449,7 @@
 @endif
     local bit = Reg32 & 7;
     local val = (*:1 ptr >> bit) & 1;
-    *:1 ptr = *:1 ptr & ~(1<<bit);
+    *:1 ptr = *:1 ptr & ~(1:1 << bit);
     CF = (val!=0);
     bitTestUndefinedFlags();
     build unlock;
@@ -463,7 +463,7 @@
     local ptr = Mem + (Reg64 s>> 3);
     local bit = Reg64 & 7;
     local val = (*:1 ptr >> bit) & 1;
-    *:1 ptr = *:1 ptr & ~(1<<bit);
+    *:1 ptr = *:1 ptr & ~(1:1 << bit);
     CF = (val!=0);
     bitTestUndefinedFlags();
     build unlock; 

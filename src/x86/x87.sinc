@@ -383,6 +383,16 @@ macro fpu_set_condition_codes(c0, c1, c2, c3) {
                     (zext(c2) << 10) | (zext(c3) << 14);
 }
 
+# FSIN, FCOS, FSINCOS and FPTAN take an operand in -2^63 < x < 2^63. Outside
+# it (a biased exponent of 16383 + 63 or more; infinity and NaN are not "out of
+# range", they are invalid) C2 is set and ST(0) is left as it is; inside it C2
+# is cleared.
+macro fpu_trig_range_check(value, out_of_range) {
+    local exponent:2 = value[64,15];
+    out_of_range = (exponent >= 0x403e) && (exponent != 0x7fff);
+    FPUStatusWord = (FPUStatusWord & 0xfbff) | (zext(out_of_range) << 10);
+}
+
 # FDP records the memory operand's address. Hardware writes it together with
 # FOP and under the same condition: only when an unmasked exception is pending.
 macro fpu_record_data_pointer(address) {
@@ -1807,7 +1817,11 @@ define pcodeop fcos;
 :FCOS			    is vexMode=0 & byte=0xD9; byte=0xFF & st0
 { 
     FPUInstructionPointer = inst_start;
+    local out_of_range:1;
+    fpu_trig_range_check(st0, out_of_range);
+    if (out_of_range) goto <done>;
     st0 = fcos(st0);
+<done>
     fpu_record_opcode(0x1ff:2);
 }
                                                                  
@@ -2775,10 +2789,15 @@ define pcodeop fptan;
 :FPTAN		is vexMode=0 & byte=0xD9; byte=0xF2 & st0
 { 
     FPUInstructionPointer = inst_start;
+    # Out of range, nothing is pushed: the 1.0 comes only with a result.
+    local out_of_range:1;
+    fpu_trig_range_check(st0, out_of_range);
+    if (out_of_range) goto <done>;
     st0 = fptan(st0);
     one:4 = 1;
     tmp:10 = int2float(one);
     fpushv(tmp); 
+<done>
     fpu_record_opcode(0x1f2:2);
 }
 
@@ -2895,16 +2914,25 @@ define pcodeop fsin;
 :FSIN		    is vexMode=0 & byte=0xD9; byte=0xFE & st0
 { 
     FPUInstructionPointer = inst_start;
+    local out_of_range:1;
+    fpu_trig_range_check(st0, out_of_range);
+    if (out_of_range) goto <done>;
     st0 = fsin(st0);
+<done>
     fpu_record_opcode(0x1fe:2);
 }
 
 :FSINCOS	    is vexMode=0 & byte=0xD9; byte=0xFB & st0
 { 
     FPUInstructionPointer = inst_start;
+    # Out of range, nothing is pushed: the cosine comes only with a result.
+    local out_of_range:1;
+    fpu_trig_range_check(st0, out_of_range);
+    if (out_of_range) goto <done>;
     tmp:10 = fcos(st0);
     st0 = fsin(st0);
     fpushv(tmp);
+<done>
     fpu_record_opcode(0x1fb:2);
 }
 

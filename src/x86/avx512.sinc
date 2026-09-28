@@ -2717,20 +2717,20 @@ define pcodeop vpaddusw_avx512bw ;
 
 # PALIGNR 4-219 PAGE 1339 LINE 69495
 define pcodeop vpalignr_avx512vl ;
-:VPALIGNR XmmReg1^XmmOpMask8, evexV5_XmmReg, XmmReg2_m128  is $(EVEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_XmmReg; byte=0x0F; (XmmReg1 & ZmmReg1 & XmmOpMask8) ... & XmmReg2_m128
+:VPALIGNR XmmReg1^XmmOpMask8, evexV5_XmmReg, XmmReg2_m128, imm8  is $(EVEX_NONE) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_XmmReg; byte=0x0F; (XmmReg1 & ZmmReg1 & XmmOpMask8) ... & XmmReg2_m128; imm8
 [ evexD8Type = 1; evexTType = 0; ] # (TupleType FVM)
 {
-	XmmResult = vpalignr_avx512vl( evexV5_XmmReg, XmmReg2_m128 );
+	XmmResult = vpalignr_avx512vl( evexV5_XmmReg, XmmReg2_m128, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask8;
 	ZmmReg1 = zext(XmmResult);
 }
 
 # PALIGNR 4-219 PAGE 1339 LINE 69499
-:VPALIGNR YmmReg1^YmmOpMask8, evexV5_YmmReg, YmmReg2_m256  is $(EVEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_YmmReg; byte=0x0F; (YmmReg1 & ZmmReg1 & YmmOpMask8) ... & YmmReg2_m256
+:VPALIGNR YmmReg1^YmmOpMask8, evexV5_YmmReg, YmmReg2_m256, imm8  is $(EVEX_NONE) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_YmmReg; byte=0x0F; (YmmReg1 & ZmmReg1 & YmmOpMask8) ... & YmmReg2_m256; imm8
 [ evexD8Type = 1; evexTType = 0; ] # (TupleType FVM)
 {
-	YmmResult = vpalignr_avx512vl( evexV5_YmmReg, YmmReg2_m256 );
+	YmmResult = vpalignr_avx512vl( evexV5_YmmReg, YmmReg2_m256, imm8:1 );
 	YmmMask = YmmReg1;
 	build YmmOpMask8;
 	ZmmReg1 = zext(YmmResult);
@@ -2738,10 +2738,10 @@ define pcodeop vpalignr_avx512vl ;
 
 # PALIGNR 4-219 PAGE 1339 LINE 69505
 define pcodeop vpalignr_avx512bw ;
-:VPALIGNR ZmmReg1^ZmmOpMask8, evexV5_ZmmReg, ZmmReg2_m512  is $(EVEX_NONE) & $(EVEX_L512) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_ZmmReg; byte=0x0F; (ZmmReg1 & ZmmOpMask8) ... & ZmmReg2_m512
+:VPALIGNR ZmmReg1^ZmmOpMask8, evexV5_ZmmReg, ZmmReg2_m512, imm8  is $(EVEX_NONE) & $(EVEX_L512) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG)  & evexV5_ZmmReg; byte=0x0F; (ZmmReg1 & ZmmOpMask8) ... & ZmmReg2_m512; imm8
 [ evexD8Type = 1; evexTType = 0; ] # (TupleType FVM)
 {
-	ZmmResult = vpalignr_avx512bw( evexV5_ZmmReg, ZmmReg2_m512 );
+	ZmmResult = vpalignr_avx512bw( evexV5_ZmmReg, ZmmReg2_m512, imm8:1 );
 	ZmmMask = ZmmReg1;
 	build ZmmOpMask8;
 	ZmmReg1 = ZmmResult;
@@ -9331,18 +9331,18 @@ define pcodeop vfpclassps_avx512dq ;
 
 # VFPCLASSSD 5-247 PAGE 2071 LINE 106722
 define pcodeop vfpclasssd_avx512dq ;
-:VFPCLASSSD KReg_reg AVXOpMask, XmmReg2_m64  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & AVXOpMask; byte=0x67; KReg_reg ... & XmmReg2_m64
+:VFPCLASSSD KReg_reg AVXOpMask, XmmReg2_m64, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & AVXOpMask; byte=0x67; KReg_reg ... & XmmReg2_m64; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	KReg_reg = vfpclasssd_avx512dq( XmmReg2_m64, AVXOpMask );
+	KReg_reg = vfpclasssd_avx512dq( XmmReg2_m64, AVXOpMask, imm8:1 );
 }
 
 # VFPCLASSSS 5-249 PAGE 2073 LINE 106810
 define pcodeop vfpclassss_avx512dq ;
-:VFPCLASSSS KReg_reg AVXOpMask, XmmReg2_m32  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & AVXOpMask; byte=0x67; KReg_reg ... & XmmReg2_m32
+:VFPCLASSSS KReg_reg AVXOpMask, XmmReg2_m32, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & AVXOpMask; byte=0x67; KReg_reg ... & XmmReg2_m32; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	KReg_reg = vfpclassss_avx512dq( XmmReg2_m32, AVXOpMask );
+	KReg_reg = vfpclassss_avx512dq( XmmReg2_m32, AVXOpMask, imm8:1 );
 }
 
 # VGATHERDPS/VGATHERDPD 5-261 PAGE 2085 LINE 107357
@@ -9857,10 +9857,10 @@ define pcodeop vgetmantps_avx512f ;
 
 # VGETMANTSD 5-306 PAGE 2130 LINE 109519
 define pcodeop vgetmantsd_avx512f ;
-:VGETMANTSD XmmReg1^XmmOpMask64, evexV5_XmmReg, XmmReg2_m64  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1)  & evexV5_XmmReg; byte=0x27; (XmmReg1 & ZmmReg1 & XmmOpMask64) ... & XmmReg2_m64
+:VGETMANTSD XmmReg1^XmmOpMask64, evexV5_XmmReg, XmmReg2_m64, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1)  & evexV5_XmmReg; byte=0x27; (XmmReg1 & ZmmReg1 & XmmOpMask64) ... & XmmReg2_m64; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vgetmantsd_avx512f( evexV5_XmmReg, XmmReg2_m64 );
+	XmmResult = vgetmantsd_avx512f( evexV5_XmmReg, XmmReg2_m64, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask64;
 	ZmmReg1 = zext(XmmResult);
@@ -9868,10 +9868,10 @@ define pcodeop vgetmantsd_avx512f ;
 
 # VGETMANTSS 5-308 PAGE 2132 LINE 109610
 define pcodeop vgetmantss_avx512f ;
-:VGETMANTSS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x27; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32
+:VGETMANTSS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x27; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vgetmantss_avx512f( evexV5_XmmReg, XmmReg2_m32 );
+	XmmResult = vgetmantss_avx512f( evexV5_XmmReg, XmmReg2_m32, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask32;
 	ZmmReg1 = zext(XmmResult);
@@ -12783,10 +12783,10 @@ define pcodeop vrangesd_avx512dq ;
 
 # VRANGESS 5-482 PAGE 2306 LINE 118473
 define pcodeop vrangess_avx512dq ;
-:VRANGESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x51; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32
+:VRANGESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x51; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vrangess_avx512dq( evexV5_XmmReg, XmmReg2_m32 );
+	XmmResult = vrangess_avx512dq( evexV5_XmmReg, XmmReg2_m32, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask32;
 	ZmmReg1 = zext(XmmResult);
@@ -12956,10 +12956,10 @@ define pcodeop vreducepd_avx512dq ;
 
 # VREDUCESD 5-504 PAGE 2328 LINE 119510
 define pcodeop vreducesd_avx512dq ;
-:VREDUCESD XmmReg1^XmmOpMask64, evexV5_XmmReg, XmmReg2_m64  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1)  & evexV5_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1 & XmmOpMask64) ... & XmmReg2_m64
+:VREDUCESD XmmReg1^XmmOpMask64, evexV5_XmmReg, XmmReg2_m64, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1)  & evexV5_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1 & XmmOpMask64) ... & XmmReg2_m64; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vreducesd_avx512dq( evexV5_XmmReg, XmmReg2_m64 );
+	XmmResult = vreducesd_avx512dq( evexV5_XmmReg, XmmReg2_m64, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask64;
 	ZmmReg1 = zext(XmmResult);
@@ -12999,10 +12999,10 @@ define pcodeop vreduceps_avx512dq ;
 
 # VREDUCESS 5-508 PAGE 2332 LINE 119719
 define pcodeop vreducess_avx512dq ;
-:VREDUCESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32
+:VREDUCESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x57; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vreducess_avx512dq( evexV5_XmmReg, XmmReg2_m32 );
+	XmmResult = vreducess_avx512dq( evexV5_XmmReg, XmmReg2_m32, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask32;
 	ZmmReg1 = zext(XmmResult);
@@ -13085,10 +13085,10 @@ define pcodeop vrndscaleps_avx512f ;
 
 # VRNDSCALESS 5-519 PAGE 2343 LINE 120263
 define pcodeop vrndscaless_avx512f ;
-:VRNDSCALESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x0A; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32
+:VRNDSCALESS XmmReg1^XmmOpMask32, evexV5_XmmReg, XmmReg2_m32, imm8  is $(EVEX_NONE) & $(VEX_LIG) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W0) & evexV5_XmmReg; byte=0x0A; (XmmReg1 & ZmmReg1 & XmmOpMask32) ... & XmmReg2_m32; imm8
 [ evexD8Type = 1; evexTType = 3; ] # (TupleType T1S)
 {
-	XmmResult = vrndscaless_avx512f( evexV5_XmmReg, XmmReg2_m32 );
+	XmmResult = vrndscaless_avx512f( evexV5_XmmReg, XmmReg2_m32, imm8:1 );
 	XmmMask = XmmReg1;
 	build XmmOpMask32;
 	ZmmReg1 = zext(XmmResult);

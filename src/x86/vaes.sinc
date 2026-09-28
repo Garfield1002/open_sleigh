@@ -1,0 +1,44 @@
+#@family crypto
+# VAES: the VEX.256 forms of AESENC, AESENCLAST, AESDEC and AESDECLAST run
+# the round on each 128-bit lane. (VEX.128 is AES-NI and lives in sse.sinc;
+# these need the half-width YMM operands of avx_operands.sinc.)
+
+:VAESDEC YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xde; (YmmReg1 & XmmReg1 & YmmReg1_H) ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H {
+	local lo:16 = YmmReg2_m256_L;
+	local hi:16 = YmmReg2_m256_H;
+	local vlo:16 = vexVVVV_YmmReg_L;
+	local vhi:16 = vexVVVV_YmmReg_H;
+	local rhi:16 = aesdec(vhi, hi);
+	XmmReg1 = aesdec(vlo, lo);
+	YmmReg1_H = rhi;
+}
+
+:VAESDECLAST YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xdf; (YmmReg1 & XmmReg1 & YmmReg1_H) ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H {
+	local lo:16 = YmmReg2_m256_L;
+	local hi:16 = YmmReg2_m256_H;
+	local vlo:16 = vexVVVV_YmmReg_L;
+	local vhi:16 = vexVVVV_YmmReg_H;
+	local rhi:16 = aesdeclast(vhi, hi);
+	XmmReg1 = aesdeclast(vlo, lo);
+	YmmReg1_H = rhi;
+}
+
+:VAESENC YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xdc; (YmmReg1 & XmmReg1 & YmmReg1_H) ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H {
+	local lo:16 = YmmReg2_m256_L;
+	local hi:16 = YmmReg2_m256_H;
+	local vlo:16 = vexVVVV_YmmReg_L;
+	local vhi:16 = vexVVVV_YmmReg_H;
+	local rhi:16 = aesenc(vhi, hi);
+	XmmReg1 = aesenc(vlo, lo);
+	YmmReg1_H = rhi;
+}
+
+:VAESENCLAST YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xdd; (YmmReg1 & XmmReg1 & YmmReg1_H) ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H {
+	local lo:16 = YmmReg2_m256_L;
+	local hi:16 = YmmReg2_m256_H;
+	local vlo:16 = vexVVVV_YmmReg_L;
+	local vhi:16 = vexVVVV_YmmReg_H;
+	local rhi:16 = aesenclast(vhi, hi);
+	XmmReg1 = aesenclast(vlo, lo);
+	YmmReg1_H = rhi;
+}

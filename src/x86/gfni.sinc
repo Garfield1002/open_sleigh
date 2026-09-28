@@ -1,0 +1,168 @@
+#@family crypto
+# GFNI: GF2P8MULB, GF2P8AFFINEQB and GF2P8AFFINEINVQB in their legacy-SSE and
+# VEX forms (the EVEX forms are in avx512.sinc). The field is GF(2^8) modulo
+# x^8 + x^4 + x^3 + x + 1. The macros work on one qword, eight bytes side by
+# side, so a 128-bit operand is two calls and a 256-bit one four; no
+# temporary is wider than a qword.
+
+# Each byte times x.
+macro gf2p8_xtime(x) {
+    x = ((x << 1) & 0xfefefefefefefefe) ^ (((x >> 7) & 0x0101010101010101) * 0x1b);
+}
+
+# Bit 0 of each byte becomes the parity of that byte; the other bits are cleared.
+macro gf2p8_parity(t) {
+    t = t ^ (t >> 4);
+    t = t ^ (t >> 2);
+    t = t ^ (t >> 1);
+    t = t & 0x0101010101010101;
+}
+
+# dest.byte[k] = a.byte[k] * b.byte[k]
+macro gf2p8_mul(dest, a, b) {
+    local x:8 = a;
+    local y:8 = b;
+    local acc:8 = 0;
+    acc = acc ^ (x & ((y & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 1) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 2) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 3) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 4) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 5) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 6) & 0x0101010101010101) * 0xff)); gf2p8_xtime(x);
+    acc = acc ^ (x & (((y >> 7) & 0x0101010101010101) * 0xff));
+    dest = acc;
+}
+
+# dest.byte[k] = a.byte[k]^-1, with 0 mapping to 0: x^254, the product of
+# x^2, x^4, ..., x^128.
+macro gf2p8_inv(dest, a) {
+    local p:8 = a;
+    local r:8 = 0;
+    gf2p8_mul(p, p, p);
+    r = p;
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    gf2p8_mul(p, p, p);
+    gf2p8_mul(r, r, p);
+    dest = r;
+}
+
+# dest.byte[k] = A * x.byte[k] + imm8, with the matrix A in qword m: bit i of
+# each result byte is parity(m.byte[7 - i] & x.byte[k]) ^ imm8[i].
+macro gf2p8_affine(dest, x, m, imm) {
+    local src:8 = x;
+    local mat:8 = m;
+    local res:8 = zext(imm) * 0x0101010101010101;
+    local t:8 = 0;
+    t = src & (((mat >> 56) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ t;
+    t = src & (((mat >> 48) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 1);
+    t = src & (((mat >> 40) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 2);
+    t = src & (((mat >> 32) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 3);
+    t = src & (((mat >> 24) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 4);
+    t = src & (((mat >> 16) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 5);
+    t = src & (((mat >> 8) & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 6);
+    t = src & ((mat & 0xff) * 0x0101010101010101); gf2p8_parity(t); res = res ^ (t << 7);
+    dest = res;
+}
+
+macro gf2p8_affineinv(dest, x, m, imm) {
+    local inv:8 = 0;
+    gf2p8_inv(inv, x);
+    gf2p8_affine(dest, inv, m, imm);
+}
+
+:GF2P8MULB XmmReg1, XmmReg2_m128 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0xCF; XmmReg1 ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = XmmReg1;
+    gf2p8_mul(XmmReg1[0,64], x[0,64], m[0,64]);
+    gf2p8_mul(XmmReg1[64,64], x[64,64], m[64,64]);
+}
+
+:VGF2P8MULB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_XmmReg; byte=0xCF; (XmmReg1 & YmmReg1) ... & XmmReg2_m128
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = vexVVVV_XmmReg;
+    gf2p8_mul(YmmReg1[0,64], x[0,64], m[0,64]);
+    gf2p8_mul(YmmReg1[64,64], x[64,64], m[64,64]);
+    avx_zero_upper(YmmReg1);
+}
+
+:VGF2P8MULB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F38) & $(VEX_W0) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xCF; YmmReg1 ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    gf2p8_mul(YmmReg1[0,64], vlo[0,64], lo[0,64]);
+    gf2p8_mul(YmmReg1[64,64], vlo[64,64], lo[64,64]);
+    gf2p8_mul(YmmReg1[128,64], vhi[0,64], hi[0,64]);
+    gf2p8_mul(YmmReg1[192,64], vhi[64,64], hi[64,64]);
+}
+
+:GF2P8AFFINEQB XmmReg1, XmmReg2_m128, imm8 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0xCE; XmmReg1 ... & XmmReg2_m128; imm8
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = XmmReg1;
+    gf2p8_affine(XmmReg1[0,64], x[0,64], m[0,64], imm8:1);
+    gf2p8_affine(XmmReg1[64,64], x[64,64], m[64,64], imm8:1);
+}
+
+:VGF2P8AFFINEQB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & vexVVVV_XmmReg; byte=0xCE; (XmmReg1 & YmmReg1) ... & XmmReg2_m128; imm8
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = vexVVVV_XmmReg;
+    gf2p8_affine(YmmReg1[0,64], x[0,64], m[0,64], imm8:1);
+    gf2p8_affine(YmmReg1[64,64], x[64,64], m[64,64], imm8:1);
+    avx_zero_upper(YmmReg1);
+}
+
+:VGF2P8AFFINEQB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xCE; YmmReg1 ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H; imm8
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    gf2p8_affine(YmmReg1[0,64], vlo[0,64], lo[0,64], imm8:1);
+    gf2p8_affine(YmmReg1[64,64], vlo[64,64], lo[64,64], imm8:1);
+    gf2p8_affine(YmmReg1[128,64], vhi[0,64], hi[0,64], imm8:1);
+    gf2p8_affine(YmmReg1[192,64], vhi[64,64], hi[64,64], imm8:1);
+}
+
+:GF2P8AFFINEINVQB XmmReg1, XmmReg2_m128, imm8 is vexMode=0 & $(PRE_66) & byte=0x0F; byte=0x3A; byte=0xCF; XmmReg1 ... & XmmReg2_m128; imm8
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = XmmReg1;
+    gf2p8_affineinv(XmmReg1[0,64], x[0,64], m[0,64], imm8:1);
+    gf2p8_affineinv(XmmReg1[64,64], x[64,64], m[64,64], imm8:1);
+}
+
+:VGF2P8AFFINEINVQB XmmReg1, vexVVVV_XmmReg, XmmReg2_m128, imm8 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & vexVVVV_XmmReg; byte=0xCF; (XmmReg1 & YmmReg1) ... & XmmReg2_m128; imm8
+{
+    local m:16 = XmmReg2_m128;
+    local x:16 = vexVVVV_XmmReg;
+    gf2p8_affineinv(YmmReg1[0,64], x[0,64], m[0,64], imm8:1);
+    gf2p8_affineinv(YmmReg1[64,64], x[64,64], m[64,64], imm8:1);
+    avx_zero_upper(YmmReg1);
+}
+
+:VGF2P8AFFINEINVQB YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_W1) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0xCF; YmmReg1 ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H; imm8
+{
+    local lo:16 = YmmReg2_m256_L;
+    local hi:16 = YmmReg2_m256_H;
+    local vlo:16 = vexVVVV_YmmReg_L;
+    local vhi:16 = vexVVVV_YmmReg_H;
+    gf2p8_affineinv(YmmReg1[0,64], vlo[0,64], lo[0,64], imm8:1);
+    gf2p8_affineinv(YmmReg1[64,64], vlo[64,64], lo[64,64], imm8:1);
+    gf2p8_affineinv(YmmReg1[128,64], vhi[0,64], hi[0,64], imm8:1);
+    gf2p8_affineinv(YmmReg1[192,64], vhi[64,64], hi[64,64], imm8:1);
+}

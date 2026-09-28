@@ -68,9 +68,9 @@ macro pclmul(src1, src2, dest) {
     pclmul(src1,src2,XmmReg1); 
 }
 
-:PCLMULQDQ XmmReg, m128, imm8  is vexMode=0 & $(PRE_66) & byte=0x0f; byte=0x3a; byte=0x44; XmmReg ... & m128; imm8 & imm8_4 & imm8_0
+:PCLMULQDQ XmmReg, m128, imm8  is vexMode=0 & $(PRE_66) & byte=0x0f; byte=0x3a; byte=0x44; XmmReg ... & m128; imm8
 {
-	if (imm8_0:1) goto <src1_b>;
+	if ((imm8 & 0x01) != 0) goto <src1_b>;
 		src1:16 = zext(XmmReg[0,64]);
 		goto <done1>;
 		
@@ -79,7 +79,7 @@ macro pclmul(src1, src2, dest) {
 	
 	<done1>
         local m:16 = m128;		
-	if (imm8_4:1) goto <src2_b>;
+	if ((imm8 & 0x10) != 0) goto <src2_b>;
 		src2:16 = zext(m[0,64]);
 		goto <done2>;
 		
@@ -147,9 +147,9 @@ macro pclmul(src1, src2, dest) {
 	YmmReg1 = zext(XmmReg1);
 }
 
-:VPCLMULQDQ XmmReg1, vexVVVV_XmmReg, m128, imm8 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x44; (XmmReg1 & YmmReg1) ... & m128; imm8 & imm8_4 & imm8_0
+:VPCLMULQDQ XmmReg1, vexVVVV_XmmReg, m128, imm8 is $(VEX_NDS) & $(VEX_L128) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_XmmReg; byte=0x44; (XmmReg1 & YmmReg1) ... & m128; imm8
 {
-	if (imm8_0:1) goto <src1_b>;
+	if ((imm8 & 0x01) != 0) goto <src1_b>;
 		src1:16 = zext(vexVVVV_XmmReg[0,64]);
 		goto <done1>;
 		
@@ -159,7 +159,7 @@ macro pclmul(src1, src2, dest) {
 	<done1>
 
         local m:16 = m128;
-	if (imm8_4:1) goto <src2_b>;
+	if ((imm8 & 0x10) != 0) goto <src2_b>;
 		src2:16 = zext(m[0,64]);
 		goto <done2>;
 		
@@ -172,3 +172,26 @@ macro pclmul(src1, src2, dest) {
 	YmmReg1 = zext(XmmReg1);
 }
 
+# VPCLMULQDQ: the VEX.256 form multiplies within each 128-bit lane, with the
+# same imm8 selecting the qwords of both lanes.
+:VPCLMULQDQ YmmReg1, vexVVVV_YmmReg, YmmReg2_m256, imm8 is $(VEX_NDS) & $(VEX_L256) & $(VEX_PRE_66) & $(VEX_0F3A) & $(VEX_WIG) & vexVVVV_YmmReg & vexVVVV_YmmReg_L & vexVVVV_YmmReg_H; byte=0x44; (YmmReg1 & XmmReg1 & YmmReg1_H) ... & YmmReg2_m256 & YmmReg2_m256_L & YmmReg2_m256_H; imm8
+{
+	local lo:16 = YmmReg2_m256_L;
+	local hi:16 = YmmReg2_m256_H;
+	local vlo:16 = vexVVVV_YmmReg_L;
+	local vhi:16 = vexVVVV_YmmReg_H;
+	local src1_lo:16 = zext(vlo[0,64]);
+	local src1_hi:16 = zext(vhi[0,64]);
+	if ((imm8 & 0x01) == 0) goto <src1_done>;
+		src1_lo = zext(vlo[64,64]);
+		src1_hi = zext(vhi[64,64]);
+	<src1_done>
+	local src2_lo:16 = zext(lo[0,64]);
+	local src2_hi:16 = zext(hi[0,64]);
+	if ((imm8 & 0x10) == 0) goto <src2_done>;
+		src2_lo = zext(lo[64,64]);
+		src2_hi = zext(hi[64,64]);
+	<src2_done>
+	pclmul(src1_lo, src2_lo, XmmReg1);
+	pclmul(src1_hi, src2_hi, YmmReg1_H);
+}
