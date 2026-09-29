@@ -1224,6 +1224,18 @@ seg32: ES: is segover=4 & ES	{ export ES; }
 seg32: FS: is segover=5 & FS	{ export FS; }
 seg32: GS: is segover=6 & GS	{ export GS; }
 
+# The linear address of a 32-bit memory operand when `segmented=1`: without an
+# override, an EBP or ESP base (including SIB forms) defaults to SS, anything
+# else (disp32 only, SIB without a base, other bases) to DS.
+segAddr32: addr32	is (segover=0 & mod=1 & r_m=5) ... & addr32		{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=2 & r_m=5) ... & addr32		{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=0 & r_m=4; base=4) ... & addr32	{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=1 & r_m=4; base=4) ... & addr32	{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=2 & r_m=4; base=4) ... & addr32	{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=1 & r_m=4; base=5) ... & addr32	{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: addr32	is (segover=0 & mod=2 & r_m=4; base=5) ... & addr32	{ tmp:$(SIZE) = segment(SS, addr32); export tmp; }
+segAddr32: seg32^addr32	is seg32; addr32					{ tmp:$(SIZE) = segment(seg32, addr32); export tmp; }
+
 Mem16: addr16	is (segover=0 & mod=0 & r_m=2) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
 Mem16: addr16	is (segover=0 & mod=0 & r_m=3) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
 Mem16: addr16	is (segover=0 & mod=1 & r_m=2) ... & addr16   { tmp:$(SIZE) = segment(SS,addr16); export tmp; }
@@ -1246,7 +1258,7 @@ Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide; add
 Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide; addr32       		{ export addr32; }
 @endif
 Mem: segWide^addr32 is $(LONGMODE_OFF) & segmented=0 & addrsize=1 & segWide & highseg=1; addr32 	{ tmp:$(SIZE) = segWide + zext(addr32); export tmp; }
-Mem: seg32^addr32 is $(LONGMODE_OFF) & segmented=1 & addrsize=1 & seg32; addr32 	{ tmp:$(SIZE) = segment(seg32, addr32); export tmp; }
+Mem: segAddr32 is $(LONGMODE_OFF) & segmented=1 & addrsize=1 & segAddr32 	{ export segAddr32; }
 
 EffectiveAddress: addr16    is                   addrsize=0 & addr16 { local tmp:$(SIZE) = zext(addr16); export tmp; }
 EffectiveAddress: addr32    is $(LONGMODE_OFF) & addrsize=1 & addr32 { local tmp:$(SIZE) = zext(addr32); export tmp; }
@@ -2223,6 +2235,49 @@ macro pushseg88(x) {
   *:8 $(STACKPTR) = mysave;
 }
 @endif
+
+# Stack operations when `segmented=1`: the stack is SS:ESP.
+macro spush42(x) {
+  mysave:2 = x;
+  ESP = ESP - 2;
+  tmp:$(SIZE) = segment(SS,ESP);
+  *:2 tmp = mysave;
+}
+
+macro spush44(x) {
+  mysave:4 = x;
+  ESP = ESP - 4;
+  tmp:$(SIZE) = segment(SS,ESP);
+  *:4 tmp = mysave;
+}
+
+macro spushseg44(x) {
+  mysave:2 = x;
+  ESP = ESP - 4;
+  tmp:$(SIZE) = segment(SS,ESP);
+  *:2 tmp = mysave;
+}
+
+macro spop42(x) {
+  tmp:$(SIZE) = segment(SS,ESP);
+  value:2 = *:2 tmp;
+  ESP = ESP + 2;
+  x = value;
+}
+
+macro spop44(x) {
+  tmp:$(SIZE) = segment(SS,ESP);
+  value:4 = *:4 tmp;
+  ESP = ESP + 4;
+  x = value;
+}
+
+macro spopseg44(x) {
+  tmp:$(SIZE) = segment(SS,ESP);
+  value:2 = *:2 tmp;
+  ESP = ESP + 4;
+  x = value;
+}
 
 # Order pop operations so they are correct for both POP [RSP + offset] and POP RSP.
 macro pop22(x) {
@@ -3258,9 +3313,9 @@ with : lockprefx=0 {
 :CALLF addr32       is segmented=0 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; pushseg44(CS); push44(&:4 inst_next); call [dest]; }
 # Segmented protected mode: `call m16:32` loads its target (offset, then selector) from
 # memory; the flat form above calls the operand's address itself.
-:CALLF seg32^addr32 is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & seg32 & byte=0xff; addr32 & reg_opcode=3 ... {
-  local lin:4 = segment(seg32, addr32); local dest:4 = *:4 lin; local sel:2 = *:2 (lin + 4);
-  pushseg44(CS); push44(&:4 inst_next); CS = sel; call [dest]; }
+:CALLF segAddr32 is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; (reg_opcode=3 & mod!=3) ... & segAddr32 {
+  local lin:4 = segAddr32:4; local dest:4 = *:4 lin; local sel:2 = *:2 (lin + 4);
+  spushseg44(CS); spush44(&:4 inst_next); CS = sel; call [dest]; }
 @ifdef IA64
 :CALLF addr32       is $(LONGMODE_ON) &vexMode=0 & addrsize=1 & opsize=2 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; pushseg88(CS); push88(&:8 inst_next); call [dest]; }
 :CALLF addr64       is $(LONGMODE_ON) &vexMode=0 & addrsize=2 & opsize=1 & byte=0xff; addr64 & reg_opcode=3 ... { local dest:8 = addr64; pushseg44(CS); push84(&:4 inst_next); call [dest]; }
@@ -4743,6 +4798,144 @@ define pcodeop rdtsc;
 
 :RETF imm16     is vexMode=0 & addrsize=0 & opsize=1 & byte=0xca; imm16     { pop24(EIP); tmp:4=0; pop24(tmp); CS=tmp(0); SP=SP+imm16; return [EIP]; }
 :RETF imm16     is vexMode=0 & addrsize=1 & opsize=1 & byte=0xca; imm16     { pop44(EIP); tmp:4=0; pop44(tmp); CS=tmp(0); ESP=ESP+imm16; return [EIP]; }
+
+# Segmented protected mode (`segmented=1`): the stack is SS:ESP, so every implicit
+# stack access goes through segment(SS, ESP).  These mirror the flat 32-bit forms
+# above and, being more specific, take precedence over them only when segmented=1.
+:CALL rel16     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; rel16     { spush42(&:2 inst_next); call rel16; }
+:CALL rel16     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xe8; simm16=0 & rel16      { spush42(&:2 inst_next); goto rel16; }
+:CALL rel32     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; rel32     { spush44(&:4 inst_next); call rel32; }
+:CALL rel32     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xe8; simm32=0 & rel32      { spush44(&:4 inst_next); goto rel32; }
+:CALL rm16      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; rm16 & reg_opcode=2 ...   { local dest:2 = rm16; spush42(&:2 inst_next); call [dest]; }
+:CALL rm32      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; rm32 & reg_opcode=2 ...   { local dest:4 = rm32; spush44(&:4 inst_next); call [dest]; }
+:CALLF ptr1616      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x9a; ptr1616           { spush42(CS); build ptr1616; spush42(&:2 inst_next); call ptr1616; }
+:CALLF ptr1632      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x9a; ptr1632           { spushseg44(CS); build ptr1632; spush44(&:4 inst_next); call ptr1632; }
+:CALLF segAddr32   is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; reg_opcode=3 ... & segAddr32 {
+  local lin:4 = segAddr32:4; local dest:4 = zext(*:2 lin); local sel:2 = *:2 (lin + 2);
+  spush42(CS); spush42(&:2 inst_next); CS = sel; call [dest]; }
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc8; imm16; enterFrames & low5=0x00 {
+        spush44(EBP);
+        EBP = ESP;
+        ESP = ESP - imm16;
+}
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc8; imm16; enterFrames & low5=0x01 {
+        spush44(EBP);
+        frameTemp:4 = ESP;
+
+        spush44(frameTemp);
+        EBP = frameTemp;
+        ESP = ESP - imm16;
+}
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc8; imm16; enterFrames {
+        spush44(EBP);
+        frameTemp:4 = ESP;
+@ifdef IA64
+        ESPt:$(SIZE) = zext(ESP);
+        EBPt:$(SIZE) = zext(EBP);
+@else
+        ESPt:$(SIZE) = ESP;
+        EBPt:$(SIZE) = EBP;
+@endif
+
+        ii:1 = enterFrames - 1;
+<loop>
+        EBPt = EBPt - 4;
+        ESPt = ESPt - 4;
+        local sdst:$(SIZE) = segment(SS, ESPt:4); local ssrc:$(SIZE) = segment(SS, EBPt:4); *:4 sdst = *:4 ssrc;
+        ii = ii - 1;
+        if (ii s> 0) goto <loop>;
+
+        tmp_offset:4 = 4 * zext(enterFrames - 1);
+        ESP = ESP - tmp_offset;
+        EBP = EBP - tmp_offset;
+
+        spush44(frameTemp);
+        EBP = frameTemp;
+        ESP = ESP - imm16;
+}
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc8; imm16; enterFrames & low5=0x00 {
+        spush42(BP);
+        BP = SP;
+        SP = SP - imm16;
+}
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc8; imm16; enterFrames & low5=0x01 {
+        spush42(BP);
+        frameTemp:2 = SP;
+
+        spush42(frameTemp);
+        BP = frameTemp;
+        SP = SP - imm16;
+}
+:ENTER imm16,enterFrames is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc8; imm16; enterFrames {
+        spush42(BP);
+        frameTemp:2 = SP;
+@ifdef IA64
+        ESPt:$(SIZE) = zext(ESP);
+        EBPt:$(SIZE) = zext(EBP);
+@else
+        ESPt:$(SIZE) = ESP;
+        EBPt:$(SIZE) = EBP;
+@endif
+
+        ii:1 = enterFrames - 1;
+<loop>
+        EBPt = EBPt - 2;
+        ESPt = ESPt - 2;
+        local sdst:$(SIZE) = segment(SS, ESPt:4); local ssrc:$(SIZE) = segment(SS, EBPt:4); *:2 sdst = *:2 ssrc;
+        ii = ii - 1;
+        if (ii s> 0) goto <loop>;
+
+        tmp_offset:4 = 2 * zext(enterFrames - 1);
+        ESP = ESP - tmp_offset;
+        EBP = EBP - tmp_offset;
+
+        spush42(frameTemp);
+        BP = frameTemp;
+        SP = SP - imm16;
+}
+:IRET           is segmented=1 & vexMode=0 & addrsize=1 & opsize=0 & byte=0xcf            { spop42(IP); EIP=zext(IP); spop42(CS); spop42(flags); return [EIP]; }    
+:IRETD          is segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xcf            { spop44(EIP); tmp:4=0; spop44(tmp); CS=tmp(0); spop44(eflags); return [EIP]; }
+:LEAVE          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc9         { ESP = EBP; spop44(EBP); }
+:LEAVE          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc9         { ESP = EBP; spop42(BP); }
+:POP rm16        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x8f; rm16 & reg_opcode=0 ... { local val:2 = 0; spop42(val); build rm16; rm16 = val; }
+:POP rm32        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x8f; rm32 & reg_opcode=0 ... { local val:4 = 0; spop44(val); build rm32; rm32 = val; }
+:POP Rmr16      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & row=5 & page=1 & Rmr16       { local val:2 = 0; spop42(val); Rmr16 = val; }
+:POP Rmr32      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & row=5 & page=1 & Rmr32       { local val:4 = 0; spop44(val); Rmr32 = val; }
+:POP DS         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x1f & DS              { spopseg44(DS); }
+:POP ES         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x7 & ES               { spopseg44(ES); }
+:POP SS         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x17 & SS              { spopseg44(SS); }
+:POP FS         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa1 & FS    { spopseg44(FS); }
+:POP GS         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & opsize=1 & byte=0xf; byte=0xa9 & GS    { spopseg44(GS); }
+:POPA           is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x61            { spop42(DI); spop42(SI); spop42(BP); tmp:2=0; spop42(tmp); spop42(BX); spop42(DX); spop42(CX); spop42(AX); }
+:POPAD          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x61            { spop44(EDI); spop44(ESI); spop44(EBP); tmp:4=0; spop44(tmp); spop44(EBX); spop44(EDX); spop44(ECX); spop44(EAX); }
+:POPF           is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x9d            { spop42(flags); unpackflags(flags); }
+:POPFD          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x9d            { spop44(eflags); unpackflags(eflags); unpackeflags(eflags); }
+:PUSH rm16      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; rm16 & reg_opcode=6 ... { spush42(rm16); }
+:PUSH rm32      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; rm32 & reg_opcode=6 ... { spush44(rm32); }
+:PUSH Rmr16     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & row=5 & page=0 & Rmr16       { spush42(Rmr16); }
+:PUSH Rmr32     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & row=5 & page=0 & Rmr32       { spush44(Rmr32); }
+:PUSH simm8_16     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x6a; simm8_16     { tmp:2=simm8_16; spush42(tmp); }
+:PUSH simm8_32     is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x6a; simm8_32     { tmp:4=simm8_32; spush44(tmp); }
+:PUSH simm16_16    is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x68; simm16_16    { tmp:2=simm16_16; spush42(tmp); }
+:PUSH imm32        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x68; imm32     { tmp:4=imm32; spush44(tmp); }
+:PUSH CS        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xe & CS               { spushseg44(CS); }
+:PUSH SS        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x16 & SS              { spushseg44(SS); }
+:PUSH DS        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x1e & DS              { spushseg44(DS); }
+:PUSH ES        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0x6 & ES               { spushseg44(ES); }
+:PUSH FS        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa0 & FS        { spushseg44(FS); }
+:PUSH GS        is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & byte=0xf; byte=0xa8 & GS        { spushseg44(GS); }
+:PUSHA          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x60            { local tmp=SP; spush42(AX); spush42(CX); spush42(DX); spush42(BX); spush42(tmp); spush42(BP); spush42(SI); spush42(DI); }
+:PUSHAD         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x60            { local tmp=ESP; spush44(EAX); spush44(ECX); spush44(EDX); spush44(EBX); spush44(tmp); spush44(EBP); spush44(ESI); spush44(EDI); }
+:PUSHF          is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x9c            { packflags(flags); spush42(flags); }
+:PUSHFD         is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x9c            { packflags(eflags); packeflags(eflags); spush44(eflags); }
+:RET            is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc3            { spop42(IP); EIP=zext(IP); return [EIP]; }
+:RET            is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc3            { spop44(EIP); return [EIP]; }
+:RETF           is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xcb            { spop42(IP); EIP=zext(IP); spop42(CS); return [EIP]; }        
+:RETF           is segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xcb            { spop44(EIP); tmp:4=0; spop44(tmp); CS=tmp(0); return [EIP]; }
+:RET imm16      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc2; imm16     { spop42(IP); EIP=zext(IP); ESP=ESP+imm16; return [EIP]; }        
+:RET imm16      is segmented=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc2; imm16     { spop44(EIP); ESP=ESP+imm16; return [EIP]; }
+:RETF imm16     is segmented=1 & vexMode=0 & addrsize=1 & opsize=0 & byte=0xca; imm16     { spop42(IP); EIP=zext(IP); spop42(CS); ESP=ESP+imm16; return [EIP]; }         
+:RETF imm16     is segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xca; imm16     { spop44(EIP); tmp:4=0; spop44(tmp); CS=tmp(0); ESP=ESP+imm16; return [EIP]; }
 @ifdef IA64
 :RETF imm16     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=1 & byte=0xca; imm16     { pop84(EIP); tmp:4=0; pop84(tmp); RIP=zext(EIP); CS=tmp(0); RSP=RSP+imm16; return [RIP]; }
 :RETF imm16     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=2 & byte=0xca; imm16     { pop88(RIP); tmp:8=0; pop88(tmp); CS=tmp(0); RSP=RSP+imm16; return [RIP]; }
