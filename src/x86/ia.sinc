@@ -4065,6 +4065,12 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 @endif
     goto [target];
 }
+# Segmented protected mode: `jmp m16:16` / `jmp m16:32` load offset then selector
+# from memory (through segAddr32) and switch CS.
+:JMPF segAddr32 is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; reg_opcode=5 ... & segAddr32 {
+  local lin:4 = segAddr32:4; local dest:4 = zext(*:2 lin); local sel:2 = *:2 (lin + 2); CS = sel; goto [dest]; }
+:JMPF segAddr32 is $(LONGMODE_OFF) & segmented=1 & vexMode=0 & addrsize=1 & opsize=1 & byte=0xff; reg_opcode=5 ... & segAddr32 {
+  local lin:4 = segAddr32:4; local dest:4 = *:4 lin; local sel:2 = *:2 (lin + 4); CS = sel; goto [dest]; }
 @ifdef IA64
 :JMPF Mem       is vexMode=0 & opsize=2 & byte=0xff; Mem & reg_opcode=5 ...     { target:$(SIZE) = *:8 Mem; goto [target]; }
 @endif
