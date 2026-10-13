@@ -4014,7 +4014,7 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :INVPCID r64, m128     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & $(PRE_66) & byte=0x0F; byte=0x38; byte=0x82; r64 ... & m128    { invpcid(r64, m128); }
 @endif
 
-:IRET           is vexMode=0 & addrsize=0 & opsize=0 & byte=0xcf            { pop22(IP); EIP=zext(IP); pop22(CS); pop22(flags); return [EIP]; }    
+:IRET           is vexMode=0 & addrsize=0 & opsize=0 & byte=0xcf            { pop22(IP); pop22(CS); EIP=segment(CS,IP); pop22(flags); return [EIP]; }    
 :IRET           is vexMode=0 & addrsize=1 & opsize=0 & byte=0xcf            { pop42(IP); EIP=zext(IP); pop42(CS); pop42(flags); return [EIP]; }    
 @ifdef IA64
 :IRET           is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=0 & byte=0xcf            { pop82(IP); RIP=zext(IP); pop82(CS); pop82(flags); return [RIP]; }    
@@ -4788,7 +4788,7 @@ define pcodeop rdtsc;
 :RETF           is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=2 & byte=0xcb            { pop88(RIP); tmp:8=0; pop88(tmp); CS=tmp(0); return [RIP]; }
 @endif
 
-:RET imm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xc2; imm16     { pop22(IP); EIP=zext(IP); SP=SP+imm16; return [EIP]; }      
+:RET imm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xc2; imm16     { pop22(IP); EIP=segment(CS,IP); SP=SP+imm16; return [EIP]; }      
 :RET imm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0xc2; imm16     { pop42(IP); EIP=zext(IP); ESP=ESP+imm16; return [EIP]; }        
 :RET imm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0xc2; imm16     { pop24(EIP); SP=SP+imm16; return [EIP]; }
 :RET imm16      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0xc2; imm16     { pop44(EIP); ESP=ESP+imm16; return [EIP]; }
@@ -4796,7 +4796,7 @@ define pcodeop rdtsc;
 :RET imm16      is $(LONGMODE_ON) & vexMode=0 & byte=0xc2; imm16     { pop88(RIP); RSP=RSP+imm16; return [RIP]; }
 @endif
 
-:RETF imm16     is vexMode=0 & addrsize=0 & opsize=0 & byte=0xca; imm16     { pop22(IP); EIP=zext(IP); pop22(CS); SP=SP+imm16; return [EIP]; }       
+:RETF imm16     is vexMode=0 & addrsize=0 & opsize=0 & byte=0xca; imm16     { pop22(IP); pop22(CS); EIP=segment(CS,IP); SP=SP+imm16; return [EIP]; }       
 :RETF imm16     is vexMode=0 & addrsize=1 & opsize=0 & byte=0xca; imm16     { pop42(IP); EIP=zext(IP); pop42(CS); ESP=ESP+imm16; return [EIP]; }         
 @ifdef IA64
 :RETF imm16     is $(LONGMODE_ON) & vexMode=0 & addrsize=2 & opsize=0 & byte=0xca; imm16     { pop82(IP); RIP=zext(IP); pop82(CS); RSP=RSP+imm16; return [RIP]; }         
