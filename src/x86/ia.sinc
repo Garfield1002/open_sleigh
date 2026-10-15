@@ -401,12 +401,14 @@ define context contextreg
   # Stored context
   longMode=(0,0)      # 0 for 32-bit emulation, 1 for 64-bit mode
   segmented=(1,1)     # 1: 32-bit memory operands go through segment(sel, off)
-  reserved=(2,3)
+  realMode=(2,2)      # 1: 8086 real mode, code segments anywhere (CS is a register, IP = linear - CS*16)
+  reserved=(3,3)
   addrsize=(4,5)        # =0  16-bit addressing  =1  32-bit addressing   =2 64-bit addressing
 @else
   # Stored context
   segmented=(0,0)     # 1: 32-bit memory operands go through segment(sel, off)
-  reserved=(1,3)
+  realMode=(1,1)      # 1: 8086 real mode, code segments anywhere (CS is a register, IP = linear - CS*16)
+  reserved=(2,3)
   addrsize=(5,5)        # =0  16-bit addressing  =1  32-bit addressing
 @endif
   bit64=(4,4)           # =0  16/32 bit          =1  64-bit
@@ -1193,7 +1195,9 @@ addr64: [Base64 + Index64*ss + simm32_64] is mod=2 & r_m=4; Index64 & Base64 & s
 addr64: [Base64 + Index64*ss]			is mod=2 & r_m=4; Index64 & Base64 & ss; imm32=0   { local tmp=Base64+Index64*ss; export tmp; }
 @endif
 
-currentCS: CS is protectedMode=0 & CS { tmp:4 = (inst_next >> 4) & 0xf000; CS = tmp:2; export CS; }
+currentCS: CS is protectedMode=0 & realMode=0 & CS { tmp:4 = (inst_next >> 4) & 0xf000; CS = tmp:2; export CS; }
+# realMode: the code segment is the CS register (set by the loader, far calls, far jumps and far returns).
+currentCS: CS is protectedMode=0 & realMode=1 & CS { export CS; }
 currentCS: CS is protectedMode=1 & CS { tmp:4 = (inst_next >> 16) & 0xffff; CS = tmp:2; export CS; }
  
 segWide: is segover=0		        { export 0:$(SIZE); }
@@ -1268,7 +1272,10 @@ EffectiveAddress: addr64    is                   addrsize=2 & addr64    { export
 @endif
 
 rel8: reloc is simm8        [ reloc=inst_next+simm8; ] { export *[ram]:$(SIZE) reloc; }
-rel16: reloc is simm16      [ reloc=((inst_next >> 16) << 16) | ((inst_next + simm16) & 0xFFFF); ] { export *[ram]:$(SIZE) reloc; }
+rel16: reloc is realMode=0 & simm16      [ reloc=((inst_next >> 16) << 16) | ((inst_next + simm16) & 0xFFFF); ] { export *[ram]:$(SIZE) reloc; }
+# realMode: the target in the segment of the instruction, linear (a code segment need not be 64 KiB-aligned; a
+# near target that wraps around its segment's 64 KiB is not modelled).
+rel16: reloc is realMode=1 & simm16      [ reloc=inst_next + simm16; ] { export *[ram]:$(SIZE) reloc; }
 rel32: reloc is simm32      [ reloc=inst_next+simm32; ] { export *[ram]:$(SIZE) reloc; }
 
 
@@ -3301,6 +3308,14 @@ with : lockprefx=0 {
 :CALLF ptr1616      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=0 & byte=0x9a; ptr1616           { push42(CS); build ptr1616; push42(&:2 inst_next); call ptr1616; }
 :CALLF ptr1632      is $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=1 & byte=0x9a; ptr1632           { push22(CS); build ptr1632; push24(&:4 inst_next); call ptr1632; }
 :CALLF ptr1632      is $(LONGMODE_OFF) & vexMode=0 & addrsize=1 & opsize=1 & byte=0x9a; ptr1632           { pushseg44(CS); build ptr1632; push44(&:4 inst_next); call ptr1632; }
+# realMode: a call pushes IP, the offset of the next instruction in CS (its linear address less CS*16), and a far
+# call through memory loads CS:IP from the operand (with its segment override).
+:CALL rel16     is realMode=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; rel16     { local ip:2 = &:2 inst_next - (CS << 4); push22(ip); call rel16; }
+:CALL rel16     is realMode=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xe8; simm16=0 & rel16      { local ip:2 = &:2 inst_next - (CS << 4); push22(ip); goto rel16; }
+:CALL rm16	    is realMode=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0xff & currentCS; rm16 & reg_opcode=2 ...	{ local dest:4 = segment(currentCS,rm16); local ip:2 = &:2 inst_next - (CS << 4); push22(ip); call [dest]; }
+:CALLF ptr1616      is realMode=1 & $(LONGMODE_OFF) & vexMode=0 & addrsize=0 & opsize=0 & byte=0x9a; ptr1616           { local ip:2 = &:2 inst_next - (CS << 4); push22(CS); build ptr1616; push22(ip); call ptr1616; }
+:CALLF Mem       is realMode=1 & vexMode=0 & addrsize=0 & opsize=0 & byte=0xff; Mem & reg_opcode=3 ... { local p:$(SIZE) = Mem; local off:2 = *:2 p; local seg:2 = *:2 (p + 2);
+                                                                                                  local ip:2 = &:2 inst_next - (CS << 4); push22(CS); push22(ip); CS = seg; local dest:$(SIZE) = segment(seg, off); call [dest]; }
 :CALLF addr16       is vexMode=0 & addrsize=0 & opsize=0 & byte=0xff; addr16 & reg_opcode=3 ... { local ptr:$(SIZE) = segment(DS,addr16); local addrptr:$(SIZE) = segment(*:2 (ptr+2),*:2 ptr);
                                                                                                   push22(CS); push22(&:2 inst_next); call [addrptr]; }
 :CALLF addr32       is vexMode=0 & addrsize=1 & opsize=0 & byte=0xff; addr32 & reg_opcode=3 ... { local dest:4 = addr32; push42(CS); push42(&:2 inst_next); call [dest]; }
@@ -4057,6 +4072,7 @@ enterFrames: low5 is low5 { tmp:1 = low5; export tmp; }
 :JMPF ptr1616   is $(LONGMODE_OFF) & vexMode=0 & opsize=0 & byte=0xea; ptr1616                    { goto ptr1616; }
 :JMPF ptr1632   is $(LONGMODE_OFF) & vexMode=0 & opsize=1 & byte=0xea; ptr1632                    { goto ptr1632; }
 :JMPF Mem       is vexMode=0 & opsize=0 & byte=0xff; Mem & reg_opcode=5 ...     { target:$(SIZE) = zext(*:2 Mem); goto [target]; }
+:JMPF Mem       is realMode=1 & vexMode=0 & addrsize=0 & opsize=0 & byte=0xff; Mem & reg_opcode=5 ...     { local p:$(SIZE) = Mem; local off:2 = *:2 p; CS = *:2 (p + 2); target:$(SIZE) = segment(CS, off); goto [target]; }
 :JMPF Mem       is vexMode=0 & opsize=1 & byte=0xff; Mem & reg_opcode=5 ...     {
 @ifdef IA64
     target:$(SIZE) = zext(*:4 Mem);
